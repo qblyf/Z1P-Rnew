@@ -20,6 +20,11 @@ export function UserProfile() {
     const loginPage = deviceType === 'mobile' ? '/qr-login-mobile' : '/qr-login-desk';
     
     router.push(loginPage);
+    
+    // 刷新页面以清除所有状态
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   };
 
   const userName = payload?.name || '未认证用户';
