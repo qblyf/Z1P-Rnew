@@ -5,12 +5,12 @@
     "es6": true
   },
   "extends": [
-    "eslint:recommended", // JS 建议
+    "eslint:recommended",
     "plugin:@next/next/recommended",
     "plugin:react/recommended",
     "plugin:react-hooks/recommended",
-    "plugin:@typescript-eslint/eslint-recommended", // 关闭一些与 TS 重复的功能
-    "plugin:@typescript-eslint/recommended" // TS 建议
+    "plugin:@typescript-eslint/eslint-recommended",
+    "plugin:@typescript-eslint/recommended"
   ],
   "settings": {
     "react": {
@@ -39,6 +39,8 @@
       "error",
       { "functions": false }
     ],
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-non-null-assertion": "warn",
     "prefer-const": "off",
     "no-constant-condition": ["warn", { "checkLoops": false }],
     "react/no-unknown-property": ["error", { "ignore": ["jsx", "global"] }],
