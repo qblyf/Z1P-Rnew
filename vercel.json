@@ -1,7 +1,4 @@
 {
   "ignoreCommand": "git diff --quiet HEAD^ HEAD ./",
-  "buildCommand": "npm install && npm run build",
-  "env": {
-    "NODE_AUTH_TOKEN": "@jsr:registry=https://npm.jsr.io"
-  }
+  "buildCommand": "bash scripts/vercel-build.sh"
 }
