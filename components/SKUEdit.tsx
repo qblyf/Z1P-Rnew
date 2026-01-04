@@ -28,10 +28,8 @@ export function SKUEdit(props: { selectedSkuID: SkuID }) {
   const { selectedSkuID } = props;
   const [preData, setPreData] = useState<SKU>();
   const [input, setInput] = useState<{
-    name?: string;
     gtins?: string[];
     number?: string;
-    spell?: string;
     listPrice?: string;
     unit?: string;
     grossWeight?: string;
@@ -100,22 +98,6 @@ export function SKUEdit(props: { selectedSkuID: SkuID }) {
   return (
     <>
       <Form layout="vertical">
-        <Form.Item label="名称" tooltip="SKU 的名称, 唯一">
-          <Input
-            value={input.name ?? preData.name}
-            onChange={e => {
-              const v = e.target.value;
-              setInput(
-                update(input, {
-                  name: { $set: v },
-                  spell: { $set: pinyin.convertToFirstLetter(v) },
-                })
-              );
-            }}
-            disabled
-          />
-        </Form.Item>
-
         <Form.Item
           label="GS1 条码"
           tooltip="商品 GS1 条码 (69 码), GTIN 码, 可设置多条."
@@ -223,15 +205,6 @@ export function SKUEdit(props: { selectedSkuID: SkuID }) {
           </Button>
         </Form.Item>
 
-        <Form.Item label="拼音码" tooltip="名称的拼音码, 方便进行查找">
-          <Input
-            value={input.spell ?? preData.spell}
-            onChange={e => {
-              setInput(update(input, { spell: { $set: e.target.value } }));
-            }}
-          />
-        </Form.Item>
-
         <Form.Item label="官网价" tooltip="官网价, 厂商指导价">
           <Input
             value={input.listPrice ?? Number(preData.listPrice) / 100}
@@ -328,7 +301,7 @@ export function SKUEdit(props: { selectedSkuID: SkuID }) {
               onClick={postAwait(async () => {
                 const { listPrice, defaultSNRules, ...rest } = input;
 
-                const patch: Awaited<Parameters<typeof editSKUInfo>[1]> = rest as any;
+                const patch: Awaited<Parameters<typeof editSKUInfo>[1]> = rest;
                 if (listPrice) {
                   patch.listPrice = Number(listPrice) * 100;
                 }
@@ -359,16 +332,14 @@ export function SKUEdit(props: { selectedSkuID: SkuID }) {
                 // 更新前端状态
                 if (preData) {
                   setPreData(update(preData, {
-                    name: { $set: (patch as any).name ?? preData.name },
-                    gtins: { $set: patch.gtins ?? preData.gtins },
-                    spell: { $set: (patch as any).spell ?? (preData as any).spell },
+                    gtins: { $set: input.gtins ?? preData.gtins },
                     listPrice: { $set: patch.listPrice ?? preData.listPrice },
-                    unit: { $set: patch.unit ?? preData.unit },
-                    grossWeight: { $set: patch.grossWeight ?? preData.grossWeight },
+                    unit: { $set: input.unit ?? preData.unit },
+                    grossWeight: { $set: input.grossWeight ?? preData.grossWeight },
                     thumbnail: { $set: patch.thumbnail ?? preData.thumbnail },
-                    remarks: { $set: patch.remarks ?? preData.remarks },
+                    remarks: { $set: input.remarks ?? preData.remarks },
                     defaultSNRules: { $set: patch.defaultSNRules ?? preData.defaultSNRules },
-                  }) as any);
+                  }));
                 }
                 
                 // 清空输入状态
