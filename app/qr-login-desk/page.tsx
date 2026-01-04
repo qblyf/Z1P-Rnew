@@ -56,7 +56,8 @@ function QrLoginDeskPage() {
 
   // 前端生成的扫码地址
   const url = useMemo(() => {
-    const url = `${HOST_URL}/qr-login-mobile?storage=${storage}`;
+    const baseUrl = HOST_URL.endsWith('/') ? HOST_URL.slice(0, -1) : HOST_URL;
+    const url = `${baseUrl}/qr-login-mobile?storage=${storage}`;
     console.log('移动端登录 url', url);
     return url;
   }, [storage]);

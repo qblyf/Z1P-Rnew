@@ -52,9 +52,7 @@ export default function PageWrap(props: {
   // 使用 useEffect 处理路由跳转，避免在渲染时调用 router.push
   useEffect(() => {
     if (!token) {
-      if (!errMsg) {
-        return;
-      }
+      // 如果没有 token 且设备类型已加载，立即跳转到登录页面
       if (!deviceType) {
         return;
       }
@@ -68,7 +66,7 @@ export default function PageWrap(props: {
       });
       router.push(`${loginPage}?${p}`);
     }
-  }, [token, errMsg, redirect, router, deviceType]);
+  }, [token, redirect, router, deviceType]);
 
   // 处理权限过期的路由跳转
   useEffect(() => {
@@ -83,10 +81,7 @@ export default function PageWrap(props: {
   }, [permission, permissionErrMsg, redirect, router, deviceType]);
 
   if (!token) {
-    if (!errMsg) {
-      return <>正在登录, 请稍等</>;
-    }
-    return <>正在跳转, 请稍等</>;
+    return <>正在跳转到登录页面, 请稍等</>;
   }
 
   if (permission === undefined) {
