@@ -154,7 +154,12 @@ function QrLoginMobilePage() {
               <>
                 <CheckCircle size={48} className="mx-auto text-emerald-500 mb-4" />
                 <h2 className="text-lg font-bold text-slate-800 mb-2">登录成功</h2>
-                <p className="text-slate-600 text-sm">正在跳转到主页面...</p>
+                <p className="text-slate-600 text-sm mb-6">您已成功登录，桌面端将自动跳转</p>
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                  <p className="text-emerald-700 text-sm">
+                    请返回桌面设备查看登录结果
+                  </p>
+                </div>
               </>
             )}
 
