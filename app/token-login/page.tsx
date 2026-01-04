@@ -1,6 +1,6 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, Suspense } from 'react';
 import { Button, Card, Form, Input, message, Space, Spin } from 'antd';
 import { setCacheToken, getPayload } from '../../datahooks/auth';
@@ -42,6 +42,7 @@ function TokenLoginContent() {
   const searchParams = useSearchParams();
   const token = useMemo(() => searchParams?.get('token'), [searchParams]);
   const redirect = useMemo(() => searchParams?.get('redirect') || '/', [searchParams]);
+  const router = useRouter();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
@@ -98,6 +99,10 @@ function TokenLoginContent() {
     handleTokenSubmit(manualToken.trim());
   };
 
+  const handleSwitchToQRLogin = () => {
+    router.push('/qr-login-desk');
+  };
+
   if (isValidated) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
@@ -151,6 +156,16 @@ function TokenLoginContent() {
                 清空
               </Button>
             </Space>
+          </Form.Item>
+
+          <Form.Item>
+            <Button
+              block
+              onClick={handleSwitchToQRLogin}
+              disabled={loading}
+            >
+              使用二维码登录
+            </Button>
           </Form.Item>
 
           <Form.Item>
