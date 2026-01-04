@@ -42,15 +42,7 @@ function QrLoginMobilePage() {
     airLoginScan(storage, { scanner: `${ua.os} ${ua.softwareName}` });
   }, [storage]);
 
-  // 登录成功后跳转到首页
-  useEffect(() => {
-    if (status === '登录已完成') {
-      const timer = setTimeout(() => {
-        router.push('/');
-      }, 1500); // 延迟1.5秒后跳转，让用户看到成功提示
-      return () => clearTimeout(timer);
-    }
-  }, [status, router]);
+  // 移动端登录成功后不跳转，保持在当前页面显示成功提示
 
   // 未登录时跳转到桌面端 QR 登录页面
   useEffect(() => {

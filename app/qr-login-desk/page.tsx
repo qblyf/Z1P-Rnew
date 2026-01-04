@@ -72,7 +72,7 @@ function QrLoginDeskPage() {
     const [_, err] = getPayload(token);
     if (err === null) {
       // 登录成功，跳转到首页
-      console.log('登录成功');
+      console.log('Desktop login successful, redirecting to home');
       router.replace('/');
     }
   }, [router, token]);
