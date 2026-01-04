@@ -35,7 +35,7 @@ echo "✅ Git 已配置为使用 SSH"
 
 echo ""
 echo "📦 安装依赖..."
-npm install
+npm install --legacy-peer-deps
 
 echo ""
 echo "🏗️  构建项目..."

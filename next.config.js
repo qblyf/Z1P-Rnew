@@ -7,6 +7,17 @@ const nextConfig = {
   transpilePackages: ['@zsqk/z1-sdk', '@zsqk/somefn'],
   // TODO: 启用静态导出
   // output: 'export',
+  webpack: (config, { isServer }) => {
+    // 忽略 any-promise 的动态依赖警告
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      {
+        module: /any-promise/,
+        message: /Critical dependency/,
+      },
+    ];
+    return config;
+  },
 };
 
 export default nextConfig;
