@@ -63,20 +63,16 @@ function QrLoginDeskPage() {
   }, [storage]);
 
   useEffect(() => {
-    const redirect = searchParams?.get('redirect');
     if (typeof token !== 'string') {
       return;
     }
     const [_, err] = getPayload(token);
     if (err === null) {
-      // 登录成功
+      // 登录成功，跳转到首页
       console.log('登录成功');
-      if (typeof redirect === 'string') {
-        // 进行页面跳转
-        router.replace(redirect);
-      }
+      router.replace('/');
     }
-  }, [router, token, searchParams]);
+  }, [router, token]);
 
   const updateQR = () => {
     // 重置超时

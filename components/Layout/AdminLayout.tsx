@@ -1,10 +1,9 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Navbar } from '../Navigation/Navbar';
 import { useTokenContext } from '../../datahooks/auth';
-import { detectDeviceType } from '../../utils/deviceDetect';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -17,20 +16,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { token } = useTokenContext();
-  const [deviceType, setDeviceType] = useState<'mobile' | 'desktop' | null>(null);
-
-  // 初始化设备类型
-  useEffect(() => {
-    setDeviceType(detectDeviceType());
-  }, []);
-
-  // 获取对应的登录页面
-  const getLoginPage = () => {
-    if (deviceType === 'mobile') {
-      return '/qr-login-mobile';
-    }
-    return '/qr-login-desk';
-  };
 
   useEffect(() => {
     // 如果是公开页面，不需要检查认证
@@ -39,16 +24,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     }
 
     // 如果还在加载中，不做任何操作
-    if (token === undefined || !deviceType) {
+    if (token === undefined) {
       return;
     }
 
-    // 如果没有 token，重定向到登录页面
+    // 如果没有 token，重定向到 qr-login-desk 登录页面
     if (!token) {
-      const loginPage = getLoginPage();
-      router.replace(loginPage);
+      router.replace('/qr-login-desk');
     }
-  }, [token, pathname, router, deviceType]);
+  }, [token, pathname, router]);
 
   // 如果是公开页面，直接渲染
   if (PUBLIC_PAGES.includes(pathname)) {
