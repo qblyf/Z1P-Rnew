@@ -35,7 +35,8 @@ echo "✅ Git 已配置为使用 SSH"
 
 echo ""
 echo "📦 安装依赖..."
-npm install --legacy-peer-deps
+# 强制安装 devDependencies（Vercel 默认不安装）
+npm install --legacy-peer-deps --include=dev
 
 echo ""
 echo "🏗️  构建项目..."
