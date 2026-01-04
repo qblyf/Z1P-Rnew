@@ -359,7 +359,7 @@ export function SKUEdit(props: { selectedSkuID: SkuID }) {
                 // 更新前端状态
                 if (preData) {
                   setPreData(update(preData, {
-                    name: { $set: patch.name ?? preData.name },
+                    name: { $set: (patch as any).name ?? preData.name },
                     gtins: { $set: patch.gtins ?? preData.gtins },
                     spell: { $set: (patch as any).spell ?? (preData as any).spell },
                     listPrice: { $set: patch.listPrice ?? preData.listPrice },

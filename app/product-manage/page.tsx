@@ -12,16 +12,21 @@ export default async function () {
 
   // 这是一个 trick, 利用了 Next.js 的缓存特性, 将来可以用 API 替换
   // TODO: 将过期时间作为参数传入 genOSSTempCredentials
-  const ossCredentials = await fetch(`${Z1P_ENDPOINT}/test`, {
-    method: 'OPTIONS',
-    next: { revalidate: 1200 },
-  }).catch(() => 0).then(() =>
-    genOSSTempCredentials({
-      accessKeyId,
-      accessKeySecret,
-      roleArn,
-    })
-  );
+  let ossCredentials = null;
+  
+  // 只有在配置了 OSS 凭证时才生成临时凭证
+  if (accessKeyId && accessKeySecret && roleArn) {
+    ossCredentials = await fetch(`${Z1P_ENDPOINT}/test`, {
+      method: 'OPTIONS',
+      next: { revalidate: 1200 },
+    }).catch(() => 0).then(() =>
+      genOSSTempCredentials({
+        accessKeyId,
+        accessKeySecret,
+        roleArn,
+      })
+    );
+  }
 
   // 在此处不必进行页面权限的校验, 详见文档
   return (

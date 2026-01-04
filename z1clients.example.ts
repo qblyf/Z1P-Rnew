@@ -3,7 +3,7 @@
 // Tips: 历史上使用 client 这个词, 但因为太容易和客户端混淆, 所以现在改用 tenant 这个词.
 // TODO: 需要逐步将代码中的 client 改成 tenant.
 
-import { Z1Tenant } from "../z1p-deno/tenants/z1tenant.type.ts";
+import { Z1Tenant } from "../z1p-deno/tenants/z1tenant.type";
 
 const clientKeys = [
   "newgy",
@@ -44,7 +44,7 @@ export function isClientKey(v: unknown): v is ClientKey {
  * 注意: 敏感信息应该通过环境变量或安全的配置管理系统提供
  * 不要将真实的密钥、密码等敏感信息提交到版本控制系统
  */
-export const z1ClientsObj: Record<ClientKey, Z1Tenant> = {
+export const z1ClientsObj: Partial<Record<ClientKey, Z1Tenant>> = {
   newgy: {
     id: "newgy",
     s1ClientID: "newgy",

@@ -96,12 +96,12 @@ function useToken() {
     // 检查是否已经有缓存.
     const [t] = getCacheToken();
     if (t) {
-      const [_, err] = getPayload(t);
+      const [_, err] = getPayload(t as string);
       if (err) {
         // 清空缓存中的 token
         setCacheToken(null);
       } else {
-        setToken(t);
+        setToken(t as string);
         return;
       }
     }
