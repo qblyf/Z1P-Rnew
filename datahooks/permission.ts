@@ -77,16 +77,6 @@ export function usePermission(key: keyof PermissionPackages) {
       return;
     }
 
-    // ✅ 开发模式：使用 Mock 权限
-    if (process.env.NEXT_PUBLIC_SKIP_LOGIN === 'true') {
-      // 创建一个 Mock 权限 JWT
-      const mockPermissionJWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzEyMyIsIm5hbWUiOiJUZXN0IFVzZXIiLCJleHAiOjk5OTk5OTk5OTksImlhdCI6MTY3MTQ3NDgwMH0.xxx';
-      setErrMsg('');
-      setPermission(mockPermissionJWT);
-      console.log('✅ 开发模式：使用 Mock 权限');
-      return;
-    }
-
     const fn = async () => {
       const p: string =
         getPermissionFromCache(key) ??

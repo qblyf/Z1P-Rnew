@@ -2,16 +2,24 @@
 
 import { useState } from 'react';
 import { LogOut, User, ChevronDown } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useTokenContext } from '../../datahooks/auth';
 import { setCacheToken } from '../../datahooks/auth';
+import { detectDeviceType } from '../../utils/deviceDetect';
 
 export function UserProfile() {
   const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
   const { payload } = useTokenContext();
 
   const handleLogout = () => {
     setCacheToken(null);
-    window.location.href = '/';
+    
+    // 根据设备类型跳转到对应的登录页面
+    const deviceType = detectDeviceType();
+    const loginPage = deviceType === 'mobile' ? '/qr-login-mobile' : '/qr-login-desk';
+    
+    router.push(loginPage);
   };
 
   const userName = payload?.name || '未认证用户';

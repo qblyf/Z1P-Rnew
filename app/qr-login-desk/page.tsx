@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
-import { Button, Row } from 'antd';
+import { Spin, Card } from 'antd';
+import { RefreshCw, Smartphone } from 'lucide-react';
 
 import {
   getPayload,
@@ -116,32 +117,117 @@ function QrLoginDeskPage() {
   }, [token]);
 
   if (token) {
-    return <Row>登录成功 LoginPage</Row>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-cyan-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center shadow-lg">
+          <Spin size="large" />
+          <p className="mt-4 text-slate-600">登录成功，正在跳转...</p>
+        </Card>
+      </div>
+    );
   }
 
   if (!storage) {
-    return <Row>暂未获取有效数据 LoginPage</Row>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-cyan-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center shadow-lg">
+          <Spin size="large" />
+          <p className="mt-4 text-slate-600">正在加载二维码...</p>
+        </Card>
+      </div>
+    );
   }
 
   const qrcodeJSX = (
-    <Button type="link" onClick={updateQR} style={{ height: 'max-content' }}>
-      <QRCodeSVG value={url} />
-    </Button>
+    <button
+      onClick={updateQR}
+      className="inline-block p-4 bg-white rounded-lg hover:shadow-md transition-shadow"
+    >
+      <QRCodeSVG value={url} size={256} level="H" includeMargin={true} />
+    </button>
   );
 
   /** 是否要模糊化二维码 */
   const isBlurQR = isTimeout || scanner;
 
   return (
-    <>
-      <Row>请扫码登录 LoginPage</Row>
-      <Row>
-        <div style={isBlurQR ? { filter: 'blur(0.2em)' } : undefined}>
-          {qrcodeJSX}
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-cyan-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* 头部 */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-full mb-4">
+            <span className="text-white font-bold text-2xl">Z1</span>
+          </div>
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">Z1 平台</h1>
+          <p className="text-slate-600">数据管理系统</p>
         </div>
-      </Row>
-      {isTimeout && <Row>二维码已过期, 请点击二维码进行刷新</Row>}
-      {scanner && <Row>{scanner} 已扫码, 请在移动端确认登录</Row>}
-    </>
+
+        {/* 主卡片 */}
+        <Card className="shadow-xl">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <Smartphone size={20} className="text-emerald-600" />
+              <h2 className="text-xl font-bold text-slate-800">扫码登录</h2>
+            </div>
+
+            <p className="text-slate-600 text-sm mb-6">
+              使用手机扫描下方二维码进行登录
+            </p>
+
+            {/* 二维码容器 */}
+            <div className="flex justify-center mb-6">
+              <div
+                className={`transition-all duration-300 ${
+                  isBlurQR ? 'blur-sm opacity-50' : ''
+                }`}
+              >
+                {qrcodeJSX}
+              </div>
+            </div>
+
+            {/* 状态提示 */}
+            {isTimeout && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                <p className="text-amber-800 text-sm font-medium mb-3">
+                  二维码已过期
+                </p>
+                <button
+                  onClick={updateQR}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors font-medium"
+                >
+                  <RefreshCw size={16} />
+                  刷新二维码
+                </button>
+              </div>
+            )}
+
+            {scanner && !isTimeout && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-center mb-2">
+                  <div className="w-2 h-2 bg-emerald-600 rounded-full animate-pulse mr-2"></div>
+                  <p className="text-emerald-800 text-sm font-medium">
+                    {scanner} 已扫码
+                  </p>
+                </div>
+                <p className="text-emerald-700 text-xs">
+                  请在移动设备上确认登录
+                </p>
+              </div>
+            )}
+
+            {!isTimeout && !scanner && (
+              <div className="text-slate-500 text-sm">
+                <p>等待扫码中...</p>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* 底部提示 */}
+        <div className="text-center mt-6 text-slate-600 text-sm">
+          <p>首次登录？请使用手机应用扫码</p>
+        </div>
+      </div>
+    </div>
   );
 }

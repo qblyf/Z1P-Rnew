@@ -1,10 +1,11 @@
 'use client';
 
-import { ReactNode, useMemo, useEffect } from 'react';
+import { ReactNode, useMemo, useEffect, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { PermissionContext, usePermission } from '../datahooks/permission';
 import { PermissionPackages } from '@zsqk/z1-sdk/es/z1p/permission-types';
 import { useTokenContext } from '../datahooks/auth';
+import { detectDeviceType } from '../utils/deviceDetect';
 
 /**
  * [组件] 页面包裹
@@ -21,6 +22,7 @@ export default function PageWrap(props: {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const [deviceType, setDeviceType] = useState<'mobile' | 'desktop' | null>(null);
 
   // 获取权限
   const { token, errMsg } = useTokenContext();
@@ -34,30 +36,51 @@ export default function PageWrap(props: {
     return `${pathname}?${searchParams.toString()}`;
   }, [searchParams, pathname]);
 
+  // 初始化设备类型
+  useEffect(() => {
+    setDeviceType(detectDeviceType());
+  }, []);
+
+  // 获取对应的登录页面
+  const getLoginPage = () => {
+    if (deviceType === 'mobile') {
+      return '/qr-login-mobile';
+    }
+    return '/qr-login-desk';
+  };
+
   // 使用 useEffect 处理路由跳转，避免在渲染时调用 router.push
   useEffect(() => {
     if (!token) {
       if (!errMsg) {
         return;
       }
+      if (!deviceType) {
+        return;
+      }
+      const loginPage = getLoginPage();
       if (!redirect) {
-        router.push(`/qr-login-desk`);
+        router.push(loginPage);
         return;
       }
       const p = new URLSearchParams({
         redirect,
       });
-      router.push(`/qr-login-desk?${p}`);
+      router.push(`${loginPage}?${p}`);
     }
-  }, [token, errMsg, redirect, router]);
+  }, [token, errMsg, redirect, router, deviceType]);
 
   // 处理权限过期的路由跳转
   useEffect(() => {
     if (permission === null && permissionErrMsg.includes('jwt is expired')) {
+      if (!deviceType) {
+        return;
+      }
+      const loginPage = getLoginPage();
       const p = new URLSearchParams(redirect ? { redirect } : undefined);
-      router.push(`/qr-login-desk?${p}`);
+      router.push(`${loginPage}?${p}`);
     }
-  }, [permission, permissionErrMsg, redirect, router]);
+  }, [permission, permissionErrMsg, redirect, router, deviceType]);
 
   if (!token) {
     if (!errMsg) {

@@ -84,15 +84,6 @@ function useToken() {
   useEffect(() => {
     console.log('useToken useEffect called');
 
-    // ✅ 开发模式：直接使用 Mock Token（硬编码用于测试）
-    // 这个 token 包含正确的 Z1P JWT 格式
-    // iss 必须是大写的 'Z1P'，sub 必须是 'user'
-    const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJaMVAiLCJzdWIiOiJ1c2VyIiwibmFtZSI6IlRlc3QlMjBVc2VyIiwicGhvbmVOdW0iOiIxMzgwMDAwMDAwMCIsImV4cCI6MTc5ODY4OTM3NX0.mock_signature';
-    setToken(mockToken);
-    setCacheToken(mockToken);
-    console.log('✅ 使用 Mock Token');
-    return;
-
     // 检查是否已经有缓存.
     const [t] = getCacheToken();
     if (t) {

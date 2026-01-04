@@ -17,6 +17,7 @@ import {
 import { getUpdateLogList } from '@zsqk/z1-sdk/es/z1p/update-log';
 import moment from 'moment';
 import { useTokenContext } from '../datahooks/auth';
+import { detectDeviceType } from '../utils/deviceDetect';
 
 interface MenuItem {
   id: string;
@@ -62,24 +63,45 @@ export default function HomePage() {
 
 function ClientPage() {
   const router = useRouter();
-  const { token } = useTokenContext();
+  const { token, errMsg } = useTokenContext();
+  const [deviceType, setDeviceType] = useState<'mobile' | 'desktop' | null>(null);
 
-  // 如果没有 token，立即重定向到登录页面
+  // 初始化设备类型
   useEffect(() => {
-    if (token === undefined) {
-      // 还在加载中，不做任何操作
+    setDeviceType(detectDeviceType());
+  }, []);
+
+  // 获取对应的登录页面
+  const getLoginPage = () => {
+    if (deviceType === 'mobile') {
+      return '/qr-login-mobile';
+    }
+    return '/qr-login-desk';
+  };
+
+  // 如果没有 token，重定向到登录页面
+  useEffect(() => {
+    if (token === undefined || !deviceType) {
+      // 还在加载中
       return;
     }
 
     if (!token) {
-      // 没有 token，立即重定向到登录页面
-      router.replace('/token-login');
+      // 没有 token，重定向到登录页面
+      const loginPage = getLoginPage();
+      router.push(loginPage);
     }
-  }, [token, router]);
+  }, [token, router, deviceType]);
 
-  // 如果没有 token，不渲染任何内容（会立即重定向）
+  // 如果没有 token，显示加载状态
   if (!token) {
-    return null;
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-slate-600 text-lg">正在检查登录状态...</p>
+        </div>
+      </div>
+    );
   }
 
   const menuItems: MenuItem[] = [
