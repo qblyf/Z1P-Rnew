@@ -14,6 +14,9 @@ import {
 import { HOST_URL } from '../../constants';
 import { airLoginCheck } from '@zsqk/z1-sdk/es/z1p/auth';
 
+// 创建自定义事件来通知token更新
+const TOKEN_UPDATE_EVENT = 'tokenUpdated';
+
 /**
  * 储存本页面全局 timeout ID, 避免同时存在多个 timeout
  */
@@ -84,20 +87,38 @@ function QrLoginDeskPage() {
     // 生成新的 uuid 及超时
     const uuid = crypto.randomUUID();
     setStorage(uuid);
+    console.log('Generated QR UUID:', uuid);
+    
     l = window.setInterval(async () => {
-      // 检查 storage 数据
-      const res = await airLoginCheck(uuid);
-      // console.log(res);
-      if (res.state === 'confirmed') {
-        // 如果找到 storage 的值, 则写入到 local 中
-        setCacheToken(res.payload.token);
-        window.clearInterval(l);
-      } else if (res.state === 'scanned') {
-        setScanner(res.payload.scanner);
+      try {
+        // 检查 storage 数据
+        const res = await airLoginCheck(uuid);
+        console.log('airLoginCheck result:', res);
+        
+        if (res && res.state === 'confirmed') {
+          console.log('Login confirmed, token received:', res.payload?.token ? 'yes' : 'no');
+          // 如果找到 storage 的值, 则写入到 local 中
+          if (res.payload && res.payload.token) {
+            setCacheToken(res.payload.token);
+            // 触发 storage 事件通知token已更新
+            window.dispatchEvent(new Event('storage'));
+            console.log('Token saved to localStorage');
+          } else {
+            console.error('No token in confirmed response:', res.payload);
+          }
+          window.clearInterval(l);
+        } else if (res && res.state === 'scanned') {
+          console.log('QR scanned by:', res.payload?.scanner);
+          setScanner(res.payload?.scanner);
+        }
+      } catch (err) {
+        console.error('Error checking login status:', err);
       }
     }, 1000);
+    
     t = window.setTimeout(() => {
       window.clearInterval(l);
+      console.log('QR code expired');
       setIsTimeout(true);
     }, 60000); // TODO: 调试成功后改为 60s 60000
   };

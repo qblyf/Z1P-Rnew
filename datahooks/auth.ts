@@ -84,6 +84,28 @@ function useToken() {
   const [token, setToken] = useState<string | null>(undefined as any);
   const [errMsg, setErrMsg] = useState<string>();
 
+  // 监听 localStorage 变化（来自其他标签页或同一页面的更新）
+  useEffect(() => {
+    const handleStorageChange = () => {
+      console.log('Storage change detected, checking for token...');
+      const [t] = getCacheToken();
+      if (t) {
+        const [_, err] = getPayload(t as string);
+        if (err) {
+          console.warn('Invalid token in cache:', err);
+          setCacheToken(null);
+          setToken(null);
+        } else {
+          console.log('Valid token found in cache after storage change');
+          setToken(t as string);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   useEffect(() => {
     console.log('useToken useEffect called');
 
@@ -93,8 +115,10 @@ function useToken() {
       const [_, err] = getPayload(t as string);
       if (err) {
         // 清空缓存中的 token
+        console.warn('Cached token is invalid:', err);
         setCacheToken(null);
       } else {
+        console.log('Valid cached token found');
         setToken(t as string);
         return;
       }
@@ -117,10 +141,12 @@ function useToken() {
         }
       } else {
         // 非钉钉环境，设置为null表示没有token，让页面跳转到登录页面
+        console.log('Not in DingTalk environment');
         setErrMsg('环境限制, 无法进行自动登录');
         setToken(null);
       }
     })().catch(err => {
+      console.error('Auto login error:', err);
       setErrMsg(`${err}`);
       setToken(null);
     });
