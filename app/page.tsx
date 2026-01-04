@@ -81,12 +81,12 @@ function ClientPage() {
 
   // 如果没有 token，重定向到登录页面
   useEffect(() => {
-    if (token === undefined || !deviceType) {
+    if (!deviceType) {
       // 还在加载中
       return;
     }
 
-    if (!token) {
+    if (token === null || token === undefined) {
       // 没有 token，重定向到登录页面
       const loginPage = getLoginPage();
       router.push(loginPage);

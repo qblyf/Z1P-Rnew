@@ -21,6 +21,9 @@ import {
 export function getPayload(
   p: string
 ): [Z1PUserJWTPayload, null] | [null, Error] {
+  if (!p || typeof p !== 'string') {
+    return [null, new Error('无效的 JWT 字符串')];
+  }
   const str = p.split('.')[1];
   if (typeof str !== 'string') {
     return [null, new Error('不是有效 JWT')];
@@ -78,7 +81,7 @@ export function setCacheToken(v: string | null): void {
  * 3. 如果在飞书中, 则调用飞书登录.
  */
 function useToken() {
-  const [token, setToken] = useState<string>();
+  const [token, setToken] = useState<string | null>(undefined as any);
   const [errMsg, setErrMsg] = useState<string>();
 
   useEffect(() => {
@@ -97,9 +100,6 @@ function useToken() {
       }
     }
 
-    /** 定时器 ID */
-    let loop: number | undefined;
-
     (async () => {
       const env = getENV();
       if (env.platform !== 'notInDingTalk') {
@@ -116,39 +116,19 @@ function useToken() {
           message.success(`欢迎你 ${payload.name}!`);
         }
       } else {
+        // 非钉钉环境，设置为null表示没有token，让页面跳转到登录页面
         setErrMsg('环境限制, 无法进行自动登录');
-        // 尝试定期从缓存中获取数据
-        loop = window.setInterval(() => {
-          console.log('loop for get token');
-          const [t] = getCacheToken();
-          if (!t) {
-            return;
-          }
-          const [_, err] = getPayload(t);
-          if (err) {
-            // 清空缓存中的 token
-            setCacheToken(null);
-            return;
-          }
-          setToken(t);
-          setErrMsg(undefined);
-          window.clearInterval(loop);
-          loop = undefined;
-        }, 1000);
+        setToken(null);
       }
     })().catch(err => {
       setErrMsg(`${err}`);
+      setToken(null);
     });
-
-    // Hooks 销毁时清除可能存在的定时器
-    return () => {
-      loop && window.clearInterval(loop);
-    };
   }, []);
 
   // 根据 token 获取 payload
   const payload = useMemo(() => {
-    if (token === undefined) {
+    if (!token) {
       return null;
     }
     const [p, err] = getPayload(token);
