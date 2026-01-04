@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    overflow: hidden;
+    height: 100%;
+  }
+  
+  body {
+    @apply bg-slate-50;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-lg hover:shadow-lg transition-all font-medium;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-slate-200 p-6;
+  }
+
+  .card-hover {
+    @apply bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow cursor-pointer;
+  }
+}
