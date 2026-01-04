@@ -37,7 +37,7 @@ export function ChangeTable(props: {
   );
 
   useEffect(() => {
-    if (token === undefined) {
+    if (!token) {
       return;
     }
     getFn(token);
