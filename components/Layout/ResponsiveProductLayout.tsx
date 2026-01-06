@@ -92,11 +92,9 @@ export function ResponsiveProductLayout({
   }
 
   // 桌面: 三栏布局
-  const colHeight = '100vh';
-  
   return (
-    <div style={{ height: colHeight, overflow: 'auto' }}>
-      <Row gutter={[16, 16]} className="w-full h-full">
+    <div className="w-full h-screen overflow-hidden">
+      <Row gutter={[16, 16]} className="w-full h-full p-4" style={{ boxSizing: 'border-box' }}>
         <Col 
           span={8} 
           className="bg-white rounded-lg p-4 border border-slate-200 product-col"
@@ -106,7 +104,8 @@ export function ResponsiveProductLayout({
             height: '100%',
             overflowY: 'auto',
             scrollbarWidth: 'auto',
-            scrollbarColor: '#999 #f1f1f1'
+            scrollbarColor: '#999 #f1f1f1',
+            boxSizing: 'border-box'
           }}
         >
           <style jsx>{`
@@ -136,19 +135,23 @@ export function ResponsiveProductLayout({
             height: '100%',
             overflowY: 'auto',
             scrollbarWidth: 'auto',
-            scrollbarColor: '#999 #f1f1f1'
+            scrollbarColor: '#999 #f1f1f1',
+            boxSizing: 'border-box'
           }}
         >
           {spuContent}
         </Col>
         <Col 
-          flex="1" 
-          className="bg-white rounded-lg p-4 border border-slate-200"
+          span={8} 
+          className="bg-white rounded-lg p-4 border border-slate-200 product-col"
           style={{ 
             display: 'flex', 
             flexDirection: 'column',
             height: '100%',
-            overflowY: 'auto'
+            overflowY: 'auto',
+            scrollbarWidth: 'auto',
+            scrollbarColor: '#999 #f1f1f1',
+            boxSizing: 'border-box'
           }}
         >
           {skuContent}
