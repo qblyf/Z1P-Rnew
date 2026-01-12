@@ -266,6 +266,7 @@ export default function SKUManager(props: {
           }
           .sku-table-wrapper {
             padding-bottom: calc(80px + 5rem);
+            overflow-y: auto;
             scrollbar-width: auto;
             scrollbar-color: #999 #f1f1f1;
           }
