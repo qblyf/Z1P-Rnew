@@ -335,7 +335,7 @@ export default function SKUManager(props: {
             justify-content: flex-start;
           }
         `}</style>
-        <Form layout="vertical" className="sku-table-wrapper">
+        <Form layout="vertical" className="sku-table-wrapper" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <div className="sku-form-content">
             {/* Selectors Section - Does not scroll independently */}
             <div className="sku-form-selectors">
