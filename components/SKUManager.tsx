@@ -255,438 +255,493 @@ export default function SKUManager(props: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ marginBottom: '8px', fontSize: '12px', color: '#666', flexShrink: 0 }}>
-        SPU ID: {spuID}, 名称: {spu.name}
+      {/* Fixed SPU ID Header - Does not scroll */}
+      <div style={{ padding: '12px 16px', fontSize: '13px', color: '#333', flexShrink: 0, borderBottom: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}>
+        <div style={{ fontWeight: 500 }}>SPU ID: {spuID}</div>
+        <div style={{ color: '#999', marginTop: '4px' }}>名称: {spu.name}</div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'auto', scrollbarColor: '#999 #f1f1f1', minHeight: 0 }} className="sku-form-scroll">
+      {/* Scrollable Container - Contains selectors, form, table, and action buttons */}
+      <div style={{ flex: 1, minHeight: 0 }} className="sku-main-content">
         <style jsx>{`
-          .sku-form-scroll::-webkit-scrollbar {
+          /* Main scrollable container */
+          .sku-main-content {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+          }
+          
+          /* Filters section - fixed height with internal scroll */
+          .sku-filters-section {
+            flex-shrink: 0;
+            padding: 12px 16px;
+            background-color: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            overflow-y: auto;
+            max-height: 200px;
+          }
+          .sku-filters-section::-webkit-scrollbar {
+            width: 6px;
+          }
+          .sku-filters-section::-webkit-scrollbar-track {
+            background: #f1f1f1;
+          }
+          .sku-filters-section::-webkit-scrollbar-thumb {
+            background: #999;
+            border-radius: 3px;
+          }
+          .sku-filters-section::-webkit-scrollbar-thumb:hover {
+            background: #666;
+          }
+          
+          /* Actions section - fixed height */
+          .sku-actions-section {
+            flex-shrink: 0;
+            padding: 12px 16px;
+            background-color: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-start;
+          }
+          
+          /* Table section - takes remaining space */
+          .sku-table-section {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+          }
+          
+          /* Table wrapper - scrollable */
+          .sku-table-wrapper {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            scrollbar-width: auto;
+            scrollbar-color: #999 #f1f1f1;
+          }
+          .sku-table-wrapper::-webkit-scrollbar {
             width: 8px;
           }
-          .sku-form-scroll::-webkit-scrollbar-track {
+          .sku-table-wrapper::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 4px;
           }
-          .sku-form-scroll::-webkit-scrollbar-thumb {
+          .sku-table-wrapper::-webkit-scrollbar-thumb {
             background: #999;
             border-radius: 4px;
           }
-          .sku-form-scroll::-webkit-scrollbar-thumb:hover {
+          .sku-table-wrapper::-webkit-scrollbar-thumb:hover {
             background: #666;
           }
-          .sku-table-wrapper {
-            padding-bottom: 80px;
-          }
         `}</style>
-        <Form layout="vertical" className="sku-table-wrapper">
-          <>
-            <Alert
-              message="💡 点击规格（版本、配置、颜色）可过滤下方 SKU 列表。如需修改规格，请使用下方的'修改 SPU 与 SKUs 的关系'功能。"
-              type="info"
-              style={{ marginBottom: '16px' }}
-            />
-            {canSetCombo ? (
-              <Form.Item label="版本" tooltip="可能有的多种版本" style={{ marginBottom: '12px' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                  {combos.map(v => {
-                    const count = spu.skuIDs.filter(sku => (sku as any).combo === v.name).length;
-                    const isUsed = count > 0;
-                    return (
-                      <div
-                        key={`combo-${v.id}`}
-                        onClick={() => {
-                          // 改为过滤逻辑：点击切换过滤状态
-                          if (filterCombo === v.name) {
-                            setFilterCombo(null);
-                          } else {
-                            setFilterCombo(v.name);
-                          }
-                        }}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: '4px',
-                          border: filterCombo === v.name ? '2px solid #1890ff' : '1px solid #d9d9d9',
-                          backgroundColor: filterCombo === v.name ? '#e6f7ff' : '#fff',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          transition: 'all 0.3s',
-                          position: 'relative',
-                        }}
-                      >
-                        {v.name}
-                        {isUsed && (
-                          <span
-                            style={{
-                              position: 'absolute',
-                              top: '-8px',
-                              right: '-8px',
-                              backgroundColor: '#ff4d4f',
-                              color: '#fff',
-                              borderRadius: '50%',
-                              width: '20px',
-                              height: '20px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '12px',
-                              fontWeight: 'bold',
-                            }}
-                          >
-                            {count}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {selectedCombos.filter(c => !combos.map(v => v.name).includes(c)).map(customCombo => (
+        <Form layout="vertical" className="sku-table-wrapper" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <div className="sku-form-content">
+            {/* Selectors Section - Does not scroll independently */}
+            <div className="sku-form-selectors">
+              <>
+                <Form.Item label="版本" tooltip="可能有的多种版本" style={{ marginBottom: '12px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                {combos.map(v => {
+                  const count = spu.skuIDs.filter(sku => (sku as any).combo === v.name).length;
+                  const isUsed = count > 0;
+                  return (
                     <div
-                      key={`custom-combo-${customCombo}`}
+                      key={`combo-${v.id}`}
                       onClick={() => {
-                        setSelectedCombos(selectedCombos.filter(item => item !== customCombo));
+                        // 改为过滤逻辑：点击切换过滤状态
+                        if (filterCombo === v.name) {
+                          setFilterCombo(null);
+                        } else {
+                          setFilterCombo(v.name);
+                        }
                       }}
                       style={{
                         padding: '6px 12px',
                         borderRadius: '4px',
-                        border: '2px solid #1890ff',
-                        backgroundColor: '#e6f7ff',
+                        border: filterCombo === v.name ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                        backgroundColor: filterCombo === v.name ? '#e6f7ff' : '#fff',
                         cursor: 'pointer',
                         fontSize: '14px',
                         transition: 'all 0.3s',
+                        position: 'relative',
                       }}
                     >
-                      {customCombo}
+                      {v.name}
+                      {isUsed && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: '-8px',
+                            right: '-8px',
+                            backgroundColor: '#ff4d4f',
+                            color: '#fff',
+                            borderRadius: '50%',
+                            width: '20px',
+                            height: '20px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          {count}
+                        </span>
+                      )}
                     </div>
-                  ))}
-                  {isAddingCombo ? (
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      <Input
-                        placeholder="输入新版本"
-                        value={newComboValue}
-                        onChange={(e) => setNewComboValue(e.target.value)}
-                        style={{ width: '100px', height: '32px' }}
-                        autoFocus
-                        onPressEnter={() => {
-                          const value = newComboValue.trim();
-                          if (value && !selectedCombos.includes(value)) {
-                            setSelectedCombos([...selectedCombos, value]);
-                            setNewComboValue('');
-                            setIsAddingCombo(false);
-                          } else if (value && selectedCombos.includes(value)) {
-                            message.warning('该版本已存在');
-                          }
-                        }}
-                      />
-                      <Button
-                        size="small"
-                        type="primary"
-                        onClick={() => {
-                          const value = newComboValue.trim();
-                          if (value && !selectedCombos.includes(value)) {
-                            setSelectedCombos([...selectedCombos, value]);
-                            setNewComboValue('');
-                            setIsAddingCombo(false);
-                          } else if (value && selectedCombos.includes(value)) {
-                            message.warning('该版本已存在');
-                          }
-                        }}
-                      >
-                        确认
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setIsAddingCombo(false);
+                  );
+                })}
+                {selectedCombos.filter(c => !combos.map(v => v.name).includes(c)).map(customCombo => (
+                  <div
+                    key={`custom-combo-${customCombo}`}
+                    onClick={() => {
+                      setSelectedCombos(selectedCombos.filter(item => item !== customCombo));
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      border: '2px solid #1890ff',
+                      backgroundColor: '#e6f7ff',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      transition: 'all 0.3s',
+                    }}
+                  >
+                    {customCombo}
+                  </div>
+                ))}
+                {isAddingCombo ? (
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    <Input
+                      placeholder="输入新版本"
+                      value={newComboValue}
+                      onChange={(e) => setNewComboValue(e.target.value)}
+                      style={{ width: '100px', height: '32px' }}
+                      autoFocus
+                      onPressEnter={() => {
+                        const value = newComboValue.trim();
+                        if (value && !selectedCombos.includes(value)) {
+                          setSelectedCombos([...selectedCombos, value]);
                           setNewComboValue('');
-                        }}
-                      >
-                        取消
-                      </Button>
-                    </div>
-                  ) : (
+                          setIsAddingCombo(false);
+                        } else if (value && selectedCombos.includes(value)) {
+                          message.warning('该版本已存在');
+                        }
+                      }}
+                    />
                     <Button
                       size="small"
-                      onClick={() => setIsAddingCombo(true)}
-                    >
-                      + 新增
-                    </Button>
-                  )}
-                </div>
-              </Form.Item>
-            ) : (
-              <Alert
-                message="因为之前的 SKU 没有版本, 所以不能在此处快捷新增版本. 想要修改版本请查看下方的 修改 SPU 与 SKUs 的关系."
-                type="info"
-              />
-            )}
-            {canSetSpec ? (
-              <Form.Item label="配置" tooltip="可能有的多种配置" style={{ marginBottom: '12px' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                  {specs.map(v => {
-                    const count = spu.skuIDs.filter(sku => (sku as any).spec === v.name).length;
-                    const isUsed = count > 0;
-                    return (
-                      <div
-                        key={`spec-${v.id}`}
-                        onClick={() => {
-                          // 改为过滤逻辑：点击切换过滤状态
-                          if (filterSpec === v.name) {
-                            setFilterSpec(null);
-                          } else {
-                            setFilterSpec(v.name);
-                          }
-                        }}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: '4px',
-                          border: filterSpec === v.name ? '2px solid #1890ff' : '1px solid #d9d9d9',
-                          backgroundColor: filterSpec === v.name ? '#e6f7ff' : '#fff',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          transition: 'all 0.3s',
-                          position: 'relative',
-                        }}
-                      >
-                        {v.name}
-                        {isUsed && (
-                          <span
-                            style={{
-                              position: 'absolute',
-                              top: '-8px',
-                              right: '-8px',
-                              backgroundColor: '#ff4d4f',
-                              color: '#fff',
-                              borderRadius: '50%',
-                              width: '20px',
-                              height: '20px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '12px',
-                              fontWeight: 'bold',
-                            }}
-                          >
-                            {count}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {selectedSpecs.filter(c => !specs.map(v => v.name).includes(c)).map(customSpec => (
-                    <div
-                      key={`custom-spec-${customSpec}`}
+                      type="primary"
                       onClick={() => {
-                        setSelectedSpecs(selectedSpecs.filter(item => item !== customSpec));
+                        const value = newComboValue.trim();
+                        if (value && !selectedCombos.includes(value)) {
+                          setSelectedCombos([...selectedCombos, value]);
+                          setNewComboValue('');
+                          setIsAddingCombo(false);
+                        } else if (value && selectedCombos.includes(value)) {
+                          message.warning('该版本已存在');
+                        }
+                      }}
+                    >
+                      确认
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        setIsAddingCombo(false);
+                        setNewComboValue('');
+                      }}
+                    >
+                      取消
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setIsAddingCombo(true);
+                      // 如果还没有版本，新增时启用版本列
+                      if (!canSetCombo) {
+                        // 这里会通过 selectedCombos 的变化触发表格更新
+                      }
+                    }}
+                  >
+                    + 新增
+                  </Button>
+                )}
+              </div>
+            </Form.Item>
+            <Form.Item label="配置" tooltip="可能有的多种配置" style={{ marginBottom: '12px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                {specs.map(v => {
+                  const count = spu.skuIDs.filter(sku => (sku as any).spec === v.name).length;
+                  const isUsed = count > 0;
+                  return (
+                    <div
+                      key={`spec-${v.id}`}
+                      onClick={() => {
+                        // 改为过滤逻辑：点击切换过滤状态
+                        if (filterSpec === v.name) {
+                          setFilterSpec(null);
+                        } else {
+                          setFilterSpec(v.name);
+                        }
                       }}
                       style={{
                         padding: '6px 12px',
                         borderRadius: '4px',
-                        border: '2px solid #1890ff',
-                        backgroundColor: '#e6f7ff',
+                        border: filterSpec === v.name ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                        backgroundColor: filterSpec === v.name ? '#e6f7ff' : '#fff',
                         cursor: 'pointer',
                         fontSize: '14px',
                         transition: 'all 0.3s',
+                        position: 'relative',
                       }}
                     >
-                      {customSpec}
+                      {v.name}
+                      {isUsed && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: '-8px',
+                            right: '-8px',
+                            backgroundColor: '#ff4d4f',
+                            color: '#fff',
+                            borderRadius: '50%',
+                            width: '20px',
+                            height: '20px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          {count}
+                        </span>
+                      )}
                     </div>
-                  ))}
-                  {isAddingSpec ? (
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      <Input
-                        placeholder="输入新配置"
-                        value={newSpecValue}
-                        onChange={(e) => setNewSpecValue(e.target.value)}
-                        style={{ width: '100px', height: '32px' }}
-                        autoFocus
-                        onPressEnter={() => {
-                          const value = newSpecValue.trim();
-                          if (value && !selectedSpecs.includes(value)) {
-                            setSelectedSpecs([...selectedSpecs, value]);
-                            setNewSpecValue('');
-                            setIsAddingSpec(false);
-                          } else if (value && selectedSpecs.includes(value)) {
-                            message.warning('该配置已存在');
-                          }
-                        }}
-                      />
-                      <Button
-                        size="small"
-                        type="primary"
-                        onClick={() => {
-                          const value = newSpecValue.trim();
-                          if (value && !selectedSpecs.includes(value)) {
-                            setSelectedSpecs([...selectedSpecs, value]);
-                            setNewSpecValue('');
-                            setIsAddingSpec(false);
-                          } else if (value && selectedSpecs.includes(value)) {
-                            message.warning('该配置已存在');
-                          }
-                        }}
-                      >
-                        确认
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setIsAddingSpec(false);
+                  );
+                })}
+                {selectedSpecs.filter(c => !specs.map(v => v.name).includes(c)).map(customSpec => (
+                  <div
+                    key={`custom-spec-${customSpec}`}
+                    onClick={() => {
+                      setSelectedSpecs(selectedSpecs.filter(item => item !== customSpec));
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      border: '2px solid #1890ff',
+                      backgroundColor: '#e6f7ff',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      transition: 'all 0.3s',
+                    }}
+                  >
+                    {customSpec}
+                  </div>
+                ))}
+                {isAddingSpec ? (
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    <Input
+                      placeholder="输入新配置"
+                      value={newSpecValue}
+                      onChange={(e) => setNewSpecValue(e.target.value)}
+                      style={{ width: '100px', height: '32px' }}
+                      autoFocus
+                      onPressEnter={() => {
+                        const value = newSpecValue.trim();
+                        if (value && !selectedSpecs.includes(value)) {
+                          setSelectedSpecs([...selectedSpecs, value]);
                           setNewSpecValue('');
-                        }}
-                      >
-                        取消
-                      </Button>
-                    </div>
-                  ) : (
+                          setIsAddingSpec(false);
+                        } else if (value && selectedSpecs.includes(value)) {
+                          message.warning('该配置已存在');
+                        }
+                      }}
+                    />
                     <Button
                       size="small"
-                      onClick={() => setIsAddingSpec(true)}
-                    >
-                      + 新增
-                    </Button>
-                  )}
-                </div>
-              </Form.Item>
-            ) : (
-              <Alert
-                message="因为之前的 SKU 没有配置, 所以不能在此处快捷新增配置. 想要修改配置请查看下方的 修改 SPU 与 SKUs 的关系."
-                type="info"
-              />
-            )}
-            {canSetColor ? (
-              <Form.Item label="颜色" tooltip="可能有的多种颜色" style={{ marginBottom: '12px' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                  {colors.map(v => {
-                    const count = spu.skuIDs.filter(sku => (sku as any).color === v.name).length;
-                    const isUsed = count > 0;
-                    return (
-                      <div
-                        key={`color-${v.id}`}
-                        onClick={() => {
-                          // 改为过滤逻辑：点击切换过滤状态
-                          if (filterColor === v.name) {
-                            setFilterColor(null);
-                          } else {
-                            setFilterColor(v.name);
-                          }
-                        }}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: '4px',
-                          border: filterColor === v.name ? '2px solid #1890ff' : '1px solid #d9d9d9',
-                          backgroundColor: filterColor === v.name ? '#e6f7ff' : '#fff',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          transition: 'all 0.3s',
-                          position: 'relative',
-                        }}
-                      >
-                        {v.name}
-                        {isUsed && (
-                          <span
-                            style={{
-                              position: 'absolute',
-                              top: '-8px',
-                              right: '-8px',
-                              backgroundColor: '#ff4d4f',
-                              color: '#fff',
-                              borderRadius: '50%',
-                              width: '20px',
-                              height: '20px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '12px',
-                              fontWeight: 'bold',
-                            }}
-                          >
-                            {count}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {selectedColors.filter(c => !colors.map(v => v.name).includes(c)).map(customColor => (
-                    <div
-                      key={`custom-color-${customColor}`}
+                      type="primary"
                       onClick={() => {
-                        setSelectedColors(selectedColors.filter(item => item !== customColor));
+                        const value = newSpecValue.trim();
+                        if (value && !selectedSpecs.includes(value)) {
+                          setSelectedSpecs([...selectedSpecs, value]);
+                          setNewSpecValue('');
+                          setIsAddingSpec(false);
+                        } else if (value && selectedSpecs.includes(value)) {
+                          message.warning('该配置已存在');
+                        }
+                      }}
+                    >
+                      确认
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        setIsAddingSpec(false);
+                        setNewSpecValue('');
+                      }}
+                    >
+                      取消
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setIsAddingSpec(true);
+                      // 如果还没有配置，新增时启用配置列
+                      if (!canSetSpec) {
+                        // 这里会通过 selectedSpecs 的变化触发表格更新
+                      }
+                    }}
+                  >
+                    + 新增
+                  </Button>
+                )}
+              </div>
+            </Form.Item>
+            <Form.Item label="颜色" tooltip="可能有的多种颜色" style={{ marginBottom: '12px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                {colors.map(v => {
+                  const count = spu.skuIDs.filter(sku => (sku as any).color === v.name).length;
+                  const isUsed = count > 0;
+                  return (
+                    <div
+                      key={`color-${v.id}`}
+                      onClick={() => {
+                        // 改为过滤逻辑：点击切换过滤状态
+                        if (filterColor === v.name) {
+                          setFilterColor(null);
+                        } else {
+                          setFilterColor(v.name);
+                        }
                       }}
                       style={{
                         padding: '6px 12px',
                         borderRadius: '4px',
-                        border: '2px solid #1890ff',
-                        backgroundColor: '#e6f7ff',
+                        border: filterColor === v.name ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                        backgroundColor: filterColor === v.name ? '#e6f7ff' : '#fff',
                         cursor: 'pointer',
                         fontSize: '14px',
                         transition: 'all 0.3s',
+                        position: 'relative',
                       }}
                     >
-                      {customColor}
+                      {v.name}
+                      {isUsed && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: '-8px',
+                            right: '-8px',
+                            backgroundColor: '#ff4d4f',
+                            color: '#fff',
+                            borderRadius: '50%',
+                            width: '20px',
+                            height: '20px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          {count}
+                        </span>
+                      )}
                     </div>
-                  ))}
-                  {isAddingColor ? (
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      <Input
-                        placeholder="输入新颜色"
-                        value={newColorValue}
-                        onChange={(e) => setNewColorValue(e.target.value)}
-                        style={{ width: '100px', height: '32px' }}
-                        autoFocus
-                        onPressEnter={() => {
-                          const value = newColorValue.trim();
-                          if (value && !selectedColors.includes(value)) {
-                            setSelectedColors([...selectedColors, value]);
-                            setNewColorValue('');
-                            setIsAddingColor(false);
-                          } else if (value && selectedColors.includes(value)) {
-                            message.warning('该颜色已存在');
-                          }
-                        }}
-                      />
-                      <Button
-                        size="small"
-                        type="primary"
-                        onClick={() => {
-                          const value = newColorValue.trim();
-                          if (value && !selectedColors.includes(value)) {
-                            setSelectedColors([...selectedColors, value]);
-                            setNewColorValue('');
-                            setIsAddingColor(false);
-                          } else if (value && selectedColors.includes(value)) {
-                            message.warning('该颜色已存在');
-                          }
-                        }}
-                      >
-                        确认
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setIsAddingColor(false);
+                  );
+                })}
+                {selectedColors.filter(c => !colors.map(v => v.name).includes(c)).map(customColor => (
+                  <div
+                    key={`custom-color-${customColor}`}
+                    onClick={() => {
+                      setSelectedColors(selectedColors.filter(item => item !== customColor));
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      border: '2px solid #1890ff',
+                      backgroundColor: '#e6f7ff',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      transition: 'all 0.3s',
+                    }}
+                  >
+                    {customColor}
+                  </div>
+                ))}
+                {isAddingColor ? (
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    <Input
+                      placeholder="输入新颜色"
+                      value={newColorValue}
+                      onChange={(e) => setNewColorValue(e.target.value)}
+                      style={{ width: '100px', height: '32px' }}
+                      autoFocus
+                      onPressEnter={() => {
+                        const value = newColorValue.trim();
+                        if (value && !selectedColors.includes(value)) {
+                          setSelectedColors([...selectedColors, value]);
                           setNewColorValue('');
-                        }}
-                      >
-                        取消
-                      </Button>
-                    </div>
-                  ) : (
+                          setIsAddingColor(false);
+                        } else if (value && selectedColors.includes(value)) {
+                          message.warning('该颜色已存在');
+                        }
+                      }}
+                    />
                     <Button
                       size="small"
-                      onClick={() => setIsAddingColor(true)}
+                      type="primary"
+                      onClick={() => {
+                        const value = newColorValue.trim();
+                        if (value && !selectedColors.includes(value)) {
+                          setSelectedColors([...selectedColors, value]);
+                          setNewColorValue('');
+                          setIsAddingColor(false);
+                        } else if (value && selectedColors.includes(value)) {
+                          message.warning('该颜色已存在');
+                        }
+                      }}
                     >
-                      + 新增
+                      确认
                     </Button>
-                  )}
-                </div>
-              </Form.Item>
-            ) : (
-              <Alert
-                message="因为之前的 SKU 没有颜色, 所以不能在此处快捷新增颜色. 想要修改颜色请查看下方的 修改 SPU 与 SKUs 的关系."
-                type="info"
-              />
-            )}
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        setIsAddingColor(false);
+                        setNewColorValue('');
+                      }}
+                    >
+                      取消
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setIsAddingColor(true);
+                      // 如果还没有颜色，新增时启用颜色列
+                      if (!canSetColor) {
+                        // 这里会通过 selectedColors 的变化触发表格更新
+                      }
+                    }}
+                  >
+                    + 新增
+                  </Button>
+                )}
+              </div>
+            </Form.Item>
 
-            <Form.Item label="参数" tooltip="SPU/SKU参数设置">
+            <Form.Item label="参数" tooltip="SPU/SKU参数设置" style={{ marginBottom: 0 }}>
               {hasSetParams ? (
                 <span>已设置</span>
               ) : (
@@ -704,22 +759,50 @@ export default function SKUManager(props: {
                 设置参数
               </Button>
             </Form.Item>
+              </>
+            </div>
 
-            <EditRelationshipSPUwithSKUs
-                allSKUs={spu.skuIDs}
-                colors={colors}
-                specs={specs}
-                combos={combos}
-                selectedColors={selectedColors}
-                selectedSpecs={selectedSpecs}
-                selectedCombos={selectedCombos}
-                spu={spu}
-                onWantAddSKU={handleWantAddSKU}
-                onUsedValuesChange={handleUsedValuesChange}
-                onWantEditSKU={handleWantEditSKU}
-                filterCombo={filterCombo}
-                filterSpec={filterSpec}
-                filterColor={filterColor}
+            {/* Action Buttons - Above Table Container */}
+            <div className="sku-actions-section">
+              <Button
+                onClick={() => {
+                  // Placeholder - will be connected to state
+                }}
+                disabled={false}
+              >
+                + 新增
+              </Button>
+              <Button
+                type="primary"
+                onClick={() => {
+                  // Placeholder - will be connected to state
+                }}
+              >
+                确认修改
+              </Button>
+            </div>
+
+            {/* Table Container - Scrolls with content */}
+            <div className="sku-table-section">
+              <div className="sku-table-wrapper">
+              <EditRelationshipSPUwithSKUs
+                  allSKUs={spu.skuIDs}
+                  colors={colors}
+                  specs={specs}
+                  combos={combos}
+                  selectedColors={selectedColors}
+                  selectedSpecs={selectedSpecs}
+                  selectedCombos={selectedCombos}
+                  spu={spu}
+                  onWantAddSKU={handleWantAddSKU}
+                  onUsedValuesChange={handleUsedValuesChange}
+                  onWantEditSKU={handleWantEditSKU}
+                  filterCombo={filterCombo}
+                  filterSpec={filterSpec}
+                  filterColor={filterColor}
+                canSetCombo={canSetCombo}
+                canSetSpec={canSetSpec}
+                canSetColor={canSetColor}
                 onChange={v => {
                   const fn = async () => {
                     // 更新后端数据
@@ -761,7 +844,9 @@ export default function SKUManager(props: {
                   postAwait(fn)();
                 }}
               />
-            </>
+              </div>
+            </div>
+          </div>
         </Form>
       </div>
 
@@ -814,8 +899,11 @@ function EditRelationshipSPUwithSKUs(props: {
   filterCombo?: string | null;
   filterSpec?: string | null;
   filterColor?: string | null;
+  canSetCombo?: boolean;
+  canSetSpec?: boolean;
+  canSetColor?: boolean;
 }) {
-  const { allSKUs, onChange, colors = [], specs = [], combos = [], selectedColors = [], selectedSpecs = [], selectedCombos = [], onUsedValuesChange, spu, onWantAddSKU, filterCombo, filterSpec, filterColor } = props;
+  const { allSKUs, onChange, colors = [], specs = [], combos = [], selectedColors = [], selectedSpecs = [], selectedCombos = [], onUsedValuesChange, spu, onWantAddSKU, filterCombo, filterSpec, filterColor, canSetCombo = true, canSetSpec = true, canSetColor = true } = props;
   const [inputSKUs, setInputSKUs] = useState(allSKUs);
   const [newRowData, setNewRowData] = useState<{ combo?: string; spec?: string; color?: string } | null>(null);
 
@@ -878,15 +966,17 @@ function EditRelationshipSPUwithSKUs(props: {
   }, [inputSKUs, onUsedValuesChange]);
 
   return (
-    <>
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Table
         rowKey="skuID"
+        style={{ flex: 1, minHeight: 0 }}
+        scroll={{ x: 'max-content' }}
         columns={[
           { title: 'ID', dataIndex: 'skuID' },
-          {
+          ...(canSetCombo || selectedCombos.length > 0 ? [{
             title: '版本',
             dataIndex: 'combo',
-            render: (combo, item) => {
+            render: (combo: any, item: any) => {
               return (
                 <Select
                   value={combo || undefined}
@@ -913,11 +1003,11 @@ function EditRelationshipSPUwithSKUs(props: {
                 </Select>
               );
             },
-          },
-          {
+          }] : []),
+          ...(canSetSpec || selectedSpecs.length > 0 ? [{
             title: '配置',
             dataIndex: 'spec',
-            render: (spec, item) => {
+            render: (spec: any, item: any) => {
               return (
                 <Select
                   value={spec || undefined}
@@ -944,11 +1034,11 @@ function EditRelationshipSPUwithSKUs(props: {
                 </Select>
               );
             },
-          },
-          {
+          }] : []),
+          ...(canSetColor || selectedColors.length > 0 ? [{
             title: '颜色',
             dataIndex: 'color',
-            render: (color, item) => {
+            render: (color: any, item: any) => {
               return (
                 <Select
                   value={color || undefined}
@@ -975,11 +1065,11 @@ function EditRelationshipSPUwithSKUs(props: {
                 </Select>
               );
             },
-          },
+          }] : []),
           {
             title: '69码',
             dataIndex: 'skuID',
-            render: (skuID, item) => {
+            render: (skuID: any, item: any) => {
               if (item.skuID === -1) {
                 return <>-</>;
               }
@@ -995,7 +1085,7 @@ function EditRelationshipSPUwithSKUs(props: {
           },
           {
             title: '操作',
-            render: (_, item) => {
+            render: (_: any, item: any) => {
               if (item.skuID === -1) {
                 return (
                   <Tooltip title="创建">
@@ -1027,42 +1117,11 @@ function EditRelationshipSPUwithSKUs(props: {
         size="small"
         pagination={false}
         title={() => `SKU 列表`}
-        footer={() => (
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between' }}>
-            <Button
-              onClick={() => {
-                setNewRowData({ combo: undefined, spec: undefined, color: undefined });
-              }}
-              disabled={newRowData !== null}
-            >
-              + 新增
-            </Button>
-            <Button
-              type="primary"
-              onClick={() => {
-                try {
-                  const newData = inputSKUs.map(v => {
-                    const res: (typeof allSKUs)[0] = { skuID: v.skuID };
-                    if (v.color) res.color = v.color;
-                    if (v.spec) res.spec = v.spec;
-                    if (v.combo) res.combo = v.combo;
-                    return res;
-                  });
-                  onChange(newData as SPU['skuIDs']);
-                } catch (err) {
-                  console.error(err);
-                }
-              }}
-            >
-              确认修改
-            </Button>
-          </div>
-        )}
+        footer={undefined}
       />
-    </>
-  );
-}
-
+    </div>
+    );
+  }
 /**
  * @todo 放在合适的位置
  * @author Lian Zheren <lzr@go0356.com>

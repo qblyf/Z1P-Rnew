@@ -5,7 +5,6 @@ import { getChangeList } from '@zsqk/z1-sdk/es/z1p/changes';
 import { ChangeLog } from '@zsqk/z1-sdk/es/z1p/changes-types';
 import { useTokenContext } from '../datahooks/auth';
 import Table, { ColumnsType } from 'antd/lib/table';
-import { useRef } from 'react';
 
 export function ChangeTable(props: {
   /**
@@ -43,55 +42,37 @@ export function ChangeTable(props: {
     getFn(token);
   }, [token, getFn]);
 
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  const [changeLog, setChangeLog] = useState<ChangeLog>();
-
   return (
-    <>
-      <ChangeTableWithoutData
-        data={data}
-        columnKeys={columnKeys}
-        open={v => {
-          if (dialogRef.current === null) {
-            return;
-          }
-          setChangeLog(v);
-          dialogRef.current.showModal();
-        }}
-      />
-      <dialog ref={dialogRef}>
-        <form method="dialog">
-          {changeLog ? <ChangeDetails log={changeLog} /> : '暂无数据'}
-          <button type="submit">关闭</button>
-        </form>
-      </dialog>
-    </>
+    <ChangeTableWithoutData
+      data={data}
+      columnKeys={columnKeys}
+    />
   );
 }
 
 function ChangeTableWithoutData(props: {
   data?: ChangeLog[];
   columnKeys?: string[];
-  open: (v: ChangeLog) => void;
 }) {
-  const { data, columnKeys, open } = props;
+  const { data, columnKeys } = props;
+  const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
+
   const columns: ColumnsType<ChangeLog> = [
-    { title: '变动项', dataIndex: 'logFor', key: 'logFor' },
-    { title: '变动方式', dataIndex: 'operate', key: 'operate' },
+    { title: '变动项', dataIndex: 'logFor', key: 'logFor', width: 120 },
+    { title: '变动方式', dataIndex: 'operate', key: 'operate', width: 100 },
     {
       title: '变动时间',
       render: (_, { createdAt }) => <RenderDateTime muts={createdAt} />,
       key: 'createdAt',
+      width: 180,
     },
     {
       title: '变动人',
       key: 'createdBy',
       render: (_, { createdBy }) => <RenderUser userIdent={createdBy} />,
+      width: 100,
     },
   ];
-
-  // TODO: 性能优化, 在 props 没有变化的时候, 不要重新渲染
 
   return (
     <Table
@@ -104,20 +85,19 @@ function ChangeTableWithoutData(props: {
         return columnKeys.includes(v.key);
       })}
       dataSource={data}
-      onRow={v => {
-        return {
-          onClick: () => {
-            open(v);
-          },
-        };
+      pagination={false}
+      expandable={{
+        expandedRowKeys,
+        onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as React.Key[]),
+        expandedRowRender: (record) => (
+          <div style={{ padding: '12px 16px', backgroundColor: '#fafafa', borderRadius: '4px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 500, marginBottom: '8px', color: '#333' }}>变动详情</div>
+            <RenderChangeDetail log={record} />
+          </div>
+        ),
       }}
     />
   );
-}
-
-function ChangeDetails(props: { log: ChangeLog }) {
-  const { log } = props;
-  return <>{renderChangeLog(log)}</>;
 }
 
 function RenderDateTime(props: { muts: string | number }) {
@@ -128,26 +108,75 @@ function RenderUser(props: { userIdent: string }) {
   return <span>{props.userIdent}</span>;
 }
 
-function renderChangeLog(v: ChangeLog) {
-  let text = ``;
-  let present = 'present' in v ? JSON.stringify(v.present) : '';
-  if (present !== '{}') {
-    text += `改为 ${present}`;
+function RenderChangeDetail(props: { log: ChangeLog }) {
+  const { log } = props;
+  const items: { label: string; type: 'change' | 'add' | 'remove'; value: any }[] = [];
+
+  if ('present' in log && log.present && Object.keys(log.present).length > 0) {
+    items.push({ label: '修改为', type: 'change', value: log.present });
   }
-  let change = 'change' in v ? JSON.stringify(v.change) : '';
-  if (change !== '{}') {
-    text += `增加了 ${change}`;
+
+  if ('change' in log && log.change && Object.keys(log.change).length > 0) {
+    items.push({ label: '增加了', type: 'add', value: log.change });
   }
-  let original = 'original' in v ? JSON.stringify(v.original) : '';
-  if (original !== '{}') {
-    text += `, 之前为 ${original}`;
+
+  if ('original' in log && log.original && Object.keys(log.original).length > 0) {
+    items.push({ label: '之前为', type: 'remove', value: log.original });
   }
+
+  if (items.length === 0) {
+    return <div style={{ color: '#999', fontSize: '12px' }}>无变动详情</div>;
+  }
+
   return (
-    <span>
-      <RenderUser userIdent={v.createdBy} />在
-      <RenderDateTime muts={v.createdAt} />
-      执行了{v.operate}操作
-      {text}
-    </span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {items.map((item, idx) => (
+        <div
+          key={idx}
+          style={{
+            padding: '12px',
+            backgroundColor: '#fff',
+            borderRadius: '4px',
+            borderLeft: `3px solid ${item.type === 'change' ? '#1890ff' : item.type === 'add' ? '#52c41a' : '#ff4d4f'}`,
+            border: `1px solid ${item.type === 'change' ? '#91d5ff' : item.type === 'add' ? '#b7eb8f' : '#ffccc7'}`,
+          }}
+        >
+          <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: 500 }}>
+            {item.label}
+          </div>
+          <div style={{ fontSize: '12px', color: '#333', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {formatDetailValue(item.value)}
+          </div>
+        </div>
+      ))}
+    </div>
   );
+}
+
+function formatDetailValue(value: any): string {
+  if (value === null || value === undefined) {
+    return '-';
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .map(([key, val]) => `${key}: ${formatHumanReadable(val)}`)
+      .join('\n');
+  }
+  return String(value);
+}
+
+function formatHumanReadable(value: any): string {
+  if (value === null || value === undefined) {
+    return '-';
+  }
+  if (typeof value === 'boolean') {
+    return value ? '是' : '否';
+  }
+  if (typeof value === 'object') {
+    if (Array.isArray(value)) {
+      return `[${value.join(', ')}]`;
+    }
+    return JSON.stringify(value);
+  }
+  return String(value);
 }

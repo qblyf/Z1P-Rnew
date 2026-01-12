@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { LogOut, User, ChevronDown } from 'lucide-react';
+import { LogOut, User, ChevronDown, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTokenContext } from '../../datahooks/auth';
 import { setCacheToken } from '../../datahooks/auth';
@@ -69,6 +69,17 @@ export function UserProfile() {
           >
             <User size={16} />
             <span className="text-sm">个人设置</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              window.open('https://pre-p.z1.pub/', '_blank');
+            }}
+            className="w-full flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-100 transition-colors border-t border-slate-200 mt-2 pt-2"
+          >
+            <ArrowLeft size={16} />
+            <span className="text-sm">返回旧版</span>
           </button>
 
           <button

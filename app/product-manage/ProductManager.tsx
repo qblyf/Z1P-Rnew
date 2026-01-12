@@ -3,6 +3,7 @@ import { Drawer } from 'antd';
 import Head from 'next/head';
 import { useEffect, useMemo } from 'react';
 import { orderSPUCate } from '@zsqk/z1-sdk/es/z1p/product';
+import update from 'immutability-helper';
 
 import { HelpTooltip } from '../../components/HelpTooltip';
 import SKUManager from '../../components/SKUManager';
@@ -46,7 +47,7 @@ function updateSPUCateList(
       Object.entries(rest).map(([k, v]) => [k, { $set: v }])
     );
   }
-  return obj;
+  return update(spuCateList, obj);
 }
 
 export default function ProductManagerWithHeader() {

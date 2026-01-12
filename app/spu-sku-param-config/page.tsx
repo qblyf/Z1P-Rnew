@@ -252,239 +252,238 @@ function Page() {
   }, [skuList, selectedFilters, hasActiveFilters, skuParamValuesMap]);
 
   return (
-    <PageWrap ppKey="product-manage">
-      <Head>
-        <title>{name}</title>
-      </Head>
-      <PageHeader title={name} subTitle="SPU/SKU参数设置"></PageHeader>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <PageWrap ppKey="product-manage">
+        <Head>
+          <title>{name}</title>
+        </Head>
+        <PageHeader title={name} subTitle="SPU/SKU参数设置"></PageHeader>
+      </PageWrap>
       <div
         style={{
-          padding: '0 20px',
+          flex: 1,
+          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        <Row>
-          <Col
-            span={4}
-            style={{ borderRight: '2px solid #f3f3f3', paddingBottom: '80px' }}
-          >
-            <Anchor
-              items={groups.map(g => ({
-                key: `${g.groupName}-${g.groupID}`,
-                href: `#${g.groupName}-${g.groupID}`,
-                title: g.groupName,
-              }))}
-            />
-          </Col>
-          <Col span={20}>
-            {groups.map(g => (
-              <div
-                id={`${g.groupName}-${g.groupID}`}
-                key={`${g.groupName}-${g.groupID}`}
-                style={{
-                  padding: '0 32px 32px',
-                }}
-              >
+        <div
+          style={{
+            padding: '0 20px',
+          }}
+        >
+          <Row>
+            <Col
+              span={4}
+              style={{ borderRight: '2px solid #f3f3f3', paddingBottom: '80px' }}
+            >
+              <Anchor
+                items={groups.map(g => ({
+                  key: `${g.groupName}-${g.groupID}`,
+                  href: `#${g.groupName}-${g.groupID}`,
+                  title: g.groupName,
+                }))}
+              />
+            </Col>
+            <Col span={20}>
+              {groups.map(g => (
                 <div
+                  id={`${g.groupName}-${g.groupID}`}
+                  key={`${g.groupName}-${g.groupID}`}
                   style={{
-                    fontWeight: 'bold',
-                    fontSize: '14px',
-                    color: '#000000',
+                    padding: '0 32px 32px',
                   }}
                 >
-                  {g.groupName}
-                </div>
-                <div
-                  style={{
-                    fontSize: '12px',
-                    color: '#999999',
-                    marginBottom: '16px',
-                    marginTop: '8px',
-                  }}
-                >
-                  💡 点击参数值可过滤下方 SKU 列表。如需修改参数值，请使用下方"修改 SPU 与 SKUs 的关系"功能。
-                </div>
-                {definitionExtList
-                  .filter(
-                    def =>
-                      def.groupName === g.groupName && def.groupID === g.groupID
-                  )
-                  .map(def => {
-                    const pValue = pValueListEditing.find(
-                      pv =>
-                        ('definitionID' in pv &&
-                          pv.definitionID === def.definitionID) ||
-                        ('paramDefinition' in pv &&
-                          pv.paramDefinition === def.definitionID)
-                    );
-                    const pValueIndex = pValueListEditing.findIndex(
-                      pv =>
-                        ('definitionID' in pv &&
-                          pv.definitionID === def.definitionID) ||
-                        ('paramDefinition' in pv &&
-                          pv.paramDefinition === def.definitionID)
-                    );
-                    const customOption = def.options.slice(-1)[0];
-                    return (
-                      <div
-                        key={def.definitionID}
-                        style={{
-                          paddingLeft: '30px',
-                          display: 'flex',
-                          alignItems: 'top',
-                          margin: '23px 0',
-                        }}
-                      >
+                  <div
+                    style={{
+                      fontWeight: 'bold',
+                      fontSize: '14px',
+                      color: '#000000',
+                    }}
+                  >
+                    {g.groupName}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '12px',
+                      color: '#999999',
+                      marginBottom: '16px',
+                      marginTop: '8px',
+                    }}
+                  >
+                    💡 点击参数值可过滤下方 SKU 列表。如需修改参数值，请使用下方"修改 SPU 与 SKUs 的关系"功能。
+                  </div>
+                  {definitionExtList
+                    .filter(
+                      def =>
+                        def.groupName === g.groupName && def.groupID === g.groupID
+                    )
+                    .map(def => {
+                      const customOption = def.options.slice(-1)[0];
+                      return (
                         <div
+                          key={def.definitionID}
                           style={{
-                            fontWeight: '400',
-                            fontSize: '14px',
-                            color: '#666666',
-                            flexShrink: 0,
-                            flexGrow: 0,
-                            width: '100px',
-                            textAlign: 'right',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            marginRight: '40px',
-                            lineHeight: '32px',
-                          }}
-                        >
-                          <Tooltip
-                            placement="topLeft"
-                            title={def.definitionName}
-                          >
-                            {def.definitionName}
-                          </Tooltip>
-                        </div>
-                        <div
-                          style={{
+                            paddingLeft: '30px',
                             display: 'flex',
-                            flexShrink: 1,
-                            flexGrow: 1,
-                            flexWrap: 'wrap',
-                            alignItems: 'center',
+                            alignItems: 'top',
+                            margin: '23px 0',
                           }}
                         >
-                          {def.options.slice(0, -1).map(opt => {
-                            const isSelected = selectedFilters[def.definitionID] === opt.option;
-                            return (
-                              <Radio
-                                style={{ height: '32px', lineHeight: '32px' }}
-                                key={opt.option}
-                                checked={isSelected}
-                                onClick={() => {
-                                  // 只更新过滤状态，不修改参数值
-                                  if (opt.option) {
-                                    toggleFilter(def.definitionID, opt.option);
-                                  }
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontWeight: '400',
-                                    fontSize: '14px',
-                                    color: '#666666',
-                                    flexShrink: 0,
-                                    flexGrow: 0,
-                                    maxWidth: '100px',
-                                    textAlign: 'left',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
+                          <div
+                            style={{
+                              fontWeight: '400',
+                              fontSize: '14px',
+                              color: '#666666',
+                              flexShrink: 0,
+                              flexGrow: 0,
+                              width: '100px',
+                              textAlign: 'right',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              marginRight: '40px',
+                              lineHeight: '32px',
+                            }}
+                          >
+                            <Tooltip
+                              placement="topLeft"
+                              title={def.definitionName}
+                            >
+                              {def.definitionName}
+                            </Tooltip>
+                          </div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexShrink: 1,
+                              flexGrow: 1,
+                              flexWrap: 'wrap',
+                              alignItems: 'center',
+                            }}
+                          >
+                            {def.options.slice(0, -1).map(opt => {
+                              const isSelected = selectedFilters[def.definitionID] === opt.option;
+                              return (
+                                <Radio
+                                  style={{ height: '32px', lineHeight: '32px' }}
+                                  key={opt.option}
+                                  checked={isSelected}
+                                  onClick={() => {
+                                    // 只更新过滤状态，不修改参数值
+                                    if (opt.option) {
+                                      toggleFilter(def.definitionID, opt.option);
+                                    }
                                   }}
                                 >
-                                  <Tooltip
-                                    placement="topLeft"
-                                    title={opt.option}
+                                  <div
+                                    style={{
+                                      fontWeight: '400',
+                                      fontSize: '14px',
+                                      color: '#666666',
+                                      flexShrink: 0,
+                                      flexGrow: 0,
+                                      maxWidth: '100px',
+                                      textAlign: 'left',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
                                   >
-                                    {opt.option}
-                                  </Tooltip>
-                                </div>
-                              </Radio>
-                            );
-                          })}
-                          {customOption.option === null && (
-                            <Button
-                              type="link"
-                              style={{ paddingLeft: 0 }}
-                              onClick={() => {
-                                setEditingCustomDefinitionID(def.definitionID);
-                                setEditingCustomValue(null);
-                              }}
-                            >
-                              +自定义
-                            </Button>
-                          )}
-                          {customOption.option !== null && (
-                            <div
-                              style={{
-                                position: 'relative',
-                              }}
-                            >
-                              <Radio
-                                style={{ height: '32px', lineHeight: '32px' }}
-                                checked={selectedFilters[def.definitionID] === customOption.option}
+                                    <Tooltip
+                                      placement="topLeft"
+                                      title={opt.option}
+                                    >
+                                      {opt.option}
+                                    </Tooltip>
+                                  </div>
+                                </Radio>
+                              );
+                            })}
+                            {customOption.option === null && (
+                              <Button
+                                type="link"
+                                style={{ paddingLeft: 0 }}
                                 onClick={() => {
-                                  // 只更新过滤状态，不修改参数值
-                                  if (customOption.option) {
-                                    toggleFilter(
-                                      def.definitionID,
-                                      customOption.option
-                                    );
-                                  }
-                                }}
-                              ></Radio>
-                              <span
-                                style={{
-                                  border: '1px solid #91CAFF',
-                                  color: '#1677FF',
-                                  background: '#E6F4FF',
-                                  padding: '2px 4px',
-                                  cursor: 'pointer',
-                                }}
-                                onClick={() => {
-                                  setEditingCustomDefinitionID(
-                                    def.definitionID
-                                  );
-                                  setEditingCustomValue(customOption.option);
+                                  setEditingCustomDefinitionID(def.definitionID);
+                                  setEditingCustomValue(null);
                                 }}
                               >
-                                {customOption.option}
-                                <EditOutlined />
-                              </span>
+                                +自定义
+                              </Button>
+                            )}
+                            {customOption.option !== null && (
                               <div
                                 style={{
-                                  color: 'red',
-                                  position: 'absolute',
-                                  left: 24,
-                                  top: 24,
-                                  width: 'max-content',
+                                  position: 'relative',
                                 }}
                               >
-                                *自定义内容仅勾选后生效
+                                <Radio
+                                  style={{ height: '32px', lineHeight: '32px' }}
+                                  checked={selectedFilters[def.definitionID] === customOption.option}
+                                  onClick={() => {
+                                    // 只更新过滤状态，不修改参数值
+                                    if (customOption.option) {
+                                      toggleFilter(
+                                        def.definitionID,
+                                        customOption.option
+                                      );
+                                    }
+                                  }}
+                                ></Radio>
+                                <span
+                                  style={{
+                                    border: '1px solid #91CAFF',
+                                    color: '#1677FF',
+                                    background: '#E6F4FF',
+                                    padding: '2px 4px',
+                                    cursor: 'pointer',
+                                  }}
+                                  onClick={() => {
+                                    setEditingCustomDefinitionID(
+                                      def.definitionID
+                                    );
+                                    setEditingCustomValue(customOption.option);
+                                  }}
+                                >
+                                  {customOption.option}
+                                  <EditOutlined />
+                                </span>
+                                <div
+                                  style={{
+                                    color: 'red',
+                                    position: 'absolute',
+                                    left: 24,
+                                    top: 24,
+                                    width: 'max-content',
+                                  }}
+                                >
+                                  *自定义内容仅勾选后生效
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            ))}
-            <div style={{ height: '100vh', background: 'white' }} />
-          </Col>
-        </Row>
-      </div>
+                      );
+                    })}
+                </div>
+              ))}
+            </Col>
+          </Row>
+        </div>
 
-      {/* SKU 列表过滤和显示 */}
-      <div
-        style={{
-          padding: '20px',
-          background: '#fafafa',
-          marginTop: '20px',
-        }}
-      >
+        {/* SKU 列表过滤和显示 */}
+        <div
+          style={{
+            padding: '20px',
+            background: '#fafafa',
+            marginTop: '20px',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
         <div
           style={{
             fontWeight: 'bold',
@@ -532,37 +531,40 @@ function Page() {
         )}
 
         {/* SKU 列表表格 */}
-        <Table
-          size="small"
-          rowKey="id"
-          dataSource={filteredSkuList}
-          columns={[
-            { dataIndex: 'name', title: 'SKU 名称', width: 200 },
-            {
-              dataIndex: 'gtins',
-              title: 'GTINs',
-              render: (v: string[]) => v?.join(', ') || '-',
-            },
-            {
-              dataIndex: 'state',
-              title: '状态',
-              render: (v: string) => {
-                if (v === 'invalid') {
-                  return <Tag color="red">无效</Tag>;
-                }
-                if (v === 'valid') {
-                  return <Tag color="green">有效</Tag>;
-                }
-                return '-';
+        <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+          <Table
+            size="small"
+            rowKey="id"
+            dataSource={filteredSkuList}
+            columns={[
+              { dataIndex: 'name', title: 'SKU 名称', width: 200 },
+              {
+                dataIndex: 'gtins',
+                title: 'GTINs',
+                render: (v: string[]) => v?.join(', ') || '-',
               },
-            },
-          ]}
-          pagination={{
-            defaultPageSize: 20,
-            pageSizeOptions: [10, 20, 50],
-          }}
-          style={{ marginTop: '16px' }}
-        />
+              {
+                dataIndex: 'state',
+                title: '状态',
+                render: (v: string) => {
+                  if (v === 'invalid') {
+                    return <Tag color="red">无效</Tag>;
+                  }
+                  if (v === 'valid') {
+                    return <Tag color="green">有效</Tag>;
+                  }
+                  return '-';
+                },
+              },
+            ]}
+            pagination={{
+              defaultPageSize: 20,
+              pageSizeOptions: [10, 20, 50],
+            }}
+            style={{ marginTop: '16px' }}
+          />
+        </div>
+      </div>
       </div>
       <div
         style={{
@@ -578,6 +580,7 @@ function Page() {
           alignItems: 'center',
           paddingRight: '60px',
           background: 'white',
+          zIndex: 100,
         }}
       >
         <Button
@@ -728,7 +731,7 @@ function Page() {
           </Form>
         )}
       </Modal>
-    </PageWrap>
+    </div>
   );
 }
 
