@@ -163,6 +163,9 @@ function formatDetailValue(value: any): string {
         if (key === 'images' && val && typeof val === 'object') {
           return `${key}: ${formatImageObject(val)}`;
         }
+        if (key === 'skuIDs' && Array.isArray(val)) {
+          return `${key}: ${formatSkuIDsArray(val)}`;
+        }
         return `${key}: ${formatHumanReadable(val)}`;
       })
       .join('\n');
@@ -206,4 +209,26 @@ function formatImageObject(images: any): string {
   }
   
   return parts.length > 0 ? parts.join(', ') : '无图片';
+}
+
+function formatSkuIDsArray(skuIDs: any[]): string {
+  if (!Array.isArray(skuIDs) || skuIDs.length === 0) {
+    return '无SKU';
+  }
+  
+  const skuCount = skuIDs.length;
+  const skuSummary = skuIDs.map((sku, index) => {
+    if (sku && typeof sku === 'object') {
+      const parts: string[] = [];
+      if (sku.color) parts.push(sku.color);
+      if (sku.spec) parts.push(sku.spec);
+      if (sku.combo) parts.push(sku.combo);
+      
+      const description = parts.length > 0 ? parts.join(' ') : `SKU${sku.skuID || index + 1}`;
+      return `${index + 1}. ${description}`;
+    }
+    return `${index + 1}. SKU${sku.skuID || index + 1}`;
+  }).join('\n');
+  
+  return `共${skuCount}个SKU:\n${skuSummary}`;
 }
