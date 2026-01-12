@@ -299,9 +299,9 @@ export default function SKUManager(props: {
             background: #666;
           }
           .sku-form-content {
-            flex: 1;
             display: flex;
             flex-direction: column;
+            height: 100%;
           }
           .sku-form-selectors {
             flex-shrink: 0;
