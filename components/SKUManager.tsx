@@ -272,7 +272,7 @@ export default function SKUManager(props: {
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding-bottom: 80px;
+            padding-bottom: 200px;
           }
           .sku-table-container {
             flex: 1;
@@ -282,7 +282,7 @@ export default function SKUManager(props: {
             overflow-y: auto;
             scrollbar-width: auto;
             scrollbar-color: #999 #f1f1f1;
-            padding-bottom: 120px;
+            padding-bottom: 200px;
           }
           .sku-table-container::-webkit-scrollbar {
             width: 8px;
