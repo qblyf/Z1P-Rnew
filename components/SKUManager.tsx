@@ -274,7 +274,7 @@ export default function SKUManager(props: {
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding-bottom: 20px;
+            padding-bottom: 80px;
           }
           .sku-form-scroll::-webkit-scrollbar {
             width: 8px;
