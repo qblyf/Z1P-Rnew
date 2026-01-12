@@ -259,24 +259,31 @@ export default function SKUManager(props: {
         SPU ID: {spuID}, 名称: {spu.name}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'auto', scrollbarColor: '#999 #f1f1f1', minHeight: 0 }} className="sku-form-scroll">
+      <div style={{ flex: 1, minHeight: 0 }} className="sku-form-scroll">
         <style jsx>{`
-          .sku-form-scroll::-webkit-scrollbar {
-            width: 8px;
-          }
-          .sku-form-scroll::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-          }
-          .sku-form-scroll::-webkit-scrollbar-thumb {
-            background: #999;
-            border-radius: 4px;
-          }
-          .sku-form-scroll::-webkit-scrollbar-thumb:hover {
-            background: #666;
+          .sku-form-scroll {
+            overflow: hidden;
           }
           .sku-table-wrapper {
             padding-bottom: calc(80px + 5rem);
+            overflow-y: auto;
+            height: 100%;
+            scrollbar-width: auto;
+            scrollbar-color: #999 #f1f1f1;
+          }
+          .sku-table-wrapper::-webkit-scrollbar {
+            width: 8px;
+          }
+          .sku-table-wrapper::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+          }
+          .sku-table-wrapper::-webkit-scrollbar-thumb {
+            background: #999;
+            border-radius: 4px;
+          }
+          .sku-table-wrapper::-webkit-scrollbar-thumb:hover {
+            background: #666;
           }
         `}</style>
         <Form layout="vertical" className="sku-table-wrapper">
