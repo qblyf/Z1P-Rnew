@@ -266,9 +266,7 @@ export default function SKUManager(props: {
           .sku-form-scroll {
             display: flex;
             flex-direction: column;
-            overflow-y: auto;
-            scrollbar-width: auto;
-            scrollbar-color: #999 #f1f1f1;
+            overflow: hidden;
           }
           .sku-table-wrapper {
             flex: 1;
@@ -276,18 +274,28 @@ export default function SKUManager(props: {
             flex-direction: column;
             padding-bottom: 80px;
           }
-          .sku-form-scroll::-webkit-scrollbar {
+          .sku-table-container {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            scrollbar-width: auto;
+            scrollbar-color: #999 #f1f1f1;
+            padding-bottom: 120px;
+          }
+          .sku-table-container::-webkit-scrollbar {
             width: 8px;
           }
-          .sku-form-scroll::-webkit-scrollbar-track {
+          .sku-table-container::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 4px;
           }
-          .sku-form-scroll::-webkit-scrollbar-thumb {
+          .sku-table-container::-webkit-scrollbar-thumb {
             background: #999;
             border-radius: 4px;
           }
-          .sku-form-scroll::-webkit-scrollbar-thumb:hover {
+          .sku-table-container::-webkit-scrollbar-thumb:hover {
             background: #666;
           }
           .sku-form-content {
@@ -297,12 +305,6 @@ export default function SKUManager(props: {
           }
           .sku-form-selectors {
             flex-shrink: 0;
-          }
-          .sku-table-container {
-            flex: 1;
-            min-height: 0;
-            display: flex;
-            flex-direction: column;
           }
           .sku-action-buttons {
             flex-shrink: 0;
