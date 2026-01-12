@@ -405,7 +405,13 @@ export default function SKUManager(props: {
                 ) : (
                   <Button
                     size="small"
-                    onClick={() => setIsAddingCombo(true)}
+                    onClick={() => {
+                      setIsAddingCombo(true);
+                      // 如果还没有版本，新增时启用版本列
+                      if (!canSetCombo) {
+                        // 这里会通过 selectedCombos 的变化触发表格更新
+                      }
+                    }}
                   >
                     + 新增
                   </Button>
@@ -531,7 +537,13 @@ export default function SKUManager(props: {
                 ) : (
                   <Button
                     size="small"
-                    onClick={() => setIsAddingSpec(true)}
+                    onClick={() => {
+                      setIsAddingSpec(true);
+                      // 如果还没有配置，新增时启用配置列
+                      if (!canSetSpec) {
+                        // 这里会通过 selectedSpecs 的变化触发表格更新
+                      }
+                    }}
                   >
                     + 新增
                   </Button>
@@ -657,7 +669,13 @@ export default function SKUManager(props: {
                 ) : (
                   <Button
                     size="small"
-                    onClick={() => setIsAddingColor(true)}
+                    onClick={() => {
+                      setIsAddingColor(true);
+                      // 如果还没有颜色，新增时启用颜色列
+                      if (!canSetColor) {
+                        // 这里会通过 selectedColors 的变化触发表格更新
+                      }
+                    }}
                   >
                     + 新增
                   </Button>
@@ -868,7 +886,7 @@ function EditRelationshipSPUwithSKUs(props: {
         rowKey="skuID"
         columns={[
           { title: 'ID', dataIndex: 'skuID' },
-          ...(canSetCombo ? [{
+          ...(canSetCombo || selectedCombos.length > 0 ? [{
             title: '版本',
             dataIndex: 'combo',
             render: (combo: any, item: any) => {
@@ -899,7 +917,7 @@ function EditRelationshipSPUwithSKUs(props: {
               );
             },
           }] : []),
-          ...(canSetSpec ? [{
+          ...(canSetSpec || selectedSpecs.length > 0 ? [{
             title: '配置',
             dataIndex: 'spec',
             render: (spec: any, item: any) => {
@@ -930,7 +948,7 @@ function EditRelationshipSPUwithSKUs(props: {
               );
             },
           }] : []),
-          ...(canSetColor ? [{
+          ...(canSetColor || selectedColors.length > 0 ? [{
             title: '颜色',
             dataIndex: 'color',
             render: (color: any, item: any) => {
