@@ -159,7 +159,12 @@ function formatDetailValue(value: any): string {
   }
   if (typeof value === 'object') {
     return Object.entries(value)
-      .map(([key, val]) => `${key}: ${formatHumanReadable(val)}`)
+      .map(([key, val]) => {
+        if (key === 'images' && val && typeof val === 'object') {
+          return `${key}: ${formatImageObject(val)}`;
+        }
+        return `${key}: ${formatHumanReadable(val)}`;
+      })
       .join('\n');
   }
   return String(value);
@@ -179,4 +184,26 @@ function formatHumanReadable(value: any): string {
     return JSON.stringify(value);
   }
   return String(value);
+}
+
+function formatImageObject(images: any): string {
+  if (!images || typeof images !== 'object') {
+    return String(images);
+  }
+  
+  const parts: string[] = [];
+  
+  if (images.thumbnail) {
+    parts.push(`缩略图: 1张`);
+  }
+  
+  if (images.mainImages && Array.isArray(images.mainImages)) {
+    parts.push(`主图: ${images.mainImages.length}张`);
+  }
+  
+  if (images.detailsImages && Array.isArray(images.detailsImages)) {
+    parts.push(`详情图: ${images.detailsImages.length}张`);
+  }
+  
+  return parts.length > 0 ? parts.join(', ') : '无图片';
 }
