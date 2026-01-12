@@ -286,11 +286,6 @@ export default function SKUManager(props: {
         `}</style>
         <Form layout="vertical" className="sku-table-wrapper">
           <>
-            <Alert
-              message="💡 点击规格（版本、配置、颜色）可过滤下方 SKU 列表。如需修改规格，请使用下方的'修改 SPU 与 SKUs 的关系'功能。"
-              type="info"
-              style={{ marginBottom: '16px' }}
-            />
             <Form.Item label="版本" tooltip="可能有的多种版本" style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                 {combos.map(v => {
