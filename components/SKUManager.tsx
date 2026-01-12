@@ -255,20 +255,26 @@ export default function SKUManager(props: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ marginBottom: '8px', fontSize: '12px', color: '#666', flexShrink: 0 }}>
+      {/* Fixed SPU ID Header - Does not scroll */}
+      <div style={{ marginBottom: '8px', fontSize: '12px', color: '#666', flexShrink: 0, padding: '8px 0' }}>
         SPU ID: {spuID}, 名称: {spu.name}
       </div>
 
-      <div style={{ flex: 1, minHeight: 0 }} className="sku-form-scroll">
+      {/* Scrollable Container - Contains selectors, form, table, and action buttons */}
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }} className="sku-form-scroll">
         <style jsx>{`
           .sku-form-scroll {
-            overflow: hidden;
+            display: flex;
+            flex-direction: column;
           }
           .sku-table-wrapper {
-            padding-bottom: calc(80px + 5rem);
+            flex: 1;
             overflow-y: auto;
             scrollbar-width: auto;
             scrollbar-color: #999 #f1f1f1;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 20px;
           }
           .sku-table-wrapper::-webkit-scrollbar {
             width: 8px;
@@ -284,10 +290,37 @@ export default function SKUManager(props: {
           .sku-table-wrapper::-webkit-scrollbar-thumb:hover {
             background: #666;
           }
+          .sku-form-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+          }
+          .sku-form-selectors {
+            flex-shrink: 0;
+          }
+          .sku-table-container {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+          }
+          .sku-action-buttons {
+            flex-shrink: 0;
+            padding: 16px;
+            border-top: 1px solid #f0f0f0;
+            background-color: #fff;
+            display: flex;
+            gap: 8px;
+            justify-content: space-between;
+          }
         `}</style>
         <Form layout="vertical" className="sku-table-wrapper">
-          <>
-            <Form.Item label="版本" tooltip="可能有的多种版本" style={{ marginBottom: '12px' }}>
+          <div className="sku-form-content">
+            {/* Selectors Section - Does not scroll independently */}
+            <div className="sku-form-selectors">
+              <>
+                <Form.Item label="版本" tooltip="可能有的多种版本" style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                 {combos.map(v => {
                   const count = spu.skuIDs.filter(sku => (sku as any).combo === v.name).length;
@@ -702,22 +735,26 @@ export default function SKUManager(props: {
                 设置参数
               </Button>
             </Form.Item>
+              </>
+            </div>
 
-            <EditRelationshipSPUwithSKUs
-                allSKUs={spu.skuIDs}
-                colors={colors}
-                specs={specs}
-                combos={combos}
-                selectedColors={selectedColors}
-                selectedSpecs={selectedSpecs}
-                selectedCombos={selectedCombos}
-                spu={spu}
-                onWantAddSKU={handleWantAddSKU}
-                onUsedValuesChange={handleUsedValuesChange}
-                onWantEditSKU={handleWantEditSKU}
-                filterCombo={filterCombo}
-                filterSpec={filterSpec}
-                filterColor={filterColor}
+            {/* Table Container - Scrolls with content */}
+            <div className="sku-table-container">
+              <EditRelationshipSPUwithSKUs
+                  allSKUs={spu.skuIDs}
+                  colors={colors}
+                  specs={specs}
+                  combos={combos}
+                  selectedColors={selectedColors}
+                  selectedSpecs={selectedSpecs}
+                  selectedCombos={selectedCombos}
+                  spu={spu}
+                  onWantAddSKU={handleWantAddSKU}
+                  onUsedValuesChange={handleUsedValuesChange}
+                  onWantEditSKU={handleWantEditSKU}
+                  filterCombo={filterCombo}
+                  filterSpec={filterSpec}
+                  filterColor={filterColor}
                 canSetCombo={canSetCombo}
                 canSetSpec={canSetSpec}
                 canSetColor={canSetColor}
@@ -762,7 +799,8 @@ export default function SKUManager(props: {
                   postAwait(fn)();
                 }}
               />
-            </>
+            </div>
+          </div>
         </Form>
       </div>
 
@@ -882,9 +920,10 @@ function EditRelationshipSPUwithSKUs(props: {
   }, [inputSKUs, onUsedValuesChange]);
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Table
         rowKey="skuID"
+        style={{ flex: 1, overflow: 'auto' }}
         columns={[
           { title: 'ID', dataIndex: 'skuID' },
           ...(canSetCombo || selectedCombos.length > 0 ? [{
@@ -1033,7 +1072,7 @@ function EditRelationshipSPUwithSKUs(props: {
         title={() => `SKU 列表`}
         footer={undefined}
       />
-      <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', padding: '16px', borderTop: '1px solid #f0f0f0', backgroundColor: '#fff' }}>
+      <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', padding: '16px', borderTop: '1px solid #f0f0f0', backgroundColor: '#fff', flexShrink: 0 }}>
         <Button
           onClick={() => {
             setNewRowData({ combo: undefined, spec: undefined, color: undefined });
@@ -1062,7 +1101,7 @@ function EditRelationshipSPUwithSKUs(props: {
           确认修改
         </Button>
       </div>
-    </>
+    </div>
   );
 }
 
