@@ -254,7 +254,7 @@ export default function SKUManager(props: {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ flexDirection: 'column', height: '100%' }}>
       {/* Fixed SPU ID Header - Does not scroll */}
       <div style={{ padding: '12px 16px', fontSize: '13px', color: '#333', flexShrink: 0, borderBottom: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}>
         <div style={{ fontWeight: 500 }}>SPU ID: {spuID}</div>
@@ -262,15 +262,11 @@ export default function SKUManager(props: {
       </div>
 
       {/* Scrollable Container - Contains selectors, form, table, and action buttons */}
-      <div style={{ flex: 1, minHeight: 0 }} className="sku-main-content">
+      <div style={{ paddingBottom: '5rem', overflowY: 'auto' }} className="sku-main-content">
         <style jsx>{`
           /* Main scrollable container */
           .sku-main-content {
-            flex: 1;
-            min-height: 0;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            /* 移除了 flex: 1, min-height: 0, display: flex, flex-direction: column, overflow: hidden */
           }
           
           /* Filters section - fixed height with internal scroll */
