@@ -261,33 +261,33 @@ export default function SKUManager(props: {
       </div>
 
       {/* Scrollable Container - Contains selectors, form, table, and action buttons */}
-      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }} className="sku-form-scroll">
+      <div style={{ flex: 1, minHeight: 0 }} className="sku-form-scroll">
         <style jsx>{`
           .sku-form-scroll {
             display: flex;
             flex-direction: column;
-          }
-          .sku-table-wrapper {
-            flex: 1;
             overflow-y: auto;
             scrollbar-width: auto;
             scrollbar-color: #999 #f1f1f1;
+          }
+          .sku-table-wrapper {
+            flex: 1;
             display: flex;
             flex-direction: column;
             padding-bottom: 20px;
           }
-          .sku-table-wrapper::-webkit-scrollbar {
+          .sku-form-scroll::-webkit-scrollbar {
             width: 8px;
           }
-          .sku-table-wrapper::-webkit-scrollbar-track {
+          .sku-form-scroll::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 4px;
           }
-          .sku-table-wrapper::-webkit-scrollbar-thumb {
+          .sku-form-scroll::-webkit-scrollbar-thumb {
             background: #999;
             border-radius: 4px;
           }
-          .sku-table-wrapper::-webkit-scrollbar-thumb:hover {
+          .sku-form-scroll::-webkit-scrollbar-thumb:hover {
             background: #666;
           }
           .sku-form-content {
@@ -301,7 +301,6 @@ export default function SKUManager(props: {
           .sku-table-container {
             flex: 1;
             min-height: 0;
-            overflow: auto;
             display: flex;
             flex-direction: column;
           }
@@ -923,7 +922,6 @@ function EditRelationshipSPUwithSKUs(props: {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Table
         rowKey="skuID"
-        style={{ flex: 1, overflow: 'auto' }}
         columns={[
           { title: 'ID', dataIndex: 'skuID' },
           ...(canSetCombo || selectedCombos.length > 0 ? [{
