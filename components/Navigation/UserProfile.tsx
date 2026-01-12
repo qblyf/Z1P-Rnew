@@ -74,7 +74,7 @@ export function UserProfile() {
           <button
             onClick={() => {
               setIsOpen(false);
-              window.location.href = 'https://pre-p.z1.pub/';
+              window.open('https://pre-p.z1.pub/', '_blank');
             }}
             className="w-full flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-100 transition-colors border-t border-slate-200 mt-2 pt-2"
           >
