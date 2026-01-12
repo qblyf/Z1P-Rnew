@@ -1,7 +1,7 @@
 import { SPUCate } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { editSPUCateInfo, getSPUCateInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { EditSPUCateInfo } from '@zsqk/z1-sdk/es/z1p/product-types';
-import { Button, Form, Input, Radio } from 'antd';
+import { Button, Form, Input, Radio, Drawer } from 'antd';
 import { useEffect, useState } from 'react';
 import update from 'immutability-helper';
 import pinyin from 'tiny-pinyin';
@@ -28,6 +28,7 @@ export default function SPUCateEdit() {
   const [preData, setPreData] = useState<SPUCate>();
   const [input, setInput] = useState<Parameters<EditSPUCateInfo>[1]>({});
   const [icon, setIcon] = useState<UploadFile>();
+  const [showChangeDrawer, setShowChangeDrawer] = useState(false);
 
   useEffect(() => {
     if (!preData?.icon) {
@@ -179,9 +180,25 @@ export default function SPUCateEdit() {
           >
             提交修改
           </Button>
+          <Button
+            style={{ marginLeft: '8px' }}
+            onClick={() => setShowChangeDrawer(true)}
+          >
+            查看变动记录
+          </Button>
         </Form.Item>
       </Form>
-      <ChangeTable logFor={[`spu_cate_${spuCateID}`]} />
+
+      {/* Change History Drawer */}
+      <Drawer
+        title="变动记录"
+        placement="right"
+        onClose={() => setShowChangeDrawer(false)}
+        open={showChangeDrawer}
+        width={600}
+      >
+        <ChangeTable logFor={[`spu_cate_${spuCateID}`]} />
+      </Drawer>
     </>
   );
 }
