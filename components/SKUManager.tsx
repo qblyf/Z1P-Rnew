@@ -758,26 +758,6 @@ export default function SKUManager(props: {
               </>
             </div>
 
-            {/* Action Buttons - Above Table Container */}
-            <div className="sku-actions-section">
-              <Button
-                onClick={() => {
-                  // Placeholder - will be connected to state
-                }}
-                disabled={false}
-              >
-                + 新增
-              </Button>
-              <Button
-                type="primary"
-                onClick={() => {
-                  // Placeholder - will be connected to state
-                }}
-              >
-                确认修改
-              </Button>
-            </div>
-
             {/* Table Container - Scrolls with content */}
             <div className="sku-table-section">
               <div className="sku-table-wrapper">
@@ -1115,6 +1095,39 @@ function EditRelationshipSPUwithSKUs(props: {
         title={() => `SKU 列表`}
         footer={undefined}
       />
+      
+      {/* Action Buttons - Below Table */}
+      <div style={{ 
+        marginTop: '16px', 
+        borderTop: '1px solid #f0f0f0', 
+        paddingTop: '16px',
+        display: 'flex',
+        gap: '12px',
+        justifyContent: 'flex-start'
+      }}>
+        <Button
+          onClick={() => {
+            // 触发新增 SKU 的逻辑
+            if (newRowData) {
+              setNewRowData(null);
+            } else {
+              setNewRowData({});
+            }
+          }}
+          disabled={false}
+        >
+          + 新增
+        </Button>
+        <Button
+          type="primary"
+          onClick={() => {
+            // 确认修改的逻辑 - 需要类型转换
+            onChange(inputSKUs as SPU['skuIDs']);
+          }}
+        >
+          确认修改
+        </Button>
+      </div>
     </div>
     );
   }

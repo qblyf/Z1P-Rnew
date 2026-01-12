@@ -113,19 +113,19 @@ function RenderChangeDetail(props: { log: ChangeLog }) {
   const items: { label: string; type: 'change' | 'add' | 'remove'; value: any }[] = [];
 
   if ('present' in log && log.present && Object.keys(log.present).length > 0) {
-    items.push({ label: '修改为', type: 'change', value: log.present });
+    items.push({ label: '修改后', type: 'change', value: log.present });
   }
 
   if ('change' in log && log.change && Object.keys(log.change).length > 0) {
-    items.push({ label: '增加了', type: 'add', value: log.change });
+    items.push({ label: '新增内容', type: 'add', value: log.change });
   }
 
   if ('original' in log && log.original && Object.keys(log.original).length > 0) {
-    items.push({ label: '之前为', type: 'remove', value: log.original });
+    items.push({ label: '修改前', type: 'remove', value: log.original });
   }
 
   if (items.length === 0) {
-    return <div style={{ color: '#999', fontSize: '12px' }}>无变动详情</div>;
+    return <div style={{ color: '#999', fontSize: '12px' }}>暂无详细信息</div>;
   }
 
   return (
@@ -161,16 +161,43 @@ function formatDetailValue(value: any): string {
     return Object.entries(value)
       .map(([key, val]) => {
         if (key === 'images' && val && typeof val === 'object') {
-          return `${key}: ${formatImageObject(val)}`;
+          return `图片: ${formatImageObject(val)}`;
         }
         if (key === 'skuIDs' && Array.isArray(val)) {
-          return `${key}: ${formatSkuIDsArray(val)}`;
+          return formatSkuIDsArray(val);
         }
-        return `${key}: ${formatHumanReadable(val)}`;
+        // 将技术字段名转换为更友好的显示名称
+        const friendlyKey = getFriendlyFieldName(key);
+        return `${friendlyKey}: ${formatHumanReadable(val)}`;
       })
       .join('\n');
   }
   return String(value);
+}
+
+function getFriendlyFieldName(key: string): string {
+  const fieldMap: { [key: string]: string } = {
+    'name': '商品名称',
+    'price': '价格',
+    'stock': '库存',
+    'description': '商品描述',
+    'category': '分类',
+    'brand': '品牌',
+    'weight': '重量',
+    'dimensions': '尺寸',
+    'color': '颜色',
+    'spec': '配置',
+    'combo': '版本',
+    'status': '状态',
+    'createdAt': '创建时间',
+    'updatedAt': '更新时间',
+    'skuID': 'SKU编号',
+    'spuID': 'SPU编号',
+    'gtins': '商品条码',
+    'images': '图片'
+  };
+  
+  return fieldMap[key] || key;
 }
 
 function formatHumanReadable(value: any): string {
@@ -220,15 +247,22 @@ function formatSkuIDsArray(skuIDs: any[]): string {
   const skuSummary = skuIDs.map((sku, index) => {
     if (sku && typeof sku === 'object') {
       const parts: string[] = [];
-      if (sku.color) parts.push(sku.color);
+      
+      // 按照更自然的顺序显示：配置 + 颜色 + 版本
       if (sku.spec) parts.push(sku.spec);
+      if (sku.color) parts.push(sku.color);
       if (sku.combo) parts.push(sku.combo);
       
-      const description = parts.length > 0 ? parts.join(' ') : `SKU${sku.skuID || index + 1}`;
-      return `${index + 1}. ${description}`;
+      if (parts.length > 0) {
+        const description = parts.join(' ');
+        const skuIdText = sku.skuID ? ` (ID:${sku.skuID})` : '';
+        return `• ${description}${skuIdText}`;
+      } else {
+        return `• SKU ${sku.skuID || index + 1}`;
+      }
     }
-    return `${index + 1}. SKU${sku.skuID || index + 1}`;
+    return `• SKU ${sku.skuID || index + 1}`;
   }).join('\n');
   
-  return `共${skuCount}个SKU:\n${skuSummary}`;
+  return `新增了 ${skuCount} 个商品规格:\n${skuSummary}`;
 }
