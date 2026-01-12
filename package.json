@@ -1,0 +1,59 @@
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "type": "module",
+  "dependencies": {
+    "@ant-design/compatible": "^5.1.2",
+    "@ant-design/cssinjs": "^1.21.0",
+    "@ant-design/icons": "^4.7.0",
+    "@ant-design/nextjs-registry": "^1.0.0",
+    "@ant-design/pro-components": "^2.7.10",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@zsqk/somefn": "npm:@jsr/zsqk__somefn@^0.0.3",
+    "@zsqk/z1-sdk": "github:zsqk/z1-mid-build#v2025.08.29-1506",
+    "ali-oss": "^6.20.0",
+    "antd": "^5.19.0",
+    "constate": "^3.3.2",
+    "crypto-js": "^4.1.1",
+    "dingtalk-jsapi": "^3.0.9",
+    "immutability-helper": "^3.1.1",
+    "lodash": "^4.17.21",
+    "lucide-react": "^0.344.0",
+    "moment": "^2.29.4",
+    "next": "^14.2.25",
+    "qrcode.react": "^3.1.0",
+    "react": "^18.3.1",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
+    "react-dom": "^18.3.1",
+    "styled-jsx": "^5.0.2",
+    "swr": "^2.2.5",
+    "tiny-pinyin": "github:iugo/pinyin#master"
+  },
+  "devDependencies": {
+    "@next/eslint-plugin-next": "^12.1.0",
+    "@types/ali-oss": "^6.16.7",
+    "@types/crypto-js": "^4.1.1",
+    "@types/lodash": "^4.14.191",
+    "@types/node": "^18.19.80",
+    "@types/react": "^18.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.12.1",
+    "@typescript-eslint/parser": "^5.12.1",
+    "@vercel/node": "^2.9.13",
+    "autoprefixer": "^10.4.23",
+    "eslint": "^8.9.0",
+    "eslint-config-next": "^14.2.4",
+    "eslint-plugin-react": "^7.28.0",
+    "eslint-plugin-react-hooks": "^4.3.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.5.3"
+  }
+}

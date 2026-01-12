@@ -1,0 +1,83 @@
+import {
+  ShoppingCart,
+  Package,
+  Database,
+  Download,
+  FileText,
+  Clock,
+  LogOut,
+  Settings,
+} from 'lucide-react';
+
+export interface MenuItem {
+  id: string;
+  label: string;
+  href?: string;
+  icon?: string; // 改为字符串，表示图标类型
+  children?: MenuItem[];
+  requiredPermission?: string;
+}
+
+export const MENU_CONFIG: MenuItem[] = [
+  {
+    id: 'product',
+    label: '商品管理',
+    icon: 'ShoppingCart',
+    children: [
+      {
+        id: 'product-manage',
+        label: '商品管理',
+        href: '/product-manage',
+      },
+      {
+        id: 'spu-list',
+        label: 'SPU 列表',
+        href: '/spu-list',
+      },
+      {
+        id: 'sku-list',
+        label: 'SKU 列表',
+        href: '/sku-list',
+      },
+    ],
+  },
+  {
+    id: 'data',
+    label: '数据管理',
+    icon: 'Database',
+    children: [
+      {
+        id: 'basedata-manage',
+        label: '基础数据管理',
+        href: '/basedata-manage',
+      },
+      {
+        id: 'data-export',
+        label: '数据导出',
+        href: '/data-export',
+      },
+    ],
+  },
+  {
+    id: 'system',
+    label: '系统管理',
+    icon: 'Settings',
+    children: [
+      {
+        id: 'log',
+        label: '更新日志',
+        href: '/log',
+      },
+      {
+        id: 'changes',
+        label: '操作审计',
+        href: '/changes',
+      },
+      {
+        id: 'system-maintenance-time',
+        label: '账套维护时间',
+        href: '/system-maintenance-time',
+      },
+    ],
+  },
+];
