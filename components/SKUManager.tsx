@@ -300,13 +300,15 @@ export default function SKUManager(props: {
           .sku-form-content {
             display: flex;
             flex-direction: column;
-            height: 100%;
+            flex: 1;
+            min-height: 0;
           }
           .sku-form-selectors {
             flex-shrink: 0;
             padding: 12px 16px;
             background-color: #fff;
             border-bottom: 1px solid #f0f0f0;
+            overflow: visible;
           }
           .sku-selector-group {
             margin-bottom: 12px;
@@ -331,10 +333,6 @@ export default function SKUManager(props: {
             display: flex;
             gap: 12px;
             justify-content: flex-start;
-          }
-            display: flex;
-            gap: 8px;
-            justify-content: space-between;
           }
         `}</style>
         <Form layout="vertical" className="sku-table-wrapper">
