@@ -262,77 +262,81 @@ export default function SKUManager(props: {
       </div>
 
       {/* Scrollable Container - Contains selectors, form, table, and action buttons */}
-      <div style={{ flex: 1, minHeight: 0 }} className="sku-form-scroll">
+      <div style={{ flex: 1, minHeight: 0 }} className="sku-main-content">
         <style jsx>{`
-          .sku-form-scroll {
+          /* Main scrollable container */
+          .sku-main-content {
+            flex: 1;
+            min-height: 0;
             display: flex;
             flex-direction: column;
             overflow: hidden;
           }
-          .sku-table-wrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
+          
+          /* Filters section - fixed height with internal scroll */
+          .sku-filters-section {
+            flex-shrink: 0;
+            padding: 12px 16px;
+            background-color: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            overflow-y: auto;
+            max-height: 200px;
           }
-          .sku-table-container {
+          .sku-filters-section::-webkit-scrollbar {
+            width: 6px;
+          }
+          .sku-filters-section::-webkit-scrollbar-track {
+            background: #f1f1f1;
+          }
+          .sku-filters-section::-webkit-scrollbar-thumb {
+            background: #999;
+            border-radius: 3px;
+          }
+          .sku-filters-section::-webkit-scrollbar-thumb:hover {
+            background: #666;
+          }
+          
+          /* Actions section - fixed height */
+          .sku-actions-section {
+            flex-shrink: 0;
+            padding: 12px 16px;
+            background-color: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-start;
+          }
+          
+          /* Table section - takes remaining space */
+          .sku-table-section {
             flex: 1;
             min-height: 0;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+          }
+          
+          /* Table wrapper - scrollable */
+          .sku-table-wrapper {
+            flex: 1;
+            min-height: 0;
             overflow-y: auto;
             scrollbar-width: auto;
             scrollbar-color: #999 #f1f1f1;
           }
-          .sku-table-container::-webkit-scrollbar {
+          .sku-table-wrapper::-webkit-scrollbar {
             width: 8px;
           }
-          .sku-table-container::-webkit-scrollbar-track {
+          .sku-table-wrapper::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 4px;
           }
-          .sku-table-container::-webkit-scrollbar-thumb {
+          .sku-table-wrapper::-webkit-scrollbar-thumb {
             background: #999;
             border-radius: 4px;
           }
-          .sku-table-container::-webkit-scrollbar-thumb:hover {
+          .sku-table-wrapper::-webkit-scrollbar-thumb:hover {
             background: #666;
-          }
-          .sku-form-content {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            min-height: 0;
-          }
-          .sku-form-selectors {
-            flex-shrink: 0;
-            padding: 12px 16px;
-            background-color: #fff;
-            border-bottom: 1px solid #f0f0f0;
-            overflow: visible;
-          }
-          .sku-selector-group {
-            margin-bottom: 12px;
-          }
-          .sku-selector-group:last-child {
-            margin-bottom: 0;
-          }
-          .sku-selector-label {
-            font-size: 12px;
-            font-weight: 500;
-            color: #333;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-          }
-          .sku-action-buttons {
-            flex-shrink: 0;
-            padding: 12px 16px;
-            border-bottom: 1px solid #f0f0f0;
-            background-color: #fff;
-            display: flex;
-            gap: 12px;
-            justify-content: flex-start;
           }
         `}</style>
         <Form layout="vertical" className="sku-table-wrapper" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -737,7 +741,7 @@ export default function SKUManager(props: {
               </div>
             </Form.Item>
 
-            <Form.Item label="参数" tooltip="SPU/SKU参数设置">
+            <Form.Item label="参数" tooltip="SPU/SKU参数设置" style={{ marginBottom: 0 }}>
               {hasSetParams ? (
                 <span>已设置</span>
               ) : (
@@ -759,7 +763,7 @@ export default function SKUManager(props: {
             </div>
 
             {/* Action Buttons - Above Table Container */}
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', padding: '16px', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fff', flexShrink: 0 }}>
+            <div className="sku-actions-section">
               <Button
                 onClick={() => {
                   // Placeholder - will be connected to state
@@ -779,7 +783,8 @@ export default function SKUManager(props: {
             </div>
 
             {/* Table Container - Scrolls with content */}
-            <div className="sku-table-container">
+            <div className="sku-table-section">
+              <div className="sku-table-wrapper">
               <EditRelationshipSPUwithSKUs
                   allSKUs={spu.skuIDs}
                   colors={colors}
@@ -839,6 +844,7 @@ export default function SKUManager(props: {
                   postAwait(fn)();
                 }}
               />
+              </div>
             </div>
           </div>
         </Form>
