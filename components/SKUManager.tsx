@@ -276,7 +276,7 @@ export default function SKUManager(props: {
             background: #666;
           }
           .sku-table-wrapper {
-            padding-bottom: 80px;
+            padding-bottom: calc(80px + 5rem);
           }
         `}</style>
         <Form layout="vertical" className="sku-table-wrapper">
