@@ -922,6 +922,38 @@ function EditRelationshipSPUwithSKUs(props: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Action Buttons - Above Table */}
+      <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', padding: '16px', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fff', flexShrink: 0 }}>
+        <Button
+          onClick={() => {
+            setNewRowData({ combo: undefined, spec: undefined, color: undefined });
+          }}
+          disabled={newRowData !== null}
+        >
+          + 新增
+        </Button>
+        <Button
+          type="primary"
+          onClick={() => {
+            try {
+              const newData = inputSKUs.map(v => {
+                const res: (typeof allSKUs)[0] = { skuID: v.skuID };
+                if (v.color) res.color = v.color;
+                if (v.spec) res.spec = v.spec;
+                if (v.combo) res.combo = v.combo;
+                return res;
+              });
+              onChange(newData as SPU['skuIDs']);
+            } catch (err) {
+              console.error(err);
+            }
+          }}
+        >
+          确认修改
+        </Button>
+      </div>
+
+      {/* SKU Table */}
       <Table
         rowKey="skuID"
         style={{ flex: 1, minHeight: 0, overflow: 'auto' }}
@@ -1073,35 +1105,6 @@ function EditRelationshipSPUwithSKUs(props: {
         title={() => `SKU 列表`}
         footer={undefined}
       />
-      <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', padding: '16px', borderTop: '1px solid #f0f0f0', backgroundColor: '#fff', flexShrink: 0 }}>
-        <Button
-          onClick={() => {
-            setNewRowData({ combo: undefined, spec: undefined, color: undefined });
-          }}
-          disabled={newRowData !== null}
-        >
-          + 新增
-        </Button>
-        <Button
-          type="primary"
-          onClick={() => {
-            try {
-              const newData = inputSKUs.map(v => {
-                const res: (typeof allSKUs)[0] = { skuID: v.skuID };
-                if (v.color) res.color = v.color;
-                if (v.spec) res.spec = v.spec;
-                if (v.combo) res.combo = v.combo;
-                return res;
-              });
-              onChange(newData as SPU['skuIDs']);
-            } catch (err) {
-              console.error(err);
-            }
-          }}
-        >
-          确认修改
-        </Button>
-      </div>
     </div>
   );
 }
