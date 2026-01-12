@@ -964,7 +964,7 @@ function EditRelationshipSPUwithSKUs(props: {
       <Table
         rowKey="skuID"
         style={{ flex: 1, minHeight: 0 }}
-        scroll={{ x: 'max-content', y: true }}
+        scroll={{ x: 'max-content' }}
         columns={[
           { title: 'ID', dataIndex: 'skuID' },
           ...(canSetCombo || selectedCombos.length > 0 ? [{
