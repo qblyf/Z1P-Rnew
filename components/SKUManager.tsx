@@ -256,8 +256,9 @@ export default function SKUManager(props: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Fixed SPU ID Header - Does not scroll */}
-      <div style={{ marginBottom: '8px', fontSize: '12px', color: '#666', flexShrink: 0, padding: '8px 0' }}>
-        SPU ID: {spuID}, 名称: {spu.name}
+      <div style={{ padding: '12px 16px', fontSize: '13px', color: '#333', flexShrink: 0, borderBottom: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}>
+        <div style={{ fontWeight: 500 }}>SPU ID: {spuID}</div>
+        <div style={{ color: '#999', marginTop: '4px' }}>名称: {spu.name}</div>
       </div>
 
       {/* Scrollable Container - Contains selectors, form, table, and action buttons */}
@@ -303,12 +304,34 @@ export default function SKUManager(props: {
           }
           .sku-form-selectors {
             flex-shrink: 0;
+            padding: 12px 16px;
+            background-color: #fff;
+            border-bottom: 1px solid #f0f0f0;
+          }
+          .sku-selector-group {
+            margin-bottom: 12px;
+          }
+          .sku-selector-group:last-child {
+            margin-bottom: 0;
+          }
+          .sku-selector-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
           }
           .sku-action-buttons {
             flex-shrink: 0;
-            padding: 16px;
-            border-top: 1px solid #f0f0f0;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f0;
             background-color: #fff;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-start;
+          }
             display: flex;
             gap: 8px;
             justify-content: space-between;
