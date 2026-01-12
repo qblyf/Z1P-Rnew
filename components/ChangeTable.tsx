@@ -55,6 +55,8 @@ function ChangeTableWithoutData(props: {
   columnKeys?: string[];
 }) {
   const { data, columnKeys } = props;
+  const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
+
   const columns: ColumnsType<ChangeLog> = [
     { title: '变动项', dataIndex: 'logFor', key: 'logFor', width: 120 },
     { title: '变动方式', dataIndex: 'operate', key: 'operate', width: 100 },
@@ -70,12 +72,6 @@ function ChangeTableWithoutData(props: {
       render: (_, { createdBy }) => <RenderUser userIdent={createdBy} />,
       width: 100,
     },
-    {
-      title: '变动详情',
-      key: 'details',
-      render: (_, record) => <RenderChangeDetail log={record} />,
-      ellipsis: true,
-    },
   ];
 
   return (
@@ -90,6 +86,16 @@ function ChangeTableWithoutData(props: {
       })}
       dataSource={data}
       pagination={false}
+      expandable={{
+        expandedRowKeys,
+        onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as React.Key[]),
+        expandedRowRender: (record) => (
+          <div style={{ padding: '12px 16px', backgroundColor: '#fafafa', borderRadius: '4px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 500, marginBottom: '8px', color: '#333' }}>变动详情</div>
+            <RenderChangeDetail log={record} />
+          </div>
+        ),
+      }}
     />
   );
 }
@@ -104,34 +110,59 @@ function RenderUser(props: { userIdent: string }) {
 
 function RenderChangeDetail(props: { log: ChangeLog }) {
   const { log } = props;
-  const parts: string[] = [];
+  const items: { label: string; type: 'change' | 'add' | 'remove'; value: any }[] = [];
 
   if ('present' in log && log.present && Object.keys(log.present).length > 0) {
-    const values = Object.entries(log.present)
-      .map(([key, value]) => `${key}: ${formatHumanReadable(value)}`)
-      .join(', ');
-    parts.push(`改为 ${values}`);
+    items.push({ label: '修改为', type: 'change', value: log.present });
   }
 
   if ('change' in log && log.change && Object.keys(log.change).length > 0) {
-    const values = Object.entries(log.change)
-      .map(([key, value]) => `${key}: ${formatHumanReadable(value)}`)
-      .join(', ');
-    parts.push(`增加了 ${values}`);
+    items.push({ label: '增加了', type: 'add', value: log.change });
   }
 
   if ('original' in log && log.original && Object.keys(log.original).length > 0) {
-    const values = Object.entries(log.original)
-      .map(([key, value]) => `${key}: ${formatHumanReadable(value)}`)
-      .join(', ');
-    parts.push(`之前为 ${values}`);
+    items.push({ label: '之前为', type: 'remove', value: log.original });
   }
 
-  if (parts.length === 0) {
-    return <span style={{ color: '#999' }}>-</span>;
+  if (items.length === 0) {
+    return <div style={{ color: '#999', fontSize: '12px' }}>无变动详情</div>;
   }
 
-  return <span style={{ fontSize: '12px', color: '#666' }}>{parts.join('; ')}</span>;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {items.map((item, idx) => (
+        <div
+          key={idx}
+          style={{
+            padding: '12px',
+            backgroundColor: '#fff',
+            borderRadius: '4px',
+            borderLeft: `3px solid ${item.type === 'change' ? '#1890ff' : item.type === 'add' ? '#52c41a' : '#ff4d4f'}`,
+            border: `1px solid ${item.type === 'change' ? '#91d5ff' : item.type === 'add' ? '#b7eb8f' : '#ffccc7'}`,
+          }}
+        >
+          <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: 500 }}>
+            {item.label}
+          </div>
+          <div style={{ fontSize: '12px', color: '#333', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {formatDetailValue(item.value)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatDetailValue(value: any): string {
+  if (value === null || value === undefined) {
+    return '-';
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .map(([key, val]) => `${key}: ${formatHumanReadable(val)}`)
+      .join('\n');
+  }
+  return String(value);
 }
 
 function formatHumanReadable(value: any): string {
