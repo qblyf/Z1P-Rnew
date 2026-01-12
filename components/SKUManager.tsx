@@ -960,10 +960,12 @@ function EditRelationshipSPUwithSKUs(props: {
   }, [inputSKUs, onUsedValuesChange]);
 
   return (
-    <Table
-      rowKey="skuID"
-      style={{ flex: 1, minHeight: 0, overflow: 'auto' }}
-      columns={[
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Table
+        rowKey="skuID"
+        style={{ flex: 1, minHeight: 0 }}
+        scroll={{ x: 'max-content', y: true }}
+        columns={[
           { title: 'ID', dataIndex: 'skuID' },
           ...(canSetCombo || selectedCombos.length > 0 ? [{
             title: '版本',
@@ -1111,6 +1113,7 @@ function EditRelationshipSPUwithSKUs(props: {
         title={() => `SKU 列表`}
         footer={undefined}
       />
+    </div>
     );
   }
 /**
