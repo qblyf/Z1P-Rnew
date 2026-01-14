@@ -422,6 +422,11 @@ function formatDetailValue(value: any): string {
       return `[${value.join(', ')}]`;
     }
     
+    // 检查是否是 images 对象
+    if ('mainImages' in value || 'detailsImages' in value || 'thumbnail' in value) {
+      return formatImagesDetail(value);
+    }
+    
     return Object.entries(value)
       .map(([key, val]) => {
         if (key === 'images' && val && typeof val === 'object') {
@@ -437,6 +442,24 @@ function formatDetailValue(value: any): string {
       .join('\n');
   }
   return String(value);
+}
+
+function formatImagesDetail(images: any): string {
+  const parts: string[] = [];
+  
+  if (images.thumbnail) {
+    parts.push(`缩略图: 1张`);
+  }
+  
+  if (images.mainImages && Array.isArray(images.mainImages) && images.mainImages.length > 0) {
+    parts.push(`主图: ${images.mainImages.length}张`);
+  }
+  
+  if (images.detailsImages && Array.isArray(images.detailsImages) && images.detailsImages.length > 0) {
+    parts.push(`详情图: ${images.detailsImages.length}张`);
+  }
+  
+  return parts.length > 0 ? parts.join(' | ') : '无图片';
 }
 
 function getFriendlyFieldName(key: string): string {
@@ -566,7 +589,7 @@ function formatImageObject(images: any): string {
     parts.push(`详情图: ${images.detailsImages.length}张`);
   }
   
-  return parts.length > 0 ? parts.join(', ') : '无图片';
+  return parts.length > 0 ? parts.join(' | ') : '无图片';
 }
 
 function formatSkuIDsArray(skuIDs: any[]): string {
