@@ -3,6 +3,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 .spu-edit-tabs .ant-tabs-nav-wrap {
@@ -12,6 +14,7 @@
   background-color: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
+  padding: 0 16px;
 }
 
 .spu-edit-tabs .ant-tabs-nav {
@@ -22,12 +25,19 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  padding: 0;
 }
 
 .spu-edit-tabs .ant-tabs-tabpane {
   height: auto;
+  padding: 16px;
 }
 
 .spu-edit-tabs .ant-form {
-  padding-right: 8px;
+  padding: 0;
+  margin: 0;
+}
+
+.spu-edit-tabs .ant-form-item {
+  margin-bottom: 16px;
 }
