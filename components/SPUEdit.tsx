@@ -13,7 +13,6 @@ import {
   InputNumber,
   Select,
   Space,
-  Drawer,
   Tabs,
 } from 'antd';
 import { useEffect, useState, useCallback } from 'react';
@@ -50,7 +49,6 @@ export default function SPUEdit() {
   const { spuList, setSpuList } = useSpuListContext();
   const { brandList } = useBrandListContext();
   const [input, setInput] = useState<Partial<SPUEditing>>({});
-  const [showChangeDrawer, setShowChangeDrawer] = useState(false);
 
   const transSpuDataToEditingData = useCallback((spu: SPU): SPUEditing => {
     return {
@@ -292,6 +290,13 @@ export default function SPUEdit() {
                 </Form>
               ),
             },
+            {
+              key: 'changes',
+              label: '变动记录',
+              children: (
+                <ChangeTable logFor={[`spu_${spuID}`]} />
+              ),
+            },
           ]}
         />
 
@@ -363,11 +368,6 @@ export default function SPUEdit() {
               提交修改
             </Button>
             <Button
-              onClick={() => setShowChangeDrawer(true)}
-            >
-              查看变动记录
-            </Button>
-            <Button
               danger
               onClick={postAwait(
                 async () => {
@@ -382,17 +382,6 @@ export default function SPUEdit() {
           </Space>
         </Form.Item>
       </Form>
-      
-      {/* Change History Drawer */}
-      <Drawer
-        title="变动记录"
-        placement="right"
-        onClose={() => setShowChangeDrawer(false)}
-        open={showChangeDrawer}
-        width={600}
-      >
-        <ChangeTable logFor={[`spu_${spuID}`]} />
-      </Drawer>
     </>
   );
 }

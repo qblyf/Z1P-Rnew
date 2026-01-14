@@ -1,7 +1,7 @@
 import { SPUCate } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { editSPUCateInfo, getSPUCateInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { EditSPUCateInfo } from '@zsqk/z1-sdk/es/z1p/product-types';
-import { Button, Form, Input, Radio, Drawer } from 'antd';
+import { Button, Form, Input, Radio, Tabs } from 'antd';
 import { useEffect, useState } from 'react';
 import update from 'immutability-helper';
 import pinyin from 'tiny-pinyin';
@@ -28,7 +28,6 @@ export default function SPUCateEdit() {
   const [preData, setPreData] = useState<SPUCate>();
   const [input, setInput] = useState<Parameters<EditSPUCateInfo>[1]>({});
   const [icon, setIcon] = useState<UploadFile>();
-  const [showChangeDrawer, setShowChangeDrawer] = useState(false);
 
   useEffect(() => {
     if (!preData?.icon) {
@@ -80,87 +79,106 @@ export default function SPUCateEdit() {
           <Input value={preData.id} disabled />
         </Form.Item>
 
-        <Form.Item label="名称" tooltip="SPU 分类的名称, 唯一">
-          <Input
-            value={input.name ?? preData.name}
-            onChange={e => {
-              const v = e.target.value;
-              setInput(
-                update(input, {
-                  name: { $set: v },
-                  spell: { $set: pinyin.convertToFirstLetter(v) },
-                })
-              );
-            }}
-          />
-        </Form.Item>
+        <Tabs
+          items={[
+            {
+              key: 'basic',
+              label: '基本信息',
+              children: (
+                <Form layout="vertical" autoComplete="off">
+                  <Form.Item label="名称" tooltip="SPU 分类的名称, 唯一">
+                    <Input
+                      value={input.name ?? preData.name}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setInput(
+                          update(input, {
+                            name: { $set: v },
+                            spell: { $set: pinyin.convertToFirstLetter(v) },
+                          })
+                        );
+                      }}
+                    />
+                  </Form.Item>
 
-        {/* 暂时关闭前端的编号管理功能 */}
-        {/* <Form.Item label="编号" tooltip="自定义的方便进行查找的编号">
-          <Input
-            value={input.number ?? preData.number}
-            onChange={(e) => {
-              setInput(update(input, { number: { $set: e.target.value } }));
-            }}
-          />
-        </Form.Item> */}
+                  {/* 暂时关闭前端的编号管理功能 */}
+                  {/* <Form.Item label="编号" tooltip="自定义的方便进行查找的编号">
+                    <Input
+                      value={input.number ?? preData.number}
+                      onChange={(e) => {
+                        setInput(update(input, { number: { $set: e.target.value } }));
+                      }}
+                    />
+                  </Form.Item> */}
 
-        <Form.Item label="拼音码" tooltip="名称的拼音码, 方便进行查找">
-          <Input
-            value={input.spell ?? preData.spell}
-            onChange={e => {
-              setInput(update(input, { spell: { $set: e.target.value } }));
-            }}
-          />
-        </Form.Item>
+                  <Form.Item label="拼音码" tooltip="名称的拼音码, 方便进行查找">
+                    <Input
+                      value={input.spell ?? preData.spell}
+                      onChange={e => {
+                        setInput(update(input, { spell: { $set: e.target.value } }));
+                      }}
+                    />
+                  </Form.Item>
 
-        <Form.Item label="分类图标" tooltip="非必填，一张">
-          <Upload
-            maxCount={1}
-            listType="picture-card"
-            dir="z1p/"
-            imgList={icon ? [icon] : []}
-            setImgList={e => {
-              setIcon(e[0]);
-            }}
-          />
-        </Form.Item>
+                  <Form.Item label="分类图标" tooltip="非必填，一张">
+                    <Upload
+                      maxCount={1}
+                      listType="picture-card"
+                      dir="z1p/"
+                      imgList={icon ? [icon] : []}
+                      setImgList={e => {
+                        setIcon(e[0]);
+                      }}
+                    />
+                  </Form.Item>
 
-        <Form.Item label="上级分类" tooltip="选择一个上级分类">
-          <SelectSPUCate
-            selectedSPUCateID={input.pid ?? preData.pid}
-            onSelect={id => {
-              setInput(update(input, { pid: { $set: id } }));
-            }}
-          />
-        </Form.Item>
+                  <Form.Item label="上级分类" tooltip="选择一个上级分类">
+                    <SelectSPUCate
+                      selectedSPUCateID={input.pid ?? preData.pid}
+                      onSelect={id => {
+                        setInput(update(input, { pid: { $set: id } }));
+                      }}
+                    />
+                  </Form.Item>
 
-        <Form.Item label="排序号" tooltip="相同上级分类 从低到高显示">
-          <Input value={preData.order} disabled />
-        </Form.Item>
+                  <Form.Item label="排序号" tooltip="相同上级分类 从低到高显示">
+                    <Input value={preData.order} disabled />
+                  </Form.Item>
 
-        <Form.Item label="备注" tooltip="自定义的文字 方便了解该分类">
-          <TextArea
-            value={input.remarks ?? preData.remarks}
-            onChange={e => {
-              setInput(update(input, { remarks: { $set: e.target.value } }));
-            }}
-          />
-        </Form.Item>
+                  <Form.Item label="备注" tooltip="自定义的文字 方便了解该分类">
+                    <TextArea
+                      value={input.remarks ?? preData.remarks}
+                      onChange={e => {
+                        setInput(update(input, { remarks: { $set: e.target.value } }));
+                      }}
+                    />
+                  </Form.Item>
 
-        <Form.Item label="状态" tooltip="选择一种状态">
-          <Radio.Group
-            onChange={e => {
-              setInput(update(input, { state: { $set: e.target.value } }));
-            }}
-            value={input.state ?? preData.state}
-          >
-            <Radio value={'valid'}>有效</Radio>
-            <Radio value={'invalid'}>无效</Radio>
-          </Radio.Group>
-        </Form.Item>
+                  <Form.Item label="状态" tooltip="选择一种状态">
+                    <Radio.Group
+                      onChange={e => {
+                        setInput(update(input, { state: { $set: e.target.value } }));
+                      }}
+                      value={input.state ?? preData.state}
+                    >
+                      <Radio value={'valid'}>有效</Radio>
+                      <Radio value={'invalid'}>无效</Radio>
+                    </Radio.Group>
+                  </Form.Item>
+                </Form>
+              ),
+            },
+            {
+              key: 'changes',
+              label: '变动记录',
+              children: (
+                <ChangeTable logFor={[`spu_cate_${spuCateID}`]} />
+              ),
+            },
+          ]}
+        />
 
-        <Form.Item>
+        <Form.Item style={{ marginTop: '24px' }}>
           <Button
             type="primary"
             onClick={postAwait(async () => {
@@ -180,25 +198,8 @@ export default function SPUCateEdit() {
           >
             提交修改
           </Button>
-          <Button
-            style={{ marginLeft: '8px' }}
-            onClick={() => setShowChangeDrawer(true)}
-          >
-            查看变动记录
-          </Button>
         </Form.Item>
       </Form>
-
-      {/* Change History Drawer */}
-      <Drawer
-        title="变动记录"
-        placement="right"
-        onClose={() => setShowChangeDrawer(false)}
-        open={showChangeDrawer}
-        width={600}
-      >
-        <ChangeTable logFor={[`spu_cate_${spuCateID}`]} />
-      </Drawer>
     </>
   );
 }
