@@ -412,6 +412,18 @@ function formatDetailValue(value: any): string {
   if (value === null || value === undefined) {
     return '-';
   }
+  
+  // 如果是字符串，尝试解析为 JSON
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return formatDetailValue(parsed);
+    } catch {
+      // 不是 JSON，直接返回字符串
+      return value;
+    }
+  }
+  
   if (typeof value === 'object') {
     // 如果是数组，检查是否是 skuIDs 数组
     if (Array.isArray(value)) {
@@ -448,6 +460,17 @@ function formatDetailValue(value: any): string {
             return `SKU规格: ${formatSkuIDsArray(val)}`;
           } else if (val && typeof val === 'object' && 'skuID' in val) {
             return `SKU规格: ${formatSingleSku(val)}`;
+          } else if (typeof val === 'string') {
+            try {
+              const parsed = JSON.parse(val);
+              if (Array.isArray(parsed)) {
+                return `SKU规格: ${formatSkuIDsArray(parsed)}`;
+              } else if (parsed && typeof parsed === 'object' && 'skuID' in parsed) {
+                return `SKU规格: ${formatSingleSku(parsed)}`;
+              }
+            } catch {
+              // 不是 JSON，直接返回
+            }
           }
         }
         // 将技术字段名转换为更友好的显示名称
@@ -576,6 +599,18 @@ function formatHumanReadable(value: any): string {
   if (typeof value === 'boolean') {
     return value ? '是' : '否';
   }
+  
+  // 如果是字符串，尝试解析为 JSON
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return formatHumanReadable(parsed);
+    } catch {
+      // 不是 JSON，直接返回字符串
+      return value;
+    }
+  }
+  
   if (typeof value === 'object') {
     if (Array.isArray(value)) {
       // 检查是否是 SKU 对象数组
