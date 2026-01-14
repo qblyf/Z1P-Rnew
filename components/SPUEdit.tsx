@@ -33,6 +33,7 @@ import { useTokenContext } from '../datahooks/auth';
 import { ChangeTable } from './ChangeTable';
 import SKUManager from './SKUManager';
 import { SKUEdit } from './SKUEdit';
+import './SPUEdit.css';
 
 type SPUEditing = Omit<SPU, 'images'> & {
   images: {
@@ -114,13 +115,7 @@ export default function SPUEdit() {
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
-          style={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 10,
-            backgroundColor: '#fff',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-          }}
+          className="spu-edit-tabs"
           items={[
             {
               key: 'basic',
