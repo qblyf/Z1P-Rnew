@@ -110,9 +110,8 @@ export default function SPUEdit() {
   }
 
   return (
-    <>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <Tabs
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
           className="spu-edit-tabs"
@@ -423,6 +422,6 @@ export default function SPUEdit() {
           <SKUEdit selectedSkuID={selectedSkuID} />
         </Drawer>
       )}
-    </>
+    </div>
   );
 }
