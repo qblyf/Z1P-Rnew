@@ -106,13 +106,12 @@ export default function SPUEdit() {
 
   return (
     <>
-      <h2>编辑 SPU</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+        <h2 style={{ margin: 0 }}>编辑 SPU</h2>
+        <span style={{ color: '#666' }}>ID: {spuID}</span>
+      </div>
 
       <Form layout="vertical" autoComplete="off">
-        <Form.Item label="ID" tooltip="唯一标识符, 不可修改">
-          <Input value={spuID} disabled />
-        </Form.Item>
-
         <Tabs
           items={[
             {
