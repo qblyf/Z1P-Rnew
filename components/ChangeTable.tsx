@@ -413,6 +413,15 @@ function formatDetailValue(value: any): string {
     return '-';
   }
   if (typeof value === 'object') {
+    // 如果是数组，检查是否是 skuIDs 数组
+    if (Array.isArray(value)) {
+      // 检查是否是 SKU 对象数组
+      if (value.length > 0 && value[0] && typeof value[0] === 'object' && 'skuID' in value[0]) {
+        return formatSkuIDsArray(value);
+      }
+      return `[${value.join(', ')}]`;
+    }
+    
     return Object.entries(value)
       .map(([key, val]) => {
         if (key === 'images' && val && typeof val === 'object') {
@@ -565,57 +574,53 @@ function formatSkuIDsArray(skuIDs: any[]): string {
     return '无商品规格';
   }
   
-  const skuCount = skuIDs.length;
-  
-  // 如果只有一个SKU，显示详细信息
-  if (skuCount === 1) {
+  // 处理单个 SKU 对象的情况
+  if (skuIDs.length === 1) {
     const sku = skuIDs[0];
     if (sku && typeof sku === 'object') {
-      const parts: string[] = [];
-      
-      if (sku.spec) parts.push(sku.spec);
-      if (sku.color) parts.push(sku.color);
-      if (sku.combo) parts.push(sku.combo);
-      
-      if (parts.length > 0) {
-        const description = parts.join(' · ');
-        const skuIdText = sku.skuID ? ` (编号: ${sku.skuID})` : '';
-        return `新增规格: ${description}${skuIdText}`;
-      } else {
-        return `新增规格 ${sku.skuID || ''}`;
-      }
+      return formatSingleSku(sku);
     }
-    return '新增1个商品规格';
+    return String(sku);
   }
   
-  // 多个SKU时，显示汇总信息
-  const skuSummary = skuIDs.slice(0, 3).map((sku, index) => {
+  // 多个 SKU 时，显示汇总信息
+  const skuDetails = skuIDs.map((sku, index) => {
     if (sku && typeof sku === 'object') {
-      const parts: string[] = [];
-      
-      if (sku.spec) parts.push(sku.spec);
-      if (sku.color) parts.push(sku.color);
-      if (sku.combo) parts.push(sku.combo);
-      
-      if (parts.length > 0) {
-        const description = parts.join(' · ');
-        return `${description}`;
-      } else {
-        return `规格${sku.skuID || index + 1}`;
-      }
+      return formatSingleSku(sku);
     }
-    return `规格${sku.skuID || index + 1}`;
+    return `规格${index + 1}`;
   });
   
-  let result = `新增了 ${skuCount} 个商品规格`;
-  
-  if (skuSummary.length > 0) {
-    result += `:\n${skuSummary.map(s => `• ${s}`).join('\n')}`;
-    
-    if (skuCount > 3) {
-      result += `\n• ... 还有 ${skuCount - 3} 个规格`;
-    }
+  return skuDetails.join('\n');
+}
+
+function formatSingleSku(sku: any): string {
+  if (!sku || typeof sku !== 'object') {
+    return String(sku);
   }
   
-  return result;
+  const parts: string[] = [];
+  
+  // 按照优先级添加规格信息
+  if (sku.spec) parts.push(`规格: ${sku.spec}`);
+  if (sku.color) parts.push(`颜色: ${sku.color}`);
+  if (sku.combo) parts.push(`版本: ${sku.combo}`);
+  if (sku.size) parts.push(`尺寸: ${sku.size}`);
+  if (sku.weight) parts.push(`重量: ${sku.weight}`);
+  
+  // 添加其他字段
+  const excludeKeys = ['spec', 'color', 'combo', 'size', 'weight', 'skuID'];
+  Object.entries(sku).forEach(([key, value]) => {
+    if (!excludeKeys.includes(key) && value !== null && value !== undefined) {
+      const friendlyKey = getFriendlyFieldName(key);
+      parts.push(`${friendlyKey}: ${formatHumanReadable(value)}`);
+    }
+  });
+  
+  // 添加 SKU ID
+  if (sku.skuID) {
+    parts.push(`SKU编号: ${sku.skuID}`);
+  }
+  
+  return parts.join(' | ');
 }
