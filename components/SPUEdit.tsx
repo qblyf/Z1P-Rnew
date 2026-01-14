@@ -30,7 +30,6 @@ import { useBrandListContext } from '../datahooks/brand';
 import Upload from './Upload';
 import { useTokenContext } from '../datahooks/auth';
 import { ChangeTable } from './ChangeTable';
-import SKUManager from './SKUManager';
 
 type SPUEditing = Omit<SPU, 'images'> & {
   images: {
@@ -50,6 +49,7 @@ export default function SPUEdit() {
   const { spuList, setSpuList } = useSpuListContext();
   const { brandList } = useBrandListContext();
   const [input, setInput] = useState<Partial<SPUEditing>>({});
+  const [activeTab, setActiveTab] = useState<string>('basic');
 
   const transSpuDataToEditingData = useCallback((spu: SPU): SPUEditing => {
     return {
@@ -107,6 +107,8 @@ export default function SPUEdit() {
     <>
       <Form layout="vertical" autoComplete="off">
         <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
           items={[
             {
               key: 'basic',
@@ -292,103 +294,98 @@ export default function SPUEdit() {
               ),
             },
             {
-              key: 'changes',
-              label: '变动记录',
+              key: 'operations',
+              label: '操作记录',
               children: (
                 <ChangeTable logFor={[`spu_${spuID}`]} />
-              ),
-            },
-            {
-              key: 'sku',
-              label: 'SKU编辑',
-              children: (
-                <SKUManager />
               ),
             },
           ]}
         />
 
-        <Form.Item style={{ marginTop: '24px' }}>
-          <Space>
-            {preData.state === 'invalid' ? (
+        {activeTab !== 'operations' && (
+          <Form.Item style={{ marginTop: '24px' }}>
+            <Space>
+              {preData.state === 'invalid' ? (
+                <Button
+                  danger
+                  onClick={postAwait(async () => {
+                    // TODO: 完成功能
+                    alert('需要完成该功能');
+                  })}
+                >
+                  启用
+                </Button>
+              ) : (
+                <Button
+                  danger
+                  onClick={postAwait(
+                    async () => {
+                      // TODO: 完成功能
+                      alert('需要完成该功能');
+                    },
+                    { confirmText: `停用 SPU 前请确认 SPU 下没有任何在用的 SKU.` }
+                  )}
+                  disabled
+                >
+                  停用
+                </Button>
+              )}
               <Button
-                danger
+                type="primary"
                 onClick={postAwait(async () => {
-                  // TODO: 完成功能
-                  alert('需要完成该功能');
+                  if (!Object.keys(input).length) {
+                    throw new Error('无变动不需提交');
+                  }
+                  const params: Parameters<EditSPUInfo>[1] = {
+                    ...input,
+                    images: input.images
+                      ? ({
+                          thumbnail: input.images.thumbnail
+                            ? input.images.thumbnail.url
+                            : '',
+                          mainImages: (input.images.mainImages || [])
+                            .map(img => img.url || '')
+                            .filter(url => Boolean(url)),
+                          detailsImages: (input.images.detailsImages || [])
+                            .map(img => img.url || '')
+                            .filter(url => Boolean(url)),
+                        } as Parameters<EditSPUInfo>[1]['images'])
+                      : undefined,
+                  };
+
+                  // 修改服务端数据
+                  await editSPUInfo(spuID, params, { auth: token });
+
+                  // 请求成功后 按需修改本组件数据
+                  const newData = { ...preData, ...input };
+                  setPreData(newData);
+
+                  // 请求成功后 初始化用户输入数据
+                  setInput({});
+
+                  // 请求成功后 按需修改 上下文 数据
+                  const i = spuList.findIndex(v => v.id === spuID);
+                  setSpuList(update(spuList, { [i]: { $set: newData } }));
                 })}
               >
-                启用
+                提交修改
               </Button>
-            ) : (
               <Button
                 danger
                 onClick={postAwait(
                   async () => {
-                    // TODO: 完成功能
-                    alert('需要完成该功能');
+                    await invalidateSPUInfo(spuID, { auth: token });
+                    // TODO: 更好的前端体验
                   },
-                  { confirmText: `停用 SPU 前请确认 SPU 下没有任何在用的 SKU.` }
+                  { successText: '已经移除成功, 但前端可能需要刷新后才能生效.' }
                 )}
-                disabled
               >
-                停用
+                移除
               </Button>
-            )}
-            <Button
-              type="primary"
-              onClick={postAwait(async () => {
-                if (!Object.keys(input).length) {
-                  throw new Error('无变动不需提交');
-                }
-                const params: Parameters<EditSPUInfo>[1] = {
-                  ...input,
-                  images: input.images
-                    ? ({
-                        thumbnail: input.images.thumbnail
-                          ? input.images.thumbnail.url
-                          : '',
-                        mainImages: (input.images.mainImages || [])
-                          .map(img => img.url || '')
-                          .filter(url => Boolean(url)),
-                        detailsImages: (input.images.detailsImages || [])
-                          .map(img => img.url || '')
-                          .filter(url => Boolean(url)),
-                      } as Parameters<EditSPUInfo>[1]['images'])
-                    : undefined,
-                };
-
-                // 修改服务端数据
-                await editSPUInfo(spuID, params, { auth: token });
-
-                // 请求成功后 按需修改本组件数据
-                const newData = { ...preData, ...input };
-                setPreData(newData);
-
-                // 请求成功后 初始化用户输入数据
-                setInput({});
-
-                // 请求成功后 按需修改 上下文 数据
-                const i = spuList.findIndex(v => v.id === spuID);
-                setSpuList(update(spuList, { [i]: { $set: newData } }));
-              })}
-            >
-              提交修改
-            </Button>
-            <Button
-              danger
-              onClick={postAwait(
-                async () => {
-                  await invalidateSPUInfo(spuID, { auth: token });
-                  // TODO: 更好的前端体验
-                },
-                { successText: '已经移除成功, 但前端可能需要刷新后才能生效.' }
-              )}
-            >
-              移除
-            </Button>
-          </Space>
-        </Form.Item>
+            </Space>
+          </Form.Item>
+        )}
       </Form>
     </>
   );

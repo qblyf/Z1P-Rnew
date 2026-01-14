@@ -28,6 +28,7 @@ export default function SPUCateEdit() {
   const [preData, setPreData] = useState<SPUCate>();
   const [input, setInput] = useState<Parameters<EditSPUCateInfo>[1]>({});
   const [icon, setIcon] = useState<UploadFile>();
+  const [activeTab, setActiveTab] = useState<string>('basic');
 
   useEffect(() => {
     if (!preData?.icon) {
@@ -80,6 +81,8 @@ export default function SPUCateEdit() {
         </Form.Item>
 
         <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
           items={[
             {
               key: 'basic',
@@ -169,8 +172,8 @@ export default function SPUCateEdit() {
               ),
             },
             {
-              key: 'changes',
-              label: '变动记录',
+              key: 'operations',
+              label: '操作记录',
               children: (
                 <ChangeTable logFor={[`spu_cate_${spuCateID}`]} />
               ),
@@ -178,27 +181,29 @@ export default function SPUCateEdit() {
           ]}
         />
 
-        <Form.Item style={{ marginTop: '24px' }}>
-          <Button
-            type="primary"
-            onClick={postAwait(async () => {
-              if (preData.icon !== icon?.url) {
-                input.icon = icon?.url || null;
-              }
-              await editSPUCateInfo(spuCateID, input, { auth: token });
-              await reUpdate();
-              // TODO: 根据后端结果按需修改 state 数据
-              // const i = spuCateList.findIndex((v) => v.id === spuCateID);
-              // setSPUCateList(
-              //   update(spuCateList, {
-              //     [i]: { $set: { ...spuCateList[i], ...input } },
-              //   })
-              // );
-            })}
-          >
-            提交修改
-          </Button>
-        </Form.Item>
+        {activeTab !== 'operations' && (
+          <Form.Item style={{ marginTop: '24px' }}>
+            <Button
+              type="primary"
+              onClick={postAwait(async () => {
+                if (preData.icon !== icon?.url) {
+                  input.icon = icon?.url || null;
+                }
+                await editSPUCateInfo(spuCateID, input, { auth: token });
+                await reUpdate();
+                // TODO: 根据后端结果按需修改 state 数据
+                // const i = spuCateList.findIndex((v) => v.id === spuCateID);
+                // setSPUCateList(
+                //   update(spuCateList, {
+                //     [i]: { $set: { ...spuCateList[i], ...input } },
+                //   })
+                // );
+              })}
+            >
+              提交修改
+            </Button>
+          </Form.Item>
+        )}
       </Form>
     </>
   );
