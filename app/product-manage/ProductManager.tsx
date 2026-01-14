@@ -218,9 +218,9 @@ export function ProductManager() {
     }
     if (mode === 'spu') {
       if (spuID) {
-        const spu = spuList.find((s: any) => s.id === spuID);
+        const spu = spuList.find(s => s.id === spuID);
         const spuName = spu?.name || 'SPU';
-        return `编辑${spuName}`;
+        return `编辑 ${spuName}`;
       }
       return '新增 SPU';
     }
