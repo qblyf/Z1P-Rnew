@@ -30,7 +30,7 @@ import { useBrandListContext } from '../datahooks/brand';
 import Upload from './Upload';
 import { useTokenContext } from '../datahooks/auth';
 import { ChangeTable } from './ChangeTable';
-import { SKUManager } from './SKUManager';
+import SKUManager from './SKUManager';
 
 type SPUEditing = Omit<SPU, 'images'> & {
   images: {
