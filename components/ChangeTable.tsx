@@ -650,5 +650,5 @@ function formatSingleSku(sku: any): string {
     parts.push(`SKU编号: ${sku.skuID}`);
   }
   
-  return parts.join(' | ');
+  return parts.join('\n');
 }
