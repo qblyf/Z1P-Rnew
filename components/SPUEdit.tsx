@@ -14,6 +14,7 @@ import {
   Select,
   Space,
   Tabs,
+  Drawer,
 } from 'antd';
 import { useEffect, useState, useCallback } from 'react';
 import TextArea from 'antd/lib/input/TextArea';
@@ -31,6 +32,7 @@ import Upload from './Upload';
 import { useTokenContext } from '../datahooks/auth';
 import { ChangeTable } from './ChangeTable';
 import SKUManager from './SKUManager';
+import { SKUEdit } from './SKUEdit';
 
 type SPUEditing = Omit<SPU, 'images'> & {
   images: {
@@ -51,6 +53,8 @@ export default function SPUEdit() {
   const { brandList } = useBrandListContext();
   const [input, setInput] = useState<Partial<SPUEditing>>({});
   const [activeTab, setActiveTab] = useState<string>('basic');
+  const [showSkuEditDrawer, setShowSkuEditDrawer] = useState(false);
+  const [selectedSkuID, setSelectedSkuID] = useState<number | undefined>();
 
   const transSpuDataToEditingData = useCallback((spu: SPU): SPUEditing => {
     return {
@@ -298,7 +302,12 @@ export default function SPUEdit() {
               key: 'sku',
               label: 'SKU编辑',
               children: (
-                <SKUManager />
+                <SKUManager 
+                  onWantEditSKU={(skuID) => {
+                    setSelectedSkuID(skuID);
+                    setShowSkuEditDrawer(true);
+                  }}
+                />
               ),
             },
             {
@@ -395,6 +404,22 @@ export default function SPUEdit() {
           </Form.Item>
         )}
       </Form>
+
+      {/* SKU 编辑 Drawer */}
+      {selectedSkuID && (
+        <Drawer
+          title="编辑 SKU"
+          placement="right"
+          onClose={() => {
+            setShowSkuEditDrawer(false);
+            setSelectedSkuID(undefined);
+          }}
+          open={showSkuEditDrawer}
+          width="33.33%"
+        >
+          <SKUEdit selectedSkuID={selectedSkuID} />
+        </Drawer>
+      )}
     </>
   );
 }
