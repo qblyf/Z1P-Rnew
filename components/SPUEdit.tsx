@@ -405,23 +405,22 @@ export default function SPUEdit() {
             </Space>
           </Form.Item>
         )}
-      </div>
 
-      {/* SKU 编辑 Drawer */}
-      {selectedSkuID && (
-        <Drawer
-          title="编辑 SKU"
-          placement="right"
-          onClose={() => {
-            setShowSkuEditDrawer(false);
-            setSelectedSkuID(undefined);
-          }}
-          open={showSkuEditDrawer}
-          width="33.33%"
-        >
-          <SKUEdit selectedSkuID={selectedSkuID} />
-        </Drawer>
-      )}
-    </div>
+        {/* SKU 编辑 Drawer */}
+        {selectedSkuID && (
+          <Drawer
+            title="编辑 SKU"
+            placement="right"
+            onClose={() => {
+              setShowSkuEditDrawer(false);
+              setSelectedSkuID(undefined);
+            }}
+            open={showSkuEditDrawer}
+            width="33.33%"
+          >
+            <SKUEdit selectedSkuID={selectedSkuID} />
+          </Drawer>
+        )}
+      </div>
   );
 }
