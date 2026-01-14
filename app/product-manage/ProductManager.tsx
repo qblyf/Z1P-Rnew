@@ -6,7 +6,7 @@ import { orderSPUCate } from '@zsqk/z1-sdk/es/z1p/product';
 import update from 'immutability-helper';
 
 import { HelpTooltip } from '../../components/HelpTooltip';
-import SKUManager from '../../components/SKUManager';
+import SKUList from '../../components/SKUList';
 import { SKUEdit } from '../../components/SKUEdit';
 import SPUAdd from '../../components/SPUAdd';
 import SPUCateAdd from '../../components/SPUCateAdd';
@@ -168,21 +168,15 @@ export function ProductManager() {
         <h2 className="text-lg font-bold mb-4 text-slate-800">
           SKU 管理
         </h2>
-        {spuID ? (
-          <SKUManager
-            onWantEditSKU={(skuID) => {
-              setMode('sku');
-              setSelectedSkuID(skuID);
-            }}
-          />
-        ) : (
-          <div className="text-center py-8 text-slate-500">
-            选择 SPU 以查看 SKU 列表
-          </div>
-        )}
+        <SKUList
+          onWantEditSKU={(skuID) => {
+            setMode('sku');
+            setSelectedSkuID(skuID);
+          }}
+        />
       </>
     );
-  }, [spuID]);
+  }, [spuID, setMode, setSelectedSkuID]);
 
   // 编辑内容 - 用于 Drawer
   const editContent = useMemo(() => {
