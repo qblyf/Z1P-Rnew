@@ -432,13 +432,23 @@ function formatDetailValue(value: any): string {
       return formatImagesDetail(value);
     }
     
-    return Object.entries(value)
+    // 处理普通对象，逐个字段格式化
+    const entries = Object.entries(value);
+    if (entries.length === 0) {
+      return '{}';
+    }
+    
+    return entries
       .map(([key, val]) => {
         if (key === 'images' && val && typeof val === 'object') {
           return `图片: ${formatImageObject(val)}`;
         }
-        if (key === 'skuIDs' && Array.isArray(val)) {
-          return formatSkuIDsArray(val);
+        if (key === 'skuIDs') {
+          if (Array.isArray(val)) {
+            return `SKU规格: ${formatSkuIDsArray(val)}`;
+          } else if (val && typeof val === 'object' && 'skuID' in val) {
+            return `SKU规格: ${formatSingleSku(val)}`;
+          }
         }
         // 将技术字段名转换为更友好的显示名称
         const friendlyKey = getFriendlyFieldName(key);
