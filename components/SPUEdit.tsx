@@ -106,9 +106,95 @@ export default function SPUEdit() {
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-        <h2 style={{ margin: 0 }}>编辑 SPU</h2>
-        <span style={{ color: '#666' }}>ID: {spuID}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <h2 style={{ margin: 0 }}>编辑 SPU</h2>
+          <span style={{ color: '#666' }}>ID: {spuID}</span>
+        </div>
+        <Space>
+          {preData.state === 'invalid' ? (
+            <Button
+              danger
+              onClick={postAwait(async () => {
+                // TODO: 完成功能
+                alert('需要完成该功能');
+              })}
+            >
+              启用
+            </Button>
+          ) : (
+            <Button
+              danger
+              onClick={postAwait(
+                async () => {
+                  // TODO: 完成功能
+                  alert('需要完成该功能');
+                },
+                { confirmText: `停用 SPU 前请确认 SPU 下没有任何在用的 SKU.` }
+              )}
+              disabled
+            >
+              停用
+            </Button>
+          )}
+          <Button
+            type="primary"
+            onClick={postAwait(async () => {
+              if (!Object.keys(input).length) {
+                throw new Error('无变动不需提交');
+              }
+              const params: Parameters<EditSPUInfo>[1] = {
+                ...input,
+                images: input.images
+                  ? ({
+                      thumbnail: input.images.thumbnail
+                        ? input.images.thumbnail.url
+                        : '',
+                      mainImages: (input.images.mainImages || [])
+                        .map(img => img.url || '')
+                        .filter(url => Boolean(url)),
+                      detailsImages: (input.images.detailsImages || [])
+                        .map(img => img.url || '')
+                        .filter(url => Boolean(url)),
+                    } as Parameters<EditSPUInfo>[1]['images'])
+                  : undefined,
+              };
+
+              // 修改服务端数据
+              await editSPUInfo(spuID, params, { auth: token });
+
+              // 请求成功后 按需修改本组件数据
+              const newData = { ...preData, ...input };
+              setPreData(newData);
+
+              // 请求成功后 初始化用户输入数据
+              setInput({});
+
+              // 请求成功后 按需修改 上下文 数据
+              const i = spuList.findIndex(v => v.id === spuID);
+              setSpuList(update(spuList, { [i]: { $set: newData } }));
+            })}
+          >
+            确认修改
+          </Button>
+          <Button
+            onClick={() => setShowChangeDrawer(true)}
+          >
+            查看变动记录
+          </Button>
+          <Button
+            danger
+            onClick={postAwait(
+              async () => {
+                await invalidateSPUInfo(spuID, { auth: token });
+                // TODO: 更好的前端体验
+              },
+              { successText: '已经移除成功, 但前端可能需要刷新后才能生效.' }
+            )}
+          >
+            移除
+          </Button>
+        </Space>
       </div>
 
       <Form layout="vertical" autoComplete="off">
@@ -299,93 +385,6 @@ export default function SPUEdit() {
             },
           ]}
         />
-
-        <Form.Item style={{ marginTop: '24px' }}>
-          <Space>
-            {preData.state === 'invalid' ? (
-              <Button
-                danger
-                onClick={postAwait(async () => {
-                  // TODO: 完成功能
-                  alert('需要完成该功能');
-                })}
-              >
-                启用
-              </Button>
-            ) : (
-              <Button
-                danger
-                onClick={postAwait(
-                  async () => {
-                    // TODO: 完成功能
-                    alert('需要完成该功能');
-                  },
-                  { confirmText: `停用 SPU 前请确认 SPU 下没有任何在用的 SKU.` }
-                )}
-                disabled
-              >
-                停用
-              </Button>
-            )}
-            <Button
-              type="primary"
-              onClick={postAwait(async () => {
-                if (!Object.keys(input).length) {
-                  throw new Error('无变动不需提交');
-                }
-                const params: Parameters<EditSPUInfo>[1] = {
-                  ...input,
-                  images: input.images
-                    ? ({
-                        thumbnail: input.images.thumbnail
-                          ? input.images.thumbnail.url
-                          : '',
-                        mainImages: (input.images.mainImages || [])
-                          .map(img => img.url || '')
-                          .filter(url => Boolean(url)),
-                        detailsImages: (input.images.detailsImages || [])
-                          .map(img => img.url || '')
-                          .filter(url => Boolean(url)),
-                      } as Parameters<EditSPUInfo>[1]['images'])
-                    : undefined,
-                };
-
-                // 修改服务端数据
-                await editSPUInfo(spuID, params, { auth: token });
-
-                // 请求成功后 按需修改本组件数据
-                const newData = { ...preData, ...input };
-                setPreData(newData);
-
-                // 请求成功后 初始化用户输入数据
-                setInput({});
-
-                // 请求成功后 按需修改 上下文 数据
-                const i = spuList.findIndex(v => v.id === spuID);
-                setSpuList(update(spuList, { [i]: { $set: newData } }));
-              })}
-            >
-              提交修改
-            </Button>
-            <Button
-              onClick={() => setShowChangeDrawer(true)}
-            >
-              查看变动记录
-            </Button>
-            <Button
-              danger
-              onClick={postAwait(
-                async () => {
-                  await invalidateSPUInfo(spuID, { auth: token });
-                  // TODO: 更好的前端体验
-                },
-                { successText: '已经移除成功, 但前端可能需要刷新后才能生效.' }
-              )}
-            >
-              移除
-            </Button>
-          </Space>
-        </Form.Item>
       </Form>
       
       {/* Change History Drawer */}
