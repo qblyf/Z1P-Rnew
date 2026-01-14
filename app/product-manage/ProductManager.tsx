@@ -89,7 +89,6 @@ export function ProductManager() {
   const { spuCateID, setSpuCateID } = useSPUCateIDContext();
   const { spuID, setSpuID } = useSpuIDContext();
   const { spuCateList, setSPUCateList } = useSPUCateListContext();
-  const { spuList } = useSpuListContext();
   const { token } = useTokenContext();
 
   // 解决 SSR 问题
@@ -217,12 +216,7 @@ export function ProductManager() {
       return spuCateID ? '编辑 SPU 分类' : '新增 SPU 分类';
     }
     if (mode === 'spu') {
-      if (spuID) {
-        const spu = spuList.find(s => s.id === spuID);
-        const spuName = spu?.name || 'SPU';
-        return `编辑 ${spuName}`;
-      }
-      return '新增 SPU';
+      return spuID ? '编辑 SPU' : '新增 SPU';
     }
     if (mode === 'sku') {
       return '编辑 SKU';
