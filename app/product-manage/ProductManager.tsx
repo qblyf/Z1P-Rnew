@@ -140,23 +140,17 @@ export function ProductManager() {
             style={{ fontSize: '0.6em', marginLeft: '0.2em' }}
           />
         </h2>
-        {!spuCateID ? (
-          <div className="text-center py-8 text-slate-500">
-            选择 SPU 分类以查看 SPU 列表
-          </div>
-        ) : (
-          <BrandListProvider>
-            <SPUList
-              onWandEditSPU={() => {
-                setMode('spu');
-              }}
-              onAddClick={() => {
-                setMode('spu');
-                setSpuID(undefined);
-              }}
-            />
-          </BrandListProvider>
-        )}
+        <BrandListProvider>
+          <SPUList
+            onWandEditSPU={() => {
+              setMode('spu');
+            }}
+            onAddClick={() => {
+              setMode('spu');
+              setSpuID(undefined);
+            }}
+          />
+        </BrandListProvider>
       </>
     );
   }, [spuCateID, setMode, setSpuID]);
