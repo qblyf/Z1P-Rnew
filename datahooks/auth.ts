@@ -83,6 +83,7 @@ export function setCacheToken(v: string | null): void {
 function useToken() {
   const [token, setToken] = useState<string | null>(undefined as any);
   const [errMsg, setErrMsg] = useState<string>();
+  const [isTokenExpired, setIsTokenExpired] = useState(false);
 
   // 监听 localStorage 变化（来自其他标签页或同一页面的更新）
   useEffect(() => {
@@ -95,9 +96,11 @@ function useToken() {
           console.warn('Invalid token in cache:', err);
           setCacheToken(null);
           setToken(null);
+          setIsTokenExpired(true);
         } else {
           console.log('Valid token found in cache after storage change');
           setToken(t as string);
+          setIsTokenExpired(false);
         }
       }
     };
@@ -117,9 +120,11 @@ function useToken() {
         // 清空缓存中的 token
         console.warn('Cached token is invalid:', err);
         setCacheToken(null);
+        setIsTokenExpired(true);
       } else {
         console.log('Valid cached token found');
         setToken(t as string);
+        setIsTokenExpired(false);
         return;
       }
     }
@@ -132,6 +137,7 @@ function useToken() {
 
         const token = await dingtalkLogin(code);
         setToken(token);
+        setIsTokenExpired(false);
 
         // TODO: 如果自动登录失败则返回相关错误.
 
@@ -163,12 +169,13 @@ function useToken() {
       console.warn(`getPayload 没有拿到有效数据`, err);
       setCacheToken(null);
       setErrMsg(`token 已经无效, ${err}`);
+      setIsTokenExpired(true);
       return null;
     }
     return p;
   }, [token]);
 
-  return { token, errMsg, payload };
+  return { token, errMsg, payload, isTokenExpired };
 }
 
 export const [TokenProvider, useTokenContext] = constate(useToken);
