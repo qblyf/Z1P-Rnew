@@ -1108,9 +1108,9 @@ function EditRelationshipSPUwithSKUs(props: {
       
       {/* Action Buttons - Below Table */}
       <div style={{ 
-        marginTop: '16px', 
+        marginTop: '2px', 
         borderTop: '1px solid #f0f0f0', 
-        paddingTop: '16px',
+        paddingTop: '2px',
         display: 'flex',
         gap: '12px',
         justifyContent: 'flex-start'
