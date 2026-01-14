@@ -422,6 +422,11 @@ function formatDetailValue(value: any): string {
       return `[${value.join(', ')}]`;
     }
     
+    // 检查是否是单个 SKU 对象
+    if ('skuID' in value && (value.spec || value.color || value.combo)) {
+      return formatSingleSku(value);
+    }
+    
     // 检查是否是 images 对象
     if ('mainImages' in value || 'detailsImages' in value || 'thumbnail' in value) {
       return formatImagesDetail(value);
