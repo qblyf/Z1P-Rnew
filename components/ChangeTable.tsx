@@ -568,6 +568,10 @@ function formatHumanReadable(value: any): string {
   }
   if (typeof value === 'object') {
     if (Array.isArray(value)) {
+      // 检查是否是 SKU 对象数组
+      if (value.length > 0 && value[0] && typeof value[0] === 'object' && 'skuID' in value[0]) {
+        return formatSkuIDsArray(value);
+      }
       return `[${value.join(', ')}]`;
     }
     return JSON.stringify(value);
