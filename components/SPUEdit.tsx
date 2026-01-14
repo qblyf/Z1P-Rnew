@@ -30,6 +30,7 @@ import { useBrandListContext } from '../datahooks/brand';
 import Upload from './Upload';
 import { useTokenContext } from '../datahooks/auth';
 import { ChangeTable } from './ChangeTable';
+import { SKUManager } from './SKUManager';
 
 type SPUEditing = Omit<SPU, 'images'> & {
   images: {
@@ -294,6 +295,13 @@ export default function SPUEdit() {
               ),
             },
             {
+              key: 'sku',
+              label: 'SKU编辑',
+              children: (
+                <SKUManager />
+              ),
+            },
+            {
               key: 'operations',
               label: '操作记录',
               children: (
@@ -303,7 +311,7 @@ export default function SPUEdit() {
           ]}
         />
 
-        {activeTab !== 'operations' && (
+        {activeTab !== 'operations' && activeTab !== 'sku' && (
           <Form.Item style={{ marginTop: '24px' }}>
             <Space>
               {preData.state === 'invalid' ? (
