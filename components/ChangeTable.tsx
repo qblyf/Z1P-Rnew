@@ -584,11 +584,11 @@ function formatSkuIDsArray(skuIDs: any[]): string {
   }
   
   // 多个 SKU 时，显示汇总信息
-  const skuDetails = skuIDs.map((sku, index) => {
+  const skuDetails = skuIDs.map((sku) => {
     if (sku && typeof sku === 'object') {
       return formatSingleSku(sku);
     }
-    return `规格${index + 1}`;
+    return String(sku);
   });
   
   return skuDetails.join('\n');
