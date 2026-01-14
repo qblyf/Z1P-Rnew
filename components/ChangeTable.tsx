@@ -217,6 +217,133 @@ function RenderUser(props: { userIdent: string }) {
 
 function RenderChangeDetail(props: { log: ChangeLog }) {
   const { log } = props;
+  const isEditOperation = (log as any).operate?.includes('edit') || (log as any).operate?.includes('update');
+  
+  // 如果是修改操作，显示修改前后对比
+  if (isEditOperation && 'original' in log && 'present' in log) {
+    const original = (log as any).original || {};
+    const present = (log as any).present || {};
+    
+    // 获取所有修改的字段
+    const allKeys = new Set([...Object.keys(original), ...Object.keys(present)]);
+    const changedFields = Array.from(allKeys).filter(key => {
+      const origValue = original[key];
+      const presentValue = present[key];
+      return JSON.stringify(origValue) !== JSON.stringify(presentValue);
+    });
+    
+    if (changedFields.length === 0) {
+      return <div style={{ color: '#999', fontSize: '12px' }}>暂无详细信息</div>;
+    }
+    
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {changedFields.map((key, idx) => {
+          const origValue = original[key];
+          const presentValue = present[key];
+          
+          return (
+            <div
+              key={idx}
+              style={{
+                padding: '12px',
+                backgroundColor: '#fff',
+                borderRadius: '6px',
+                border: '1px solid #d6f7ff',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+              }}
+            >
+              <div style={{ 
+                fontSize: '13px', 
+                color: '#1890ff', 
+                marginBottom: '12px', 
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span style={{ 
+                  width: '6px', 
+                  height: '6px', 
+                  borderRadius: '50%', 
+                  backgroundColor: '#1890ff' 
+                }}></span>
+                {getFriendlyFieldName(key)}
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'start' }}>
+                {/* 修改前 */}
+                <div>
+                  <div style={{ 
+                    fontSize: '12px', 
+                    color: '#d46b08', 
+                    marginBottom: '6px', 
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <span style={{ color: '#faad14' }}>●</span>
+                    修改前
+                  </div>
+                  <div style={{
+                    padding: '8px',
+                    backgroundColor: '#fff7e6',
+                    borderRadius: '4px',
+                    border: '1px solid #ffd591',
+                    fontSize: '12px', 
+                    color: '#333', 
+                    whiteSpace: 'pre-wrap', 
+                    wordBreak: 'break-word',
+                    lineHeight: '1.5',
+                    minHeight: '32px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    {formatDetailValue(origValue)}
+                  </div>
+                </div>
+                
+                {/* 修改后 */}
+                <div>
+                  <div style={{ 
+                    fontSize: '12px', 
+                    color: '#389e0d', 
+                    marginBottom: '6px', 
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <span style={{ color: '#52c41a' }}>●</span>
+                    修改后
+                  </div>
+                  <div style={{
+                    padding: '8px',
+                    backgroundColor: '#f6ffed',
+                    borderRadius: '4px',
+                    border: '1px solid #b7eb8f',
+                    fontSize: '12px', 
+                    color: '#333', 
+                    whiteSpace: 'pre-wrap', 
+                    wordBreak: 'break-word',
+                    lineHeight: '1.5',
+                    minHeight: '32px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    {formatDetailValue(presentValue)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  
+  // 非修改操作，使用原有逻辑
   const items: { label: string; type: 'change' | 'add' | 'remove'; value: any }[] = [];
 
   if ('present' in log && (log as any).present && Object.keys((log as any).present).length > 0) {
