@@ -111,11 +111,12 @@ export default function SPUEdit() {
 
   return (
     <>
-      <Form layout="vertical" autoComplete="off">
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
           className="spu-edit-tabs"
+          style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
           items={[
             {
               key: 'basic',
@@ -323,7 +324,7 @@ export default function SPUEdit() {
         />
 
         {activeTab !== 'operations' && activeTab !== 'sku' && (
-          <Form.Item style={{ marginTop: '24px' }}>
+          <Form.Item style={{ marginTop: '24px', flexShrink: 0 }}>
             <Space>
               {preData.state === 'invalid' ? (
                 <Button
@@ -405,7 +406,7 @@ export default function SPUEdit() {
             </Space>
           </Form.Item>
         )}
-      </Form>
+      </div>
 
       {/* SKU 编辑 Drawer */}
       {selectedSkuID && (
