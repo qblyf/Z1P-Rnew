@@ -106,7 +106,7 @@ export default function SPUEdit() {
 
   return (
     <>
-      <h2>编辑 {preData.name}</h2>
+      <h2>编辑 SPU</h2>
 
       <Form layout="vertical" autoComplete="off">
         <Tabs
