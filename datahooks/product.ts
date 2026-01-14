@@ -81,11 +81,11 @@ function useSPUList() {
   const { setSpuID } = useSpuIDContext();
 
   useEffect(() => {
-    if (!spuCateID) {
-      return;
-    }
     lessAwait(async () => {
-      const d = await getSPUList({ spuCateIDs: [spuCateID] });
+      // 如果 spuCateID 为空，获取所有 SPU；否则获取指定分类的 SPU
+      const d = spuCateID 
+        ? await getSPUList({ spuCateIDs: [spuCateID] })
+        : await getSPUList({});
       setSpuList(d);
       setSpuID(undefined);
     })();
