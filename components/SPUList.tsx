@@ -94,10 +94,6 @@ export default function SPUList(props: {
             onClick: () => {
               setSpuID(v.id);
             },
-            onDoubleClick: () => {
-              // 调用编辑该行功能
-              onWandEditSPU && onWandEditSPU(v.id);
-            },
           };
         }}
         showHeader={false}

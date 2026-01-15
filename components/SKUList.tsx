@@ -157,14 +157,6 @@ export default function SKUList(props: {
         rowKey="id"
         dataSource={skuListFiltered}
         loading={loading}
-        onRow={v => {
-          return {
-            onDoubleClick: () => {
-              // 调用编辑该行功能
-              onWantEditSKU && onWantEditSKU(v.id);
-            },
-          };
-        }}
         showHeader={false}
         columns={[
           {
