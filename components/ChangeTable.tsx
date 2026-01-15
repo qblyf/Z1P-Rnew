@@ -77,6 +77,29 @@ function ChangeTableWithoutData(props: {
     return operationMap[operate] || operate;
   };
 
+  // 获取修改的字段名称列表
+  const getChangedFieldNames = (record: ChangeLog): string[] => {
+    const isEditOperation = (record as any).operate?.includes('edit') || (record as any).operate?.includes('update');
+    
+    if (!isEditOperation) {
+      return [];
+    }
+    
+    const original = (record as any).original || {};
+    const present = (record as any).present || {};
+    
+    // 获取所有修改的字段
+    const allKeys = new Set([...Object.keys(original), ...Object.keys(present)]);
+    const changedFields = Array.from(allKeys).filter(key => {
+      const origValue = original[key];
+      const presentValue = present[key];
+      return JSON.stringify(origValue) !== JSON.stringify(presentValue);
+    });
+    
+    // 转换为友好的字段名称
+    return changedFields.map(key => getFriendlyFieldName(key));
+  };
+
   // 将变动项转换为更友好的描述
   const getLogForText = (logFor: string) => {
     if (logFor.startsWith('spu_')) {
@@ -118,17 +141,28 @@ function ChangeTableWithoutData(props: {
     { 
       title: '操作类型', 
       key: 'operate', 
-      width: 100,
-      render: (_, { operate, logFor }) => {
+      width: 200,
+      render: (_, record) => {
+        const { operate, logFor } = record;
         const operationType = getOperationText(operate, logFor);
         const color = operate.includes('add') || operate.includes('create') ? '#52c41a' : 
                      operate.includes('edit') || operate.includes('update') ? '#1890ff' : 
                      operate.includes('delete') || operate.includes('remove') ? '#ff4d4f' : '#666';
         
+        // 获取修改的字段列表
+        const changedFields = getChangedFieldNames(record);
+        
         return (
-          <span style={{ color, fontWeight: 500 }}>
-            {operationType}
-          </span>
+          <div>
+            <span style={{ color, fontWeight: 500 }}>
+              {operationType}
+            </span>
+            {changedFields.length > 0 && (
+              <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>
+                {changedFields.join('、')}
+              </div>
+            )}
+          </div>
         );
       }
     },
@@ -507,9 +541,20 @@ function getFriendlyFieldName(key: string): string {
     'title': '标题',
     'description': '商品描述',
     'summary': '商品简介',
+    'spell': '拼音码',
+    'remarks': '备注',
+    'remark': '备注说明',
+    
+    // SPU相关
+    'series': '系列',
+    'generation': '代数',
+    'order': '排序号',
+    'spuCateID': '商品分类',
+    'skuIDs': 'SKU规格',
     
     // 价格相关
     'price': '价格',
+    'listPrice': '官网价',
     'originalPrice': '原价',
     'salePrice': '售价',
     'costPrice': '成本价',
@@ -533,20 +578,26 @@ function getFriendlyFieldName(key: string): string {
     'combo': '版本',
     'size': '尺寸',
     'weight': '重量',
+    'grossWeight': '毛重',
+    'unit': '单位',
     'dimensions': '规格尺寸',
+    'defaultSNRules': '默认序列号规则',
     
     // 状态相关
     'status': '状态',
+    'state': '状态',
     'isActive': '是否启用',
     'isVisible': '是否显示',
     'isDeleted': '是否删除',
     'published': '是否发布',
+    'display': '是否展示',
     
     // 时间相关
     'createdAt': '创建时间',
     'updatedAt': '更新时间',
     'publishedAt': '发布时间',
     'deletedAt': '删除时间',
+    'releaseDate': '发布日期',
     
     // ID相关
     'id': 'ID',
@@ -559,14 +610,18 @@ function getFriendlyFieldName(key: string): string {
     'images': '商品图片',
     'thumbnail': '缩略图',
     'mainImage': '主图',
+    'mainImages': '主图',
     'detailImages': '详情图',
+    'detailsImages': '详情图',
     'video': '商品视频',
+    'logo': 'LOGO',
     
     // 商品码相关
     'gtins': '商品条码',
     'barcode': '条形码',
     'qrcode': '二维码',
     'sku': 'SKU码',
+    'number': '编号',
     
     // 销售相关
     'sales': '销量',
@@ -586,7 +641,6 @@ function getFriendlyFieldName(key: string): string {
     'seoTitle': 'SEO标题',
     'seoDescription': 'SEO描述',
     'notes': '备注',
-    'remark': '备注说明'
   };
   
   return fieldMap[key] || key;
