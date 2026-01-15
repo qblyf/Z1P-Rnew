@@ -97,7 +97,7 @@ export default function SPUAdd() {
   }, [input.name, spuList]);
 
   if (!spuCateID) {
-    return <>没有选择 spuCateID</>;
+    return <>请在商品分类中选择到要新增SPU的最末级分类</>;
   }
 
   const isLast = spuCateList.every(v => v.pid !== spuCateID);

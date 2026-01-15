@@ -159,9 +159,6 @@ export default function SKUList(props: {
         loading={loading}
         onRow={v => {
           return {
-            onClick: () => {
-              setSelectedSkuID(v.id);
-            },
             onDoubleClick: () => {
               // 调用编辑该行功能
               onWantEditSKU && onWantEditSKU(v.id);
@@ -227,8 +224,10 @@ export default function SKUList(props: {
         scroll={{ y: height - 100 }}
         rowSelection={{
           type: 'radio',
-          selectedRowKeys: selectedSkuID ? [selectedSkuID] : undefined,
           hideSelectAll: true,
+          onChange: (selectedRowKeys) => {
+            setSelectedSkuID(selectedRowKeys[0] as SkuID | undefined);
+          },
         }}
       />
     </div>

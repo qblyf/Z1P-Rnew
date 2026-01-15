@@ -857,6 +857,8 @@ export default function SKUManager(props: {
                 })
               );
               setSelected(undefined);
+              // 新增后自动打开编辑抽屉
+              handleWantEditSKU(skuID);
             }}
           />
         ) : null}
