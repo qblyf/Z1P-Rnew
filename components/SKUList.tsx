@@ -1,7 +1,9 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { SkuID } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { Alert, Col, Row, Table, Tag, Input, Button } from 'antd';
+import { Alert, Col, Row, Table, Tag, Input, Button, Tooltip } from 'antd';
+import { BarcodeOutlined } from '@ant-design/icons';
 import { getSPUList, getSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
+import { useBrandListContext } from '../datahooks/brand';
 import { useSpuIDContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
 import { lessAwait } from '../error';
@@ -19,6 +21,7 @@ export default function SKUList(props: {
   const { onWantEditSKU, onAddClick, offsetTop = 24 } = props;
   const { spuID } = useSpuIDContext();
   const { token } = useTokenContext();
+  const { brandList } = useBrandListContext();
 
   const [skuList, setSkuList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,6 +56,7 @@ export default function SKUList(props: {
           skus = (spu.skuIDs || []).map(sku => ({
             ...sku,
             spuName: spu.name,
+            brand: spu.brand,
           }));
         } else {
           // 否则获取所有 SPU 的 SKU
@@ -62,6 +66,7 @@ export default function SKUList(props: {
               const skusWithSpuName = spu.skuIDs.map(sku => ({
                 ...sku,
                 spuName: spu.name,
+                brand: spu.brand,
               }));
               skus = skus.concat(skusWithSpuName);
             }
@@ -152,13 +157,17 @@ export default function SKUList(props: {
         showHeader={false}
         columns={[
           {
-            key: 'spec',
-            width: 100,
+            key: 'brand',
+            width: 80,
             render: (_v, v) => {
-              if (!v.spec) {
+              if (!v.brand) {
                 return null;
               }
-              return <Tag color="blue">{v.spec}</Tag>;
+              const b = brandList.find(b => b.name === v.brand);
+              if (b) {
+                return <Tag color={b.color}>{b.name}</Tag>;
+              }
+              return <Tag>{v.brand}</Tag>;
             },
           },
           {
@@ -174,14 +183,23 @@ export default function SKUList(props: {
               // 组合 SPU 名称和 SKU 规格
               const fullName = v.spuName ? `${v.spuName} ${skuName}` : skuName;
               
+              // 格式化官网价
+              const listPrice = v.listPrice ? `¥${(v.listPrice / 100).toFixed(2)}` : '-';
+              
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                   <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {fullName}
                   </div>
-                  <div style={{ flexShrink: 0, display: 'flex', gap: '4px' }}>
-                    {v.color && <Tag color="gold">{v.color}</Tag>}
-                    {v.combo && <Tag color="cyan">{v.combo}</Tag>}
+                  <div style={{ flexShrink: 0, display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    {v.gtins && v.gtins.length > 0 && (
+                      <Tooltip title={v.gtins.join(', ')}>
+                        <BarcodeOutlined style={{ cursor: 'pointer', color: '#1890ff' }} />
+                      </Tooltip>
+                    )}
+                    <span style={{ fontSize: '12px', color: '#666', minWidth: '60px', textAlign: 'right' }}>
+                      {listPrice}
+                    </span>
                   </div>
                 </div>
               );
