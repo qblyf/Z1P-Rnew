@@ -4,7 +4,7 @@ import { Alert, Col, Row, Table, Tag, Input, Button, Tooltip } from 'antd';
 import { BarcodeOutlined } from '@ant-design/icons';
 import { getSPUList, getSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
-import { useSpuIDContext } from '../datahooks/product';
+import { useSpuIDContext, useSPUCateIDContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
 import { lessAwait } from '../error';
 
@@ -20,6 +20,7 @@ export default function SKUList(props: {
 }) {
   const { onWantEditSKU, onAddClick, offsetTop = 24 } = props;
   const { spuID } = useSpuIDContext();
+  const { spuCateID } = useSPUCateIDContext();
   const { token } = useTokenContext();
   const { brandList } = useBrandListContext();
 
@@ -51,15 +52,28 @@ export default function SKUList(props: {
         let skus: any[] = [];
         
         if (spuID) {
-          // 如果选择了 SPU，只获取该 SPU 的 SKU
+          // SPU 选择优先级最高：如果选择了 SPU，只获取该 SPU 的 SKU
           const spu = await getSPUInfo(spuID);
           skus = (spu.skuIDs || []).map(sku => ({
             ...sku,
             spuName: spu.name,
             brand: spu.brand,
           }));
+        } else if (spuCateID) {
+          // 其次：如果选择了商品分类，获取该分类下所有 SPU 的 SKU
+          const spus = await getSPUList({ spuCateIDs: [spuCateID] });
+          for (const spu of spus) {
+            if (spu.skuIDs && Array.isArray(spu.skuIDs)) {
+              const skusWithSpuName = spu.skuIDs.map(sku => ({
+                ...sku,
+                spuName: spu.name,
+                brand: spu.brand,
+              }));
+              skus = skus.concat(skusWithSpuName);
+            }
+          }
         } else {
-          // 否则获取所有 SPU 的 SKU
+          // 最后：如果都没选择，获取所有 SPU 的 SKU
           const spus = await getSPUList({});
           for (const spu of spus) {
             if (spu.skuIDs && Array.isArray(spu.skuIDs)) {
@@ -81,7 +95,7 @@ export default function SKUList(props: {
         setLoading(false);
       }
     })();
-  }, [spuID, token]);
+  }, [spuID, spuCateID, token]);
 
   const skuListFiltered = useMemo(() => {
     const s = search.replaceAll(/\s/g, '').toLowerCase();
