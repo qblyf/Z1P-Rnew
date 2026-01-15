@@ -4,37 +4,47 @@ import { Brand } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import {
   addBrandInfo,
   editBrandInfo,
-  getBrandBaseList,
   getBrandInfo,
 } from '@zsqk/z1-sdk/es/z1p/brand';
-import { PageHeader } from '@ant-design/pro-components';
 import {
   Button,
+  Card,
   Col,
   Drawer,
+  Empty,
   Form,
   Input,
+  InputNumber,
   Row,
+  Space,
+  Spin,
   Switch,
   Table,
   Tabs,
   TabsProps,
   Tag,
+  Typography,
   message,
 } from 'antd';
-import { EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { 
+  EditOutlined, 
+  PlusOutlined, 
+  SearchOutlined,
+  TagsOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+} from '@ant-design/icons';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import update from 'immutability-helper';
 import pinyin from 'tiny-pinyin';
 
-import { Content } from '../../components/style/Content';
 import { lessAwait, postAwait } from '../../error';
 import { BrandListProvider, useBrandListContext } from '../../datahooks/brand';
 import Head from 'next/head';
 import PageWrap from '../../components/PageWrap';
 import { useTokenContext } from '../../datahooks/auth';
 
-type BaseBrands = Awaited<ReturnType<typeof getBrandBaseList>>;
+const { Title, Text } = Typography;
 
 function BrandManage() {
   const { brandList: brands, reUpdate: refreshBrandList } = useBrandListContext();
@@ -42,10 +52,6 @@ function BrandManage() {
   const [search, setSearch] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isAddMode, setIsAddMode] = useState(false);
-
-  const selectedBrand = selected
-    ? brands?.find(v => v.name === selected)
-    : undefined;
 
   // 过滤品牌列表
   const filteredBrands = useMemo(() => {
@@ -57,6 +63,16 @@ function BrandManage() {
       (b.spell && b.spell.toLowerCase().includes(s))
     );
   }, [brands, search]);
+
+  // 统计数据
+  const stats = useMemo(() => {
+    if (!brands) return { total: 0, visible: 0, hidden: 0 };
+    return {
+      total: brands.length,
+      visible: brands.filter(b => (b as any).display !== false).length,
+      hidden: brands.filter(b => (b as any).display === false).length,
+    };
+  }, [brands]);
 
   const handleEdit = (name: string) => {
     setSelected(name);
@@ -82,101 +98,284 @@ function BrandManage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* 顶部操作栏 */}
-      <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-        <Col flex="auto">
-          <Input.Search
-            placeholder="搜索品牌名称或拼音码"
-            allowClear
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ maxWidth: 300 }}
-          />
+    <div style={{ padding: '24px', backgroundColor: '#f5f7fa', minHeight: '100vh' }}>
+      {/* 页面标题 */}
+      <div style={{ marginBottom: 24 }}>
+        <Title level={4} style={{ margin: 0, color: '#1a1a2e' }}>
+          <TagsOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+          品牌管理
+        </Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>
+          管理系统中的品牌信息，支持新增、编辑和搜索
+        </Text>
+      </div>
+
+      {/* 统计卡片 */}
+      <Row gutter={16} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={8}>
+          <Card 
+            size="small" 
+            style={{ 
+              borderRadius: 12, 
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <Text type="secondary" style={{ fontSize: 13 }}>全部品牌</Text>
+                <Title level={3} style={{ margin: '4px 0 0', color: '#1890ff' }}>
+                  {stats.total}
+                </Title>
+              </div>
+              <div style={{ 
+                width: 48, 
+                height: 48, 
+                borderRadius: 12, 
+                backgroundColor: '#e6f7ff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <TagsOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+              </div>
+            </div>
+          </Card>
         </Col>
-        <Col>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            新增品牌
-          </Button>
+        <Col xs={24} sm={8}>
+          <Card 
+            size="small" 
+            style={{ 
+              borderRadius: 12, 
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <Text type="secondary" style={{ fontSize: 13 }}>展示中</Text>
+                <Title level={3} style={{ margin: '4px 0 0', color: '#52c41a' }}>
+                  {stats.visible}
+                </Title>
+              </div>
+              <div style={{ 
+                width: 48, 
+                height: 48, 
+                borderRadius: 12, 
+                backgroundColor: '#f6ffed',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <EyeOutlined style={{ fontSize: 24, color: '#52c41a' }} />
+              </div>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card 
+            size="small" 
+            style={{ 
+              borderRadius: 12, 
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <Text type="secondary" style={{ fontSize: 13 }}>已隐藏</Text>
+                <Title level={3} style={{ margin: '4px 0 0', color: '#faad14' }}>
+                  {stats.hidden}
+                </Title>
+              </div>
+              <div style={{ 
+                width: 48, 
+                height: 48, 
+                borderRadius: 12, 
+                backgroundColor: '#fffbe6',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <EyeInvisibleOutlined style={{ fontSize: 24, color: '#faad14' }} />
+              </div>
+            </div>
+          </Card>
         </Col>
       </Row>
 
-      {/* 品牌列表表格 */}
-      {brands ? (
-        <Table
-          size="small"
-          rowKey="name"
-          dataSource={filteredBrands}
-          pagination={{
-            defaultPageSize: 20,
-            pageSizeOptions: [20, 50, 100],
-            showTotal: (total) => `共 ${total} 个品牌`,
-          }}
-          columns={[
-            {
-              title: '品牌名称',
-              dataIndex: 'name',
-              width: 150,
-              render: (name, record) => (
-                <Tag color={record.color}>{name}</Tag>
-              ),
-            },
-            {
-              title: '拼音码',
-              dataIndex: 'spell',
-              width: 100,
-            },
-            {
-              title: '排序号',
-              dataIndex: 'order',
-              width: 80,
-              sorter: (a, b) => (a.order || 0) - (b.order || 0),
-            },
-            {
-              title: '是否展示',
-              dataIndex: 'display',
-              width: 100,
-              render: (display) => (
-                <Tag color={display ? 'green' : 'default'}>
-                  {display ? '展示' : '隐藏'}
-                </Tag>
-              ),
-            },
-            {
-              title: '操作',
-              width: 80,
-              render: (_, record) => (
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<EditOutlined />}
-                  onClick={() => handleEdit(record.name)}
-                >
-                  编辑
-                </Button>
-              ),
-            },
-          ]}
-        />
-      ) : (
-        '载入中...'
-      )}
+      {/* 主内容卡片 */}
+      <Card 
+        style={{ 
+          borderRadius: 12, 
+          border: 'none',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        }}
+      >
+        {/* 操作栏 */}
+        <Row justify="space-between" align="middle" style={{ marginBottom: 20 }}>
+          <Col>
+            <Input
+              placeholder="搜索品牌名称或拼音码"
+              allowClear
+              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ width: 280, borderRadius: 8 }}
+            />
+          </Col>
+          <Col>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />} 
+              onClick={handleAdd}
+              style={{ borderRadius: 8 }}
+            >
+              新增品牌
+            </Button>
+          </Col>
+        </Row>
+
+        {/* 品牌列表 */}
+        {brands ? (
+          filteredBrands.length > 0 ? (
+            <Table
+              size="middle"
+              rowKey="name"
+              dataSource={filteredBrands}
+              pagination={{
+                defaultPageSize: 10,
+                pageSizeOptions: [10, 20, 50],
+                showTotal: (total) => `共 ${total} 个品牌`,
+                showSizeChanger: true,
+                showQuickJumper: true,
+              }}
+              columns={[
+                {
+                  title: '品牌名称',
+                  dataIndex: 'name',
+                  width: 180,
+                  render: (name, record) => (
+                    <Space>
+                      <Tag 
+                        color={record.color || 'default'} 
+                        style={{ 
+                          borderRadius: 6,
+                          padding: '2px 12px',
+                          fontSize: 14,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {name}
+                      </Tag>
+                    </Space>
+                  ),
+                },
+                {
+                  title: '拼音码',
+                  dataIndex: 'spell',
+                  width: 120,
+                  render: (spell) => (
+                    <Text type="secondary" style={{ fontFamily: 'monospace' }}>
+                      {spell || '-'}
+                    </Text>
+                  ),
+                },
+                {
+                  title: '排序',
+                  dataIndex: 'order',
+                  width: 80,
+                  align: 'center',
+                  sorter: (a, b) => (a.order || 0) - (b.order || 0),
+                  render: (order) => (
+                    <Text style={{ 
+                      backgroundColor: '#f5f5f5', 
+                      padding: '2px 8px', 
+                      borderRadius: 4,
+                      fontSize: 13,
+                    }}>
+                      {order || 0}
+                    </Text>
+                  ),
+                },
+                {
+                  title: '状态',
+                  dataIndex: 'display',
+                  width: 100,
+                  align: 'center',
+                  filters: [
+                    { text: '展示中', value: true },
+                    { text: '已隐藏', value: false },
+                  ],
+                  onFilter: (value, record) => (record as any).display === value,
+                  render: (_, record) => {
+                    const display = (record as any).display !== false;
+                    return (
+                      <Tag 
+                        color={display ? 'success' : 'default'}
+                        style={{ borderRadius: 12, padding: '0 12px' }}
+                      >
+                        {display ? '展示中' : '已隐藏'}
+                      </Tag>
+                    );
+                  },
+                },
+                {
+                  title: '操作',
+                  width: 100,
+                  align: 'center',
+                  render: (_, record) => (
+                    <Button
+                      type="text"
+                      icon={<EditOutlined />}
+                      onClick={() => handleEdit(record.name)}
+                      style={{ color: '#1890ff' }}
+                    >
+                      编辑
+                    </Button>
+                  ),
+                },
+              ]}
+              style={{ 
+                borderRadius: 8,
+              }}
+            />
+          ) : (
+            <Empty 
+              description="没有找到匹配的品牌" 
+              style={{ padding: '60px 0' }}
+            />
+          )
+        ) : (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: 16, color: '#999' }}>加载中...</div>
+          </div>
+        )}
+      </Card>
 
       {/* 编辑/新增抽屉 */}
       <Drawer
-        title={isAddMode ? '新增品牌' : '编辑品牌'}
+        title={
+          <Space>
+            {isAddMode ? <PlusOutlined /> : <EditOutlined />}
+            {isAddMode ? '新增品牌' : '编辑品牌'}
+          </Space>
+        }
         placement="right"
-        width={400}
+        width={420}
         open={drawerOpen}
         onClose={handleDrawerClose}
+        styles={{
+          body: { padding: '24px' },
+          header: { borderBottom: '1px solid #f0f0f0' },
+        }}
       >
-        <Form layout="vertical">
-          {isAddMode ? (
-            <BrandAdd onSuccess={handleSuccess} />
-          ) : selected ? (
-            <BrandEdit name={selected} onSuccess={handleSuccess} />
-          ) : null}
-        </Form>
+        {isAddMode ? (
+          <BrandAdd onSuccess={handleSuccess} />
+        ) : selected ? (
+          <BrandEdit name={selected} onSuccess={handleSuccess} />
+        ) : null}
       </Drawer>
     </div>
   );
@@ -187,7 +386,7 @@ function BrandEdit(props: { name: string; onSuccess?: () => void }) {
 
   const [input, setInput] = useState<{
     spell?: string;
-    order?: string;
+    order?: number;
     color?: string;
     logo?: string;
     display?: boolean;
@@ -210,78 +409,103 @@ function BrandEdit(props: { name: string; onSuccess?: () => void }) {
   }
 
   if (!preData) {
-    return <>加载中...</>;
+    return (
+      <div style={{ textAlign: 'center', padding: '40px 0' }}>
+        <Spin />
+        <div style={{ marginTop: 12, color: '#999' }}>加载品牌信息...</div>
+      </div>
+    );
   }
 
   return (
-    <>
+    <Form layout="vertical" style={{ marginTop: 8 }}>
       <Form.Item label="品牌名称">
-        <Input value={name} disabled />
+        <Input 
+          value={name} 
+          disabled 
+          style={{ 
+            backgroundColor: '#fafafa',
+            borderRadius: 8,
+          }} 
+        />
       </Form.Item>
 
-      <Form.Item label="拼音码" tooltip="名称的拼音码, 方便进行查找">
+      <Form.Item label="拼音码" tooltip="名称的拼音码，方便进行查找">
         <Input
           value={input.spell ?? preData.spell}
           onChange={e => {
             setInput(update(input, { spell: { $set: e.target.value } }));
           }}
+          placeholder="输入拼音码"
+          style={{ borderRadius: 8 }}
         />
       </Form.Item>
 
-      <Form.Item label="排序号" tooltip="相同分类 从低到高显示">
-        <Input
-          type="number"
+      <Form.Item label="排序号" tooltip="数字越小越靠前显示">
+        <InputNumber
           value={input.order ?? preData.order}
-          onChange={e => {
-            setInput(update(input, { order: { $set: e.target.value } }));
+          onChange={v => {
+            setInput(update(input, { order: { $set: v ?? undefined } }));
           }}
+          placeholder="输入排序号"
+          style={{ width: '100%', borderRadius: 8 }}
+          min={0}
         />
       </Form.Item>
 
-      <Form.Item label="颜色" tooltip="该品牌名称展示时文字的颜色">
+      <Form.Item label="标签颜色" tooltip="品牌标签展示时的颜色">
         <Input
           value={input.color ?? preData.color}
           onChange={e => {
             setInput(update(input, { color: { $set: e.target.value } }));
           }}
-          placeholder="如: #1890ff 或 blue"
+          placeholder="如: #1890ff、blue、green"
+          style={{ borderRadius: 8 }}
         />
         {(input.color || preData.color) && (
-          <Tag color={input.color ?? preData.color} style={{ marginTop: 8 }}>
-            预览效果
-          </Tag>
+          <div style={{ marginTop: 12 }}>
+            <Text type="secondary" style={{ fontSize: 12, marginRight: 8 }}>预览：</Text>
+            <Tag 
+              color={input.color ?? preData.color} 
+              style={{ borderRadius: 6, padding: '2px 12px' }}
+            >
+              {name}
+            </Tag>
+          </div>
         )}
       </Form.Item>
 
-      <Form.Item label="LOGO" tooltip="LOGO 图片 URL">
+      <Form.Item label="LOGO地址" tooltip="品牌LOGO图片的URL地址">
         <Input
           value={input.logo ?? preData.logo}
           onChange={e => {
             setInput(update(input, { logo: { $set: e.target.value } }));
           }}
           placeholder="输入图片URL"
+          style={{ borderRadius: 8 }}
         />
       </Form.Item>
 
-      <Form.Item label="是否展示" tooltip="是否在快捷选择品牌时将其展示出来">
+      <Form.Item label="是否展示" tooltip="是否在快捷选择品牌时展示">
         <Switch
           checked={input.display ?? preData.display}
           onChange={v => setInput(update(input, { display: { $set: v } }))}
+          checkedChildren="展示"
+          unCheckedChildren="隐藏"
         />
       </Form.Item>
 
-      <Form.Item>
+      <Form.Item style={{ marginTop: 32, marginBottom: 0 }}>
         <Button
           type="primary"
           loading={loading}
+          block
+          size="large"
+          style={{ borderRadius: 8 }}
           onClick={postAwait(async () => {
             setLoading(true);
             try {
-              let order: undefined | number;
-              if (input.order !== undefined) {
-                order = Number(input.order);
-              }
-              await editBrandInfo(name, { ...input, order }, { auth: token });
+              await editBrandInfo(name, { ...input }, { auth: token });
               message.success('修改成功');
               onSuccess?.();
             } finally {
@@ -289,10 +513,10 @@ function BrandEdit(props: { name: string; onSuccess?: () => void }) {
             }
           })}
         >
-          确认修改
+          保存修改
         </Button>
       </Form.Item>
-    </>
+    </Form>
   );
 }
 
@@ -301,7 +525,7 @@ function BrandAdd(props: { onSuccess?: () => void }) {
   const [input, setInput] = useState({
     name: '',
     spell: '',
-    order: '',
+    order: 0,
     color: '',
     logo: '',
     display: true,
@@ -324,74 +548,95 @@ function BrandAdd(props: { onSuccess?: () => void }) {
   }
 
   return (
-    <>
-      <Form.Item label="品牌名称" required tooltip="品牌的名称, 唯一">
+    <Form layout="vertical" style={{ marginTop: 8 }}>
+      <Form.Item 
+        label="品牌名称" 
+        required 
+        tooltip="品牌的唯一标识名称"
+      >
         <Input
           value={input.name}
           onChange={e => {
             setInput(update(input, { name: { $set: e.target.value } }));
           }}
           placeholder="请输入品牌名称"
+          style={{ borderRadius: 8 }}
         />
       </Form.Item>
 
-      <Form.Item label="拼音码" tooltip="名称的拼音码, 方便进行查找">
+      <Form.Item label="拼音码" tooltip="自动根据名称生成，可手动修改">
         <Input
           value={input.spell}
           onChange={e => {
             setInput(update(input, { spell: { $set: e.target.value } }));
           }}
+          placeholder="自动生成"
+          style={{ borderRadius: 8 }}
         />
       </Form.Item>
 
-      <Form.Item label="排序号" tooltip="相同分类 从低到高显示">
-        <Input
-          type="number"
+      <Form.Item label="排序号" tooltip="数字越小越靠前显示">
+        <InputNumber
           value={input.order}
-          onChange={e => {
-            setInput(update(input, { order: { $set: e.target.value } }));
+          onChange={v => {
+            setInput(update(input, { order: { $set: v ?? 0 } }));
           }}
-          placeholder="数字越小越靠前"
+          placeholder="输入排序号"
+          style={{ width: '100%', borderRadius: 8 }}
+          min={0}
         />
       </Form.Item>
 
-      <Form.Item label="颜色" tooltip="该品牌名称展示时文字的颜色">
+      <Form.Item label="标签颜色" tooltip="品牌标签展示时的颜色">
         <Input
           value={input.color}
           onChange={e => {
             setInput(update(input, { color: { $set: e.target.value } }));
           }}
-          placeholder="如: #1890ff 或 blue"
+          placeholder="如: #1890ff、blue、green"
+          style={{ borderRadius: 8 }}
         />
         {input.color && (
-          <Tag color={input.color} style={{ marginTop: 8 }}>
-            预览效果
-          </Tag>
+          <div style={{ marginTop: 12 }}>
+            <Text type="secondary" style={{ fontSize: 12, marginRight: 8 }}>预览：</Text>
+            <Tag 
+              color={input.color} 
+              style={{ borderRadius: 6, padding: '2px 12px' }}
+            >
+              {input.name || '品牌名称'}
+            </Tag>
+          </div>
         )}
       </Form.Item>
 
-      <Form.Item label="LOGO" tooltip="LOGO 图片 URL">
+      <Form.Item label="LOGO地址" tooltip="品牌LOGO图片的URL地址">
         <Input
           value={input.logo}
           onChange={e => {
             setInput(update(input, { logo: { $set: e.target.value } }));
           }}
           placeholder="输入图片URL"
+          style={{ borderRadius: 8 }}
         />
       </Form.Item>
 
-      <Form.Item label="是否展示" tooltip="是否在快捷选择品牌时将其展示出来">
+      <Form.Item label="是否展示" tooltip="是否在快捷选择品牌时展示">
         <Switch
           checked={input.display}
           onChange={v => setInput(update(input, { display: { $set: v } }))}
+          checkedChildren="展示"
+          unCheckedChildren="隐藏"
         />
       </Form.Item>
 
-      <Form.Item>
+      <Form.Item style={{ marginTop: 32, marginBottom: 0 }}>
         <Button
           type="primary"
           loading={loading}
+          block
+          size="large"
           disabled={!input.name}
+          style={{ borderRadius: 8 }}
           onClick={postAwait(async () => {
             if (!input.name) {
               message.warning('请输入品牌名称');
@@ -399,10 +644,9 @@ function BrandAdd(props: { onSuccess?: () => void }) {
             }
             setLoading(true);
             try {
-              const order = Number(input.order) || 0;
               const logo = input.logo === '' ? undefined : input.logo;
               await addBrandInfo(
-                { name: input.name, spell: input.spell, order, color: input.color, logo, display: input.display },
+                { name: input.name, spell: input.spell, order: input.order, color: input.color, logo, display: input.display },
                 { auth: token }
               );
               message.success('创建成功');
@@ -415,7 +659,7 @@ function BrandAdd(props: { onSuccess?: () => void }) {
           创建品牌
         </Button>
       </Form.Item>
-    </>
+    </Form>
   );
 }
 
@@ -434,7 +678,12 @@ export default function () {
 function ClientPage() {
   const items: TabsProps['items'] = [
     {
-      label: '品牌管理',
+      label: (
+        <span>
+          <TagsOutlined />
+          品牌管理
+        </span>
+      ),
       key: 'brand',
       children: (
         <BrandListProvider>
@@ -449,13 +698,14 @@ function ClientPage() {
       <Head>
         <title>基础数据管理</title>
       </Head>
-      <PageHeader
-        title="基础数据管理"
-        subTitle="管理品牌等基础数据"
-      ></PageHeader>
-      <Content>
-        <Tabs defaultActiveKey="brand" items={items} />
-      </Content>
+      <Tabs 
+        defaultActiveKey="brand" 
+        items={items}
+        style={{ 
+          backgroundColor: '#fff',
+          padding: '0 16px',
+        }}
+      />
     </PageWrap>
   );
 }
