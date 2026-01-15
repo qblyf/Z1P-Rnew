@@ -186,7 +186,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                     />
                   </Form.Item>
 
-                  <Form.Item label="排序号" tooltip="相同上级分类 从高到低显示">
+                  <Form.Item label="排序号" tooltip="从高到低显示">
                     <InputNumber
                       style={{ width: '100%' }}
                       value={input.order ?? preData.order}
