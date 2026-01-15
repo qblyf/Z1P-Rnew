@@ -47,15 +47,21 @@ type SPUEditing = Omit<SPU, 'images'> & {
  * [组件] 编辑 SPU
  * @author Lian Zheren <lzr@go0356.com>
  */
-export default function SPUEdit() {
+export default function SPUEdit(props: { defaultTab?: string }) {
+  const { defaultTab = 'basic' } = props;
   const [preData, setPreData] = useState<SPUEditing>();
   const { spuID } = useSpuIDContext();
   const { spuList, setSpuList } = useSpuListContext();
   const { brandList } = useBrandListContext();
   const [input, setInput] = useState<Partial<SPUEditing>>({});
-  const [activeTab, setActiveTab] = useState<string>('basic');
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
   const [showSkuEditDrawer, setShowSkuEditDrawer] = useState(false);
   const [selectedSkuID, setSelectedSkuID] = useState<number | undefined>();
+
+  // 当defaultTab变化时更新activeTab
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
 
   const transSpuDataToEditingData = useCallback((spu: SPU): SPUEditing => {
     return {

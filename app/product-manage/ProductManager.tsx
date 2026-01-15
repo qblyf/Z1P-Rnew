@@ -1,7 +1,7 @@
 'use client';
-import { Drawer } from 'antd';
+import { Drawer, message } from 'antd';
 import Head from 'next/head';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { orderSPUCate } from '@zsqk/z1-sdk/es/z1p/product';
 import update from 'immutability-helper';
 
@@ -91,6 +91,7 @@ export function ProductManager() {
   const { spuID, setSpuID } = useSpuIDContext();
   const { spuCateList, setSPUCateList } = useSPUCateListContext();
   const { token } = useTokenContext();
+  const [spuEditDefaultTab, setSpuEditDefaultTab] = useState<string>('basic');
 
   // 解决 SSR 问题
   useEffect(() => {
@@ -144,9 +145,11 @@ export function ProductManager() {
         <BrandListProvider>
           <SPUList
             onWandEditSPU={() => {
+              setSpuEditDefaultTab('basic');
               setMode('spu');
             }}
             onAddClick={() => {
+              setSpuEditDefaultTab('basic');
               setMode('spu');
               setSpuID(undefined);
             }}
@@ -154,7 +157,7 @@ export function ProductManager() {
         </BrandListProvider>
       </>
     );
-  }, [spuCateID, setMode, setSpuID]);
+  }, [spuCateID, setMode, setSpuID, setSpuEditDefaultTab]);
 
   // SKU 内容
   const skuContent = useMemo(() => {
@@ -174,14 +177,19 @@ export function ProductManager() {
               setSelectedSkuID(skuID);
             }}
             onAddClick={() => {
-              // TODO: 实现新增 SKU 功能
-              console.log('新增 SKU');
+              if (!spuID) {
+                message.warning('请在SPU管理中选择要新增SKU的载体');
+                return;
+              }
+              // 打开SPU编辑抽屉并切换到SKU编辑标签
+              setSpuEditDefaultTab('sku');
+              setMode('spu');
             }}
           />
         </BrandListProvider>
       </>
     );
-  }, [spuID, setMode, setSelectedSkuID]);
+  }, [spuID, setMode, setSelectedSkuID, setSpuEditDefaultTab]);
 
   // 编辑内容 - 用于 Drawer
   const editContent = useMemo(() => {
@@ -192,7 +200,7 @@ export function ProductManager() {
       if (spuID) {
         return (
           <BrandListProvider>
-            <SPUEdit />
+            <SPUEdit defaultTab={spuEditDefaultTab} />
           </BrandListProvider>
         );
       } else {
@@ -207,7 +215,7 @@ export function ProductManager() {
       return selectedSkuID ? <SKUEdit selectedSkuID={selectedSkuID} /> : null;
     }
     return null;
-  }, [mode, spuCateID, spuID, preSPUCateID, selectedSkuID]);
+  }, [mode, spuCateID, spuID, preSPUCateID, selectedSkuID, spuEditDefaultTab]);
 
   // 获取 Drawer 标题
   const getDrawerTitle = () => {
