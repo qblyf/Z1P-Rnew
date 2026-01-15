@@ -7,6 +7,7 @@ import update from 'immutability-helper';
 
 import { HelpTooltip } from '../../components/HelpTooltip';
 import SKUManager from '../../components/SKUManager';
+import SKUList from '../../components/SKUList';
 import { SKUEdit } from '../../components/SKUEdit';
 import SPUAdd from '../../components/SPUAdd';
 import SPUCateAdd from '../../components/SPUCateAdd';
@@ -161,22 +162,24 @@ export function ProductManager() {
       <>
         <h2 className="text-lg font-bold mb-4 text-slate-800">
           SKU 管理
-        </h2>
-        {spuID ? (
-          <SKUManager
-            onWantEditSKU={(skuID) => {
-              setMode('sku');
-              setSelectedSkuID(skuID);
-            }}
+          <HelpTooltip
+            title="显示所有 SKU 或选中 SPU 的 SKU。双击可以编辑选中的 SKU。"
+            style={{ fontSize: '0.6em', marginLeft: '0.2em' }}
           />
-        ) : (
-          <div className="text-center py-8 text-slate-500">
-            选择 SPU 以查看 SKU 列表
-          </div>
-        )}
+        </h2>
+        <SKUList
+          onWantEditSKU={(skuID) => {
+            setMode('sku');
+            setSelectedSkuID(skuID);
+          }}
+          onAddClick={() => {
+            // TODO: 实现新增 SKU 功能
+            console.log('新增 SKU');
+          }}
+        />
       </>
     );
-  }, [spuID]);
+  }, [spuID, setMode, setSelectedSkuID]);
 
   // 编辑内容 - 用于 Drawer
   const editContent = useMemo(() => {
