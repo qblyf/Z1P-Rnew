@@ -170,6 +170,38 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
     });
   }, [skuList, selectedFilters, hasActiveFilters, skuParamValuesMap]);
 
+  // 更新参数值（用于选择参数选项时）
+  const updateParamValue = useCallback((definitionID: number, value: string | null) => {
+    setPValueListEditing(prev => {
+      // 查找已有的值（可能是Value类型或NewValue类型）
+      const existingIndex = prev.findIndex(pv => {
+        if ('definitionID' in pv) {
+          return pv.definitionID === definitionID;
+        }
+        if ('paramDefinition' in pv) {
+          return pv.paramDefinition === definitionID;
+        }
+        return false;
+      });
+      
+      if (existingIndex >= 0) {
+        // 更新已有的值
+        const updated = [...prev] as any[];
+        updated[existingIndex] = { ...updated[existingIndex], value: value || '' };
+        return updated;
+      } else {
+        // 新增值 - 使用paramDefinition字段
+        const newValue = {
+          spu: spuID,
+          sku: skuID || null,
+          paramDefinition: definitionID,
+          value: value || '',
+        };
+        return [...prev, newValue] as any;
+      }
+    });
+  }, [spuID, skuID]);
+
   const handleSave = async () => {
     if (!token) return;
     const newValues: NewValue[] = pValueListEditing.filter(pv => !('valueID' in pv) && pv.value) as NewValue[];
@@ -234,12 +266,18 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
               >
                 <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#000' }}>{g.groupName}</div>
                 <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px', marginTop: '6px' }}>
-                  💡 点击参数值可过滤下方 SKU 列表
+                  💡 点击参数值设置SPU参数，同时过滤下方SKU列表
                 </div>
                 {definitionExtList
                   .filter(def => def.groupName === g.groupName && def.groupID === g.groupID)
                   .map(def => {
                     const customOption = def.options.slice(-1)[0];
+                    // 获取当前参数的编辑值
+                    const currentValue = pValueListEditing.find(pv => {
+                      if ('definitionID' in pv) return pv.definitionID === def.definitionID;
+                      if ('paramDefinition' in pv) return (pv as any).paramDefinition === def.definitionID;
+                      return false;
+                    })?.value;
                     return (
                       <div key={def.definitionID} style={{ paddingLeft: '20px', display: 'flex', alignItems: 'top', margin: '16px 0' }}>
                         <div style={{ fontWeight: '400', fontSize: '14px', color: '#666', flexShrink: 0, width: '100px', textAlign: 'right', marginRight: '30px', lineHeight: '32px' }}>
@@ -247,13 +285,18 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
                           {def.options.slice(0, -1).map(opt => {
-                            const isSelected = selectedFilters[def.definitionID] === opt.option;
+                            const isSelected = currentValue === opt.option;
                             return (
                               <Radio
                                 style={{ height: '32px', lineHeight: '32px' }}
                                 key={opt.option}
                                 checked={isSelected}
-                                onClick={() => opt.option && toggleFilter(def.definitionID, opt.option)}
+                                onClick={() => {
+                                  if (opt.option) {
+                                    updateParamValue(def.definitionID, opt.option);
+                                    toggleFilter(def.definitionID, opt.option);
+                                  }
+                                }}
                               >
                                 <Tooltip placement="topLeft" title={opt.option}>
                                   <span style={{ maxWidth: '100px', display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{opt.option}</span>
@@ -270,8 +313,13 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
                             <div style={{ position: 'relative' }}>
                               <Radio
                                 style={{ height: '32px', lineHeight: '32px' }}
-                                checked={selectedFilters[def.definitionID] === customOption.option}
-                                onClick={() => customOption.option && toggleFilter(def.definitionID, customOption.option)}
+                                checked={currentValue === customOption.option}
+                                onClick={() => {
+                                  if (customOption.option) {
+                                    updateParamValue(def.definitionID, customOption.option);
+                                    toggleFilter(def.definitionID, customOption.option);
+                                  }
+                                }}
                               />
                               <span
                                 style={{ border: '1px solid #91CAFF', color: '#1677FF', background: '#E6F4FF', padding: '2px 4px', cursor: 'pointer' }}
@@ -334,13 +382,17 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
         open={editingCustomDefinitionID !== null}
         onCancel={() => { setEditingCustomDefinitionID(null); setEditingCustomValue(null); }}
         onOk={() => {
+          if (!editingCustomDefinitionID || !editingCustomValue) return;
           const indexDef = definitionExtList.findIndex(def => def.definitionID === editingCustomDefinitionID);
           if (indexDef < 0) return;
+          // 更新definitionExtList中的自定义选项
           setDefinitionExtList([
             ...definitionExtList.slice(0, indexDef),
             { ...definitionExtList[indexDef], options: [...definitionExtList[indexDef].options.slice(0, -1), { isCustom: true, option: editingCustomValue }] },
             ...definitionExtList.slice(indexDef + 1),
           ]);
+          // 同时更新pValueListEditing
+          updateParamValue(editingCustomDefinitionID, editingCustomValue);
           setEditingCustomDefinitionID(null);
           setEditingCustomValue(null);
         }}
