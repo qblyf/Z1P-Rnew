@@ -196,12 +196,15 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
         return updated;
       } else {
         // 新增值 - 使用paramDefinition字段
-        const newValue = {
+        const newValue: any = {
           spu: spuID,
-          sku: skuID || null,
           paramDefinition: definitionID,
           value: value || '',
         };
+        // 只有当skuID有值时才添加sku字段
+        if (skuID) {
+          newValue.sku = skuID;
+        }
         return [...prev, newValue] as any;
       }
     });
