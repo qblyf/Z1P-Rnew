@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { SkuID } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { Alert, Col, Row, Table, Tag, Input, Button, Tooltip } from 'antd';
 import { BarcodeOutlined } from '@ant-design/icons';
-import { getSPUList, getSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
+import { getSPUList, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
 import { useSpuIDContext, useSPUCateIDContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
@@ -85,6 +85,26 @@ export default function SKUList(props: {
               skus = skus.concat(skusWithSpuName);
             }
           }
+        }
+        
+        // 批量获取SKU详细信息（包含listPrice、gtins等）
+        if (skus.length > 0) {
+          const skuIds = skus.map(sku => sku.skuID);
+          const skuDetails = await getSKUsInfo(skuIds);
+          
+          // 合并详细信息到SKU列表
+          skus = skus.map(sku => {
+            const detail = skuDetails.find(d => d.id === sku.skuID);
+            if (detail && !('errInfo' in detail)) {
+              return {
+                ...sku,
+                listPrice: detail.listPrice,
+                gtins: detail.gtins,
+                name: detail.name,
+              };
+            }
+            return sku;
+          });
         }
         
         setSkuList(skus);
