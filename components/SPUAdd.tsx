@@ -102,7 +102,7 @@ export default function SPUAdd() {
 
   const isLast = spuCateList.every(v => v.pid !== spuCateID);
   if (!isLast) {
-    return <>必须从最末级分类创建 SPU</>;
+    return <>请在商品分类中选择到要新增SPU的最末级分类</>;
   }
 
   const spuCate = spuCateList.find(v => v.id === spuCateID);
