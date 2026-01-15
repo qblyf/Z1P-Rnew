@@ -167,16 +167,18 @@ export function ProductManager() {
             style={{ fontSize: '0.6em', marginLeft: '0.2em' }}
           />
         </h2>
-        <SKUList
-          onWantEditSKU={(skuID) => {
-            setMode('sku');
-            setSelectedSkuID(skuID);
-          }}
-          onAddClick={() => {
-            // TODO: 实现新增 SKU 功能
-            console.log('新增 SKU');
-          }}
-        />
+        <BrandListProvider>
+          <SKUList
+            onWantEditSKU={(skuID) => {
+              setMode('sku');
+              setSelectedSkuID(skuID);
+            }}
+            onAddClick={() => {
+              // TODO: 实现新增 SKU 功能
+              console.log('新增 SKU');
+            }}
+          />
+        </BrandListProvider>
       </>
     );
   }, [spuID, setMode, setSelectedSkuID]);
