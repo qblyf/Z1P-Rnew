@@ -99,14 +99,6 @@ export default function SPUList(props: {
                 setSpuID(v.id);
               }
             },
-            onDoubleClick: () => {
-              // 调用编辑该行功能
-              onWandEditSPU && onWandEditSPU(v.id);
-            },
-            style: {
-              backgroundColor: spuID === v.id ? '#e6f7ff' : undefined,
-              cursor: 'pointer',
-            },
           };
         }}
         showHeader={false}
@@ -147,6 +139,9 @@ export default function SPUList(props: {
           pageSizeOptions: [20, 100, 1000],
         }}
         scroll={{ y: height - 100 }}
+        rowClassName={(record) => {
+          return spuID === record.id ? 'ant-table-row-selected' : '';
+        }}
       />
     </div>
   );
