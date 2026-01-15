@@ -43,7 +43,7 @@ export default function SPUList(props: {
     }
     
     // 按排序号从大到小排序
-    return filtered.sort((a, b) => (b.order || 0) - (a.order || 0));
+    return filtered.sort((a, b) => ((b as any).order || 0) - ((a as any).order || 0));
   }, [spuList, search]);
 
   return (
