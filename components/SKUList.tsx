@@ -158,6 +158,19 @@ export default function SKUList(props: {
         dataSource={skuListFiltered}
         loading={loading}
         showHeader={false}
+        onRow={(record) => {
+          return {
+            onClick: () => {
+              // 点击整行时切换选中状态
+              if (selectedSkuID === record.skuID) {
+                setSelectedSkuID(undefined);
+              } else {
+                setSelectedSkuID(record.skuID);
+              }
+            },
+            style: { cursor: 'pointer' },
+          };
+        }}
         columns={[
           {
             key: 'brand',

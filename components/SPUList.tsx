@@ -90,6 +90,19 @@ export default function SPUList(props: {
         rowKey="id"
         dataSource={spuListFiltered}
         showHeader={false}
+        onRow={(record) => {
+          return {
+            onClick: () => {
+              // 点击整行时切换选中状态
+              if (spuID === record.id) {
+                setSpuID(undefined);
+              } else {
+                setSpuID(record.id);
+              }
+            },
+            style: { cursor: 'pointer' },
+          };
+        }}
         columns={[
           {
             key: 'brand',
