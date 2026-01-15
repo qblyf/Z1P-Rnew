@@ -164,12 +164,12 @@ export default function SKUList(props: {
           {
             key: 'd',
             render: (_v, v) => {
-              // 生成 SKU 名称
+              // 生成 SKU 名称 - 只显示值，不显示属性字段名
               const skuNameParts: string[] = [];
-              if (v.combo) skuNameParts.push(`版本: ${v.combo}`);
-              if (v.spec) skuNameParts.push(`配置: ${v.spec}`);
-              if (v.color) skuNameParts.push(`颜色: ${v.color}`);
-              const skuName = skuNameParts.length > 0 ? skuNameParts.join(', ') : `SKU ${v.id}`;
+              if (v.combo) skuNameParts.push(v.combo);
+              if (v.spec) skuNameParts.push(v.spec);
+              if (v.color) skuNameParts.push(v.color);
+              const skuName = skuNameParts.length > 0 ? skuNameParts.join(' ') : `SKU ${v.id}`;
               
               // 组合 SPU 名称和 SKU 规格
               const fullName = v.spuName ? `${v.spuName} ${skuName}` : skuName;
