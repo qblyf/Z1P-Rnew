@@ -50,13 +50,20 @@ export default function SKUList(props: {
         if (spuID) {
           // 如果选择了 SPU，只获取该 SPU 的 SKU
           const spu = await getSPUInfo(spuID);
-          skus = spu.skuIDs || [];
+          skus = (spu.skuIDs || []).map(sku => ({
+            ...sku,
+            spuName: spu.name,
+          }));
         } else {
           // 否则获取所有 SPU 的 SKU
           const spus = await getSPUList({});
           for (const spu of spus) {
             if (spu.skuIDs && Array.isArray(spu.skuIDs)) {
-              skus = skus.concat(spu.skuIDs);
+              const skusWithSpuName = spu.skuIDs.map(sku => ({
+                ...sku,
+                spuName: spu.name,
+              }));
+              skus = skus.concat(skusWithSpuName);
             }
           }
         }
@@ -164,10 +171,13 @@ export default function SKUList(props: {
               if (v.color) skuNameParts.push(`颜色: ${v.color}`);
               const skuName = skuNameParts.length > 0 ? skuNameParts.join(', ') : `SKU ${v.id}`;
               
+              // 组合 SPU 名称和 SKU 规格
+              const fullName = v.spuName ? `${v.spuName} ${skuName}` : skuName;
+              
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                   <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {skuName}
+                    {fullName}
                   </div>
                   <div style={{ flexShrink: 0, display: 'flex', gap: '4px' }}>
                     {v.color && <Tag color="gold">{v.color}</Tag>}
