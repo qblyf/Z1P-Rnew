@@ -2,7 +2,7 @@
 
 import { Button, Col, Input, Row, Tree, Tag, Alert } from 'antd';
 import { TreeProps } from 'antd/lib/tree';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react';
 import update, { Spec } from 'immutability-helper';
 import { getSPUCateBaseList } from '@zsqk/z1-sdk/es/z1p/product';
 import { SPUCateID } from '@zsqk/z1-sdk/es/z1p/alltypes';
@@ -291,20 +291,20 @@ export default function SPUCateList(props: {
         <Tree
           selectedKeys={spuCateID ? [spuCateID] : []}
           showLine={{ showLeafIcon: false }}
-          onSelect={v => {
+          onSelect={useCallback((v: React.Key[]) => {
             const v1 = v[0];
             if (v1 !== undefined) {
               setSpuCateID(Number(v1));
             } else {
               setSpuCateID(undefined);
             }
-          }}
+          }, [setSpuCateID])}
           treeData={treeData}
           defaultExpandAll={search.length > 0}
           checkable
           checkStrictly
           checkedKeys={spuCateID ? [spuCateID] : []}
-          onCheck={(checkedKeys) => {
+          onCheck={useCallback((checkedKeys: React.Key[] | { checked: React.Key[]; halfChecked: React.Key[] }) => {
             const keys = Array.isArray(checkedKeys) ? checkedKeys : checkedKeys.checked;
             // 单选逻辑：只保留最后一个选中的项，不受父级影响
             if (keys.length > 0) {
@@ -313,7 +313,7 @@ export default function SPUCateList(props: {
             } else {
               setSpuCateID(undefined);
             }
-          }}
+          }, [setSpuCateID])}
         />
       </div>
     </div>

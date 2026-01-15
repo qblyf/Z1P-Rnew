@@ -10,7 +10,7 @@ import { getAwait, lessAwait } from '../error';
  */
 function useSPUCateID() {
   const [spuCateID, setSelected] = useState<SPUCateID | undefined>(undefined);
-  const setSpuCateID = (v: SPUCateID | undefined) => setSelected(v);
+  const setSpuCateID = useCallback((v: SPUCateID | undefined) => setSelected(v), []);
   return { spuCateID, setSpuCateID };
 }
 
@@ -62,7 +62,7 @@ export function useSPUCateListUpdate() {
  */
 function useSpuID() {
   const [spuID, setSelected] = useState<SpuID | undefined>(undefined);
-  const setSpuID = (v: SpuID | undefined) => setSelected(v);
+  const setSpuID = useCallback((v: SpuID | undefined) => setSelected(v), []);
   return { spuID, setSpuID };
 }
 
