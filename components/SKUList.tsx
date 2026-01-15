@@ -160,12 +160,11 @@ export default function SKUList(props: {
         onRow={v => {
           return {
             onClick: () => {
-              // 如果点击的是已选中的行，则取消选中；否则选中该行
-              if (selectedSkuID === v.id) {
-                setSelectedSkuID(undefined);
-              } else {
-                setSelectedSkuID(v.id);
-              }
+              setSelectedSkuID(v.id);
+            },
+            onDoubleClick: () => {
+              // 调用编辑该行功能
+              onWantEditSKU && onWantEditSKU(v.id);
             },
           };
         }}
@@ -226,8 +225,10 @@ export default function SKUList(props: {
           pageSizeOptions: [20, 100, 1000],
         }}
         scroll={{ y: height - 100 }}
-        rowClassName={(record) => {
-          return selectedSkuID === record.id ? 'ant-table-row-selected' : '';
+        rowSelection={{
+          type: 'radio',
+          selectedRowKeys: selectedSkuID ? [selectedSkuID] : undefined,
+          hideSelectAll: true,
         }}
       />
     </div>

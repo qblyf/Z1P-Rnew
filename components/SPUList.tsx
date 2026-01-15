@@ -92,12 +92,11 @@ export default function SPUList(props: {
         onRow={v => {
           return {
             onClick: () => {
-              // 如果点击的是已选中的行，则取消选中；否则选中该行
-              if (spuID === v.id) {
-                setSpuID(undefined);
-              } else {
-                setSpuID(v.id);
-              }
+              setSpuID(v.id);
+            },
+            onDoubleClick: () => {
+              // 调用编辑该行功能
+              onWandEditSPU && onWandEditSPU(v.id);
             },
           };
         }}
@@ -139,8 +138,10 @@ export default function SPUList(props: {
           pageSizeOptions: [20, 100, 1000],
         }}
         scroll={{ y: height - 100 }}
-        rowClassName={(record) => {
-          return spuID === record.id ? 'ant-table-row-selected' : '';
+        rowSelection={{
+          type: 'radio',
+          selectedRowKeys: spuID ? [spuID] : undefined,
+          hideSelectAll: true,
         }}
       />
     </div>
