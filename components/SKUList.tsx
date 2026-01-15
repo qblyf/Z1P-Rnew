@@ -157,10 +157,17 @@ export default function SKUList(props: {
           {
             key: 'd',
             render: (_v, v) => {
+              // 生成 SKU 名称
+              const skuNameParts: string[] = [];
+              if (v.combo) skuNameParts.push(`版本: ${v.combo}`);
+              if (v.spec) skuNameParts.push(`配置: ${v.spec}`);
+              if (v.color) skuNameParts.push(`颜色: ${v.color}`);
+              const skuName = skuNameParts.length > 0 ? skuNameParts.join(', ') : `SKU ${v.id}`;
+              
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                   <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {v.name || `SKU ${v.id}`}
+                    {skuName}
                   </div>
                   <div style={{ flexShrink: 0, display: 'flex', gap: '4px' }}>
                     {v.color && <Tag color="gold">{v.color}</Tag>}
