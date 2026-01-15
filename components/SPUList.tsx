@@ -34,13 +34,16 @@ export default function SPUList(props: {
 
   const spuListFiltered = useMemo(() => {
     const s = search.replaceAll(/\s/g, '').toLowerCase();
-    if (!s) {
-      return spuList;
+    let filtered = spuList;
+    
+    if (s) {
+      filtered = spuList.filter(spu =>
+        spu.name.replaceAll(/\s/g, '').toLowerCase().includes(s)
+      );
     }
-    const ret = spuList.filter(spu =>
-      spu.name.replaceAll(/\s/g, '').toLowerCase().includes(s)
-    );
-    return ret;
+    
+    // 按排序号从大到小排序
+    return filtered.sort((a, b) => (b.order || 0) - (a.order || 0));
   }, [spuList, search]);
 
   return (
