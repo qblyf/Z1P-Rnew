@@ -132,7 +132,14 @@ export default function SPUList(props: {
           selectedRowKeys: spuID ? [spuID] : [],
           hideSelectAll: true,
           onChange: (selectedRowKeys) => {
-            setSpuID(selectedRowKeys[0] as SpuID | undefined);
+            // 如果点击的是已选中的项，则取消选中
+            if (selectedRowKeys.length === 0) {
+              setSpuID(undefined);
+            } else if (selectedRowKeys[0] === spuID) {
+              setSpuID(undefined);
+            } else {
+              setSpuID(selectedRowKeys[0] as SpuID);
+            }
           },
         }}
       />
