@@ -245,11 +245,14 @@ function BrandManage() {
               dataSource={filteredBrands}
               pagination={{
                 defaultPageSize: 10,
-                pageSizeOptions: [10, 20, 50],
-                showTotal: (total) => `共 ${total} 个品牌`,
+                pageSize: 10,
+                pageSizeOptions: [10, 20, 50, 100],
+                showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 个品牌`,
                 showSizeChanger: true,
                 showQuickJumper: true,
+                position: ['bottomCenter'],
               }}
+              scroll={{ y: 400 }}
               columns={[
                 {
                   title: '品牌名称',
