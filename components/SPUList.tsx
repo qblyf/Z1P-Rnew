@@ -89,13 +89,6 @@ export default function SPUList(props: {
         size="small"
         rowKey="id"
         dataSource={spuListFiltered}
-        onRow={v => {
-          return {
-            onClick: () => {
-              setSpuID(v.id);
-            },
-          };
-        }}
         showHeader={false}
         columns={[
           {
@@ -136,8 +129,11 @@ export default function SPUList(props: {
         scroll={{ y: height - 100 }}
         rowSelection={{
           type: 'radio',
-          selectedRowKeys: spuID ? [spuID] : undefined,
+          selectedRowKeys: spuID ? [spuID] : [],
           hideSelectAll: true,
+          onChange: (selectedRowKeys) => {
+            setSpuID(selectedRowKeys[0] as SpuID | undefined);
+          },
         }}
       />
     </div>
