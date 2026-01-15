@@ -1076,16 +1076,28 @@ function EditRelationshipSPUwithSKUs(props: {
             render: (_: any, item: any) => {
               if (item.skuID === -1) {
                 return (
-                  <Tooltip title="创建">
-                    <PlusOutlined
-                      style={{ cursor: 'pointer', fontSize: '16px', color: '#1890ff' }}
-                      onClick={() => {
-                        if (newRowData && onWantAddSKU) {
-                          onWantAddSKU(newRowData as SKUDetails);
-                        }
-                      }}
-                    />
-                  </Tooltip>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <Tooltip title="创建">
+                      <PlusOutlined
+                        style={{ cursor: 'pointer', fontSize: '16px', color: '#1890ff' }}
+                        onClick={() => {
+                          if (newRowData && onWantAddSKU) {
+                            onWantAddSKU(newRowData as SKUDetails);
+                          }
+                        }}
+                      />
+                    </Tooltip>
+                    <Tooltip title="编辑">
+                      <EditOutlined
+                        style={{ cursor: 'pointer', fontSize: '16px', color: '#1890ff' }}
+                        onClick={() => {
+                          if (newRowData && onWantAddSKU) {
+                            onWantAddSKU(newRowData as SKUDetails);
+                          }
+                        }}
+                      />
+                    </Tooltip>
+                  </div>
                 );
               }
               return (

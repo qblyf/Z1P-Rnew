@@ -225,6 +225,7 @@ export default function SKUList(props: {
         rowSelection={{
           type: 'radio',
           hideSelectAll: true,
+          selectedRowKeys: selectedSkuID ? [selectedSkuID] : [],
           onChange: (selectedRowKeys) => {
             setSelectedSkuID(selectedRowKeys[0] as SkuID | undefined);
           },
