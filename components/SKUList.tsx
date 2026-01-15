@@ -154,7 +154,7 @@ export default function SKUList(props: {
       )}
       <Table
         size="small"
-        rowKey="id"
+        rowKey="skuID"
         dataSource={skuListFiltered}
         loading={loading}
         showHeader={false}
