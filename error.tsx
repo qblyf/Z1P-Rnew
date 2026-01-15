@@ -11,6 +11,49 @@ import {
   successInfoStayTime,
 } from './constants';
 
+// 消息计数器，用于合并重复消息
+const messageCounter: Map<string, { count: number; timer: NodeJS.Timeout | null }> = new Map();
+const MESSAGE_MERGE_WINDOW = 2000; // 2秒内的相同消息会被合并
+
+/**
+ * 显示可合并的成功消息
+ */
+function showMergedSuccessMessage(content: string, key: string) {
+  const existing = messageCounter.get(content);
+  
+  if (existing) {
+    // 已有相同消息，增加计数
+    existing.count++;
+    if (existing.timer) {
+      clearTimeout(existing.timer);
+    }
+    
+    // 更新消息显示
+    message.success({
+      content: existing.count > 1 ? `${content} ×${existing.count}` : content,
+      key: content, // 使用内容作为key，确保相同消息会被更新而不是新建
+    });
+    
+    // 设置清理定时器
+    existing.timer = setTimeout(() => {
+      messageCounter.delete(content);
+    }, MESSAGE_MERGE_WINDOW);
+  } else {
+    // 新消息
+    messageCounter.set(content, { count: 1, timer: null });
+    message.success({
+      content,
+      key: content,
+    });
+    
+    // 设置清理定时器
+    const timer = setTimeout(() => {
+      messageCounter.delete(content);
+    }, MESSAGE_MERGE_WINDOW);
+    messageCounter.get(content)!.timer = timer;
+  }
+}
+
 /**
  * [通用] 等待
  * @param time 要等待的毫秒
@@ -285,7 +328,8 @@ export function lessAwait<
           }, timeoutThreshold);
         }),
       ]);
-      message.success({ content: '请求处理成功.', key });
+      message.destroy(key); // 先销毁loading消息
+      showMergedSuccessMessage('请求处理成功.', key);
       if (typeof finallyCallback === 'function') {
         finallyCallback(undefined, data);
       }
