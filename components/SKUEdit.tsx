@@ -12,7 +12,6 @@ import update from 'immutability-helper';
 import pinyin from 'tiny-pinyin';
 import { UploadFile } from 'antd/lib/upload/interface';
 
-import { useSpuIDContext } from '../datahooks/product';
 import { lessAwait, postAwait } from '../error';
 import { EditDefaultSNRulesFormItem } from './SKUAdd';
 import Upload from './Upload';
@@ -42,8 +41,6 @@ export function SKUEdit(props: { selectedSkuID: SkuID }) {
     };
   }>({});
   const [image, setImage] = useState<UploadFile>();
-
-  const { spuID } = useSpuIDContext();
 
   const [hasSetParams, setHasSetParams] = useState<boolean>(false);
 
@@ -87,10 +84,6 @@ export function SKUEdit(props: { selectedSkuID: SkuID }) {
 
   if (!preData) {
     return <>等待 SKU 数据加载</>;
-  }
-
-  if (spuID !== preData.spuID) {
-    return <>已经切换 SPU, 请关闭后重新选择.</>;
   }
 
   // console.log('input.gtins', input.gtins);
