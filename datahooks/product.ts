@@ -1,7 +1,7 @@
 import { SPUCateID, SpuID } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { getSPUCateBaseList, getSPUList } from '@zsqk/z1-sdk/es/z1p/product';
 import constate from 'constate';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 import { getAwait, lessAwait } from '../error';
 
 /**
@@ -76,22 +76,26 @@ function useSPUList() {
   const [spuList, setSpuList] = useState<
     Awaited<ReturnType<typeof getSPUList>>
   >([]);
+  const [isPending, startTransition] = useTransition();
 
   const { spuCateID } = useSPUCateIDContext();
   const { setSpuID } = useSpuIDContext();
 
   useEffect(() => {
-    lessAwait(async () => {
-      // 如果 spuCateID 为空，获取所有 SPU；否则获取指定分类的 SPU
-      const d = spuCateID 
-        ? await getSPUList({ spuCateIDs: [spuCateID] })
-        : await getSPUList({});
-      setSpuList(d);
-      setSpuID(undefined);
-    })();
+    // 使用startTransition标记为低优先级更新，不阻塞用户交互
+    startTransition(() => {
+      lessAwait(async () => {
+        // 如果 spuCateID 为空，获取所有 SPU；否则获取指定分类的 SPU
+        const d = spuCateID 
+          ? await getSPUList({ spuCateIDs: [spuCateID] })
+          : await getSPUList({});
+        setSpuList(d);
+        setSpuID(undefined);
+      })();
+    });
   }, [spuCateID]);
 
-  return { spuList, setSpuList };
+  return { spuList, setSpuList, isPending };
 }
 
 export const [SPUListProvider, useSpuListContext] = constate(useSPUList);

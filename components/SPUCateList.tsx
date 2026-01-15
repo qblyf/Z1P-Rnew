@@ -62,7 +62,7 @@ function pidTree(data: Data[], pid: number): TreeProps['treeData'] {
  *
  * @author Lian Zheren <lzr@go0356.com>
  */
-export default function SPUCateList(props: { 
+const SPUCateList = memo(function SPUCateList(props: { 
   offsetTop?: number;
   onAddClick?: () => void;
   onEditClick?: () => void;
@@ -318,7 +318,9 @@ export default function SPUCateList(props: {
       </div>
     </div>
   );
-}
+});
+
+export default SPUCateList;
 
 /**
  * 根据变动生成新的 SPUCateList 数据
