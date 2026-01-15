@@ -79,7 +79,12 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
           })
         );
       } catch (err) {
-        message.error(`获取商品参数定义失败：${err instanceof Error ? err.message : ''}`);
+        const errMsg = err instanceof Error ? err.message : '';
+        if (errMsg.includes('expired') || errMsg.includes('5001')) {
+          message.error('登录已过期，请刷新页面重新登录');
+        } else {
+          message.error(`获取商品参数定义失败：${errMsg}`);
+        }
       }
     };
     fn();
