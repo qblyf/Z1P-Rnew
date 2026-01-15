@@ -92,7 +92,12 @@ export default function SPUList(props: {
         onRow={v => {
           return {
             onClick: () => {
-              setSpuID(v.id);
+              // 如果点击的是已选中的行，则取消选中；否则选中该行
+              if (spuID === v.id) {
+                setSpuID(undefined);
+              } else {
+                setSpuID(v.id);
+              }
             },
             onDoubleClick: () => {
               // 调用编辑该行功能
