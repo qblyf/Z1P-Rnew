@@ -1,5 +1,4 @@
 import { SPU, SkuID, SPUCate, SKU } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { paramsDetail } from '@zsqk/z1-sdk/es/z1p/params-value';
 import {
   appendSKUInfo,
   getSPUInfo,
@@ -138,8 +137,6 @@ export default function SKUManager(props: {
   // 当创建新的 SKU 时, 需要给出配置
   const [selected, setSelected] = useState<SKUDetails>();
 
-  const [hasSetParams, setHasSetParams] = useState<boolean>(false);
-
   useEffect(() => {
     if (!spuID) {
       return;
@@ -178,33 +175,6 @@ export default function SKUManager(props: {
 
       setSPU(spu);
     })();
-  }, [spuID]);
-
-  useEffect(() => {
-    const fn = async () => {
-      if (!spuID) {
-        return;
-      }
-      const res = await paramsDetail({ spu: spuID });
-      setHasSetParams(Boolean(res.length));
-    };
-    fn();
-  }, [spuID]);
-
-  // 监听窗口焦点事件，当参数配置页面关闭时重新检查参数
-  useEffect(() => {
-    const handleFocus = async () => {
-      if (!spuID) {
-        return;
-      }
-      const res = await paramsDetail({ spu: spuID });
-      setHasSetParams(Boolean(res.length));
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
   }, [spuID]);
 
   // 使用 useCallback 稳定回调函数的引用，避免无限循环
@@ -745,25 +715,6 @@ export default function SKUManager(props: {
                   </Button>
                 )}
               </div>
-            </Form.Item>
-
-            <Form.Item label="参数" tooltip="SPU/SKU参数设置" style={{ marginBottom: 0 }}>
-              {hasSetParams ? (
-                <span>已设置</span>
-              ) : (
-                <span style={{ color: 'red' }}>未设置</span>
-              )}
-              <Button
-                size="small"
-                style={{ marginLeft: '10px' }}
-                onClick={() => {
-                  window.open(
-                    `/spu-sku-param-config?spuID=${spuID}&name=${spu.name}`
-                  );
-                }}
-              >
-                设置参数
-              </Button>
             </Form.Item>
               </>
             </div>

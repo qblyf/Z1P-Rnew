@@ -4,8 +4,10 @@ import {
   getSPUInfo,
   invalidateSPUInfo,
 } from '@zsqk/z1-sdk/es/z1p/product';
+import { paramsDetail } from '@zsqk/z1-sdk/es/z1p/params-value';
 import { EditSPUInfo } from '@zsqk/z1-sdk/es/z1p/product-types';
 import {
+  Badge,
   Button,
   DatePicker,
   Form,
@@ -58,11 +60,26 @@ export default function SPUEdit(props: { defaultTab?: string }) {
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
   const [showSkuEditDrawer, setShowSkuEditDrawer] = useState(false);
   const [selectedSkuID, setSelectedSkuID] = useState<number | undefined>();
+  const [hasSetParams, setHasSetParams] = useState<boolean>(true); // 默认true避免闪烁
 
   // 当defaultTab变化时更新activeTab
   useEffect(() => {
     setActiveTab(defaultTab);
   }, [defaultTab]);
+
+  // 检查参数是否已设置
+  useEffect(() => {
+    if (!spuID) return;
+    const checkParams = async () => {
+      try {
+        const res = await paramsDetail({ spu: spuID });
+        setHasSetParams(res.length > 0);
+      } catch {
+        // 忽略错误
+      }
+    };
+    checkParams();
+  }, [spuID]);
 
   const transSpuDataToEditingData = useCallback((spu: SPU): SPUEditing => {
     return {
@@ -115,6 +132,10 @@ export default function SPUEdit(props: { defaultTab?: string }) {
   if (!spuID || !preData) {
     return <>暂无 SPU 数据</>;
   }
+
+  // 检查商城信息是否已维护（主图或图文详情至少有一个）
+  const hasMallInfo = (preData.images.mainImages && preData.images.mainImages.length > 0) ||
+    (preData.images.detailsImages && preData.images.detailsImages.length > 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -344,7 +365,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
             },
             {
               key: 'mall',
-              label: '商城信息',
+              label: hasMallInfo ? '商城信息' : <Badge dot color="red"><span style={{ paddingRight: 6 }}>商城信息</span></Badge>,
               children: (
                 <Form layout="vertical" autoComplete="off">
                   <Form.Item label="主图" tooltip="最多6张，建议尺寸 800 * 800px">
@@ -403,7 +424,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
             },
             {
               key: 'params',
-              label: '参数',
+              label: hasSetParams ? '参数' : <Badge dot color="red"><span style={{ paddingRight: 6 }}>参数</span></Badge>,
               children: (
                 <SPUParamConfig spuID={spuID} />
               ),
