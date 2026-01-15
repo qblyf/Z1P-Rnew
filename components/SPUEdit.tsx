@@ -33,6 +33,7 @@ import { useTokenContext } from '../datahooks/auth';
 import { ChangeTable } from './ChangeTable';
 import SKUManager from './SKUManager';
 import { SKUEdit } from './SKUEdit';
+import SPUParamConfig from './SPUParamConfig';
 import './SPUEdit.css';
 
 type SPUEditing = Omit<SPU, 'images'> & {
@@ -398,6 +399,13 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                     setShowSkuEditDrawer(true);
                   }}
                 />
+              ),
+            },
+            {
+              key: 'params',
+              label: '参数',
+              children: (
+                <SPUParamConfig spuID={spuID} />
               ),
             },
             {
