@@ -56,6 +56,11 @@ export const MENU_CONFIG: MenuItem[] = [
         label: '数据导出',
         href: '/data-export',
       },
+      {
+        id: 'data-sync',
+        label: '数据同步',
+        href: 'https://p.z1.pub/sync',
+      },
     ],
   },
   {
