@@ -418,7 +418,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                         const params: Parameters<EditSPUInfo>[1] = {
                           images: {
                             thumbnail: input.images.thumbnail
-                              ? input.images.thumbnail.url
+                              ? (input.images.thumbnail.url || '')
                               : '',
                             mainImages: (input.images.mainImages || [])
                               .map(img => img.url || '')
