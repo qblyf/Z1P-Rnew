@@ -407,6 +407,46 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                       }}
                     />
                   </Form.Item>
+
+                  <Form.Item>
+                    <Button
+                      type="primary"
+                      onClick={postAwait(async () => {
+                        if (!input.images || (!input.images.mainImages && !input.images.detailsImages)) {
+                          throw new Error('无变动不需提交');
+                        }
+                        const params: Parameters<EditSPUInfo>[1] = {
+                          images: {
+                            thumbnail: input.images.thumbnail
+                              ? input.images.thumbnail.url
+                              : '',
+                            mainImages: (input.images.mainImages || [])
+                              .map(img => img.url || '')
+                              .filter(url => Boolean(url)),
+                            detailsImages: (input.images.detailsImages || [])
+                              .map(img => img.url || '')
+                              .filter(url => Boolean(url)),
+                          },
+                        };
+
+                        // 修改服务端数据
+                        await editSPUInfo(spuID, params, { auth: token });
+
+                        // 请求成功后 按需修改本组件数据
+                        const newData = { ...preData, ...input };
+                        setPreData(newData);
+
+                        // 请求成功后 初始化用户输入数据
+                        setInput({});
+
+                        // 请求成功后 按需修改 上下文 数据
+                        const i = spuList.findIndex(v => v.id === spuID);
+                        setSpuList(update(spuList, { [i]: { $set: newData } }));
+                      })}
+                    >
+                      提交修改
+                    </Button>
+                  </Form.Item>
                 </Form>
               ),
             },
