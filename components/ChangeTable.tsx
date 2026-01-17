@@ -57,6 +57,35 @@ function ChangeTableWithoutData(props: {
   const { data, columnKeys } = props;
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
 
+  // 获取某个字段的上一次修改值
+  const getPreviousValue = useCallback((currentRecord: ChangeLog, fieldKey: string): any => {
+    if (!data) return undefined;
+    
+    // 找到当前记录在列表中的位置
+    const currentIndex = data.findIndex(log => log.logID === currentRecord.logID);
+    if (currentIndex === -1) return undefined;
+    
+    // 从当前记录之后的记录中查找（因为列表是按时间倒序排列的）
+    for (let i = currentIndex + 1; i < data.length; i++) {
+      const prevLog = data[i];
+      
+      // 检查是否是同一个对象的修改记录
+      if (prevLog.logFor !== currentRecord.logFor) continue;
+      
+      // 检查是否是修改操作
+      const isEditOp = (prevLog as any).operate?.includes('edit') || (prevLog as any).operate?.includes('update');
+      if (!isEditOp) continue;
+      
+      // 检查是否修改了相同的字段
+      const prevPresent = (prevLog as any).present || {};
+      if (fieldKey in prevPresent) {
+        return prevPresent[fieldKey];
+      }
+    }
+    
+    return undefined;
+  }, [data]);
+
   // 将操作类型转换为更友好的中文描述
   const getOperationText = (operate: string, logFor: string) => {
     const operationMap: { [key: string]: string } = {
@@ -186,7 +215,7 @@ function ChangeTableWithoutData(props: {
         expandedRowRender: (record) => (
           <div style={{ padding: '12px 16px', backgroundColor: '#fafafa', borderRadius: '4px' }}>
             <div style={{ fontSize: '12px', fontWeight: 500, marginBottom: '8px', color: '#333' }}>操作详情</div>
-            <RenderChangeDetail log={record} />
+            <RenderChangeDetail log={record} getPreviousValue={getPreviousValue} />
           </div>
         ),
         rowExpandable: (record) => {
@@ -249,8 +278,11 @@ function RenderUser(props: { userIdent: string }) {
   return <span>{props.userIdent}</span>;
 }
 
-function RenderChangeDetail(props: { log: ChangeLog }) {
-  const { log } = props;
+function RenderChangeDetail(props: { 
+  log: ChangeLog;
+  getPreviousValue: (record: ChangeLog, fieldKey: string) => any;
+}) {
+  const { log, getPreviousValue } = props;
   const isEditOperation = (log as any).operate?.includes('edit') || (log as any).operate?.includes('update');
   
   // 如果是修改操作，显示修改前后对比
@@ -273,7 +305,14 @@ function RenderChangeDetail(props: { log: ChangeLog }) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {changedFields.map((key, idx) => {
-          const origValue = original[key];
+          // 优先使用original中的值，如果为空则从历史记录中查找
+          let origValue = original[key];
+          if (origValue === null || origValue === undefined || origValue === '') {
+            const previousValue = getPreviousValue(log, key);
+            if (previousValue !== undefined) {
+              origValue = previousValue;
+            }
+          }
           const presentValue = present[key];
           
           return (
