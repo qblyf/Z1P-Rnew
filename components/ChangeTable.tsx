@@ -443,7 +443,7 @@ function RenderChangeDetail(props: { log: ChangeLog }) {
 }
 
 function formatDetailValue(value: any): string {
-  if (value === null || value === undefined) {
+  if (value === null || value === undefined || value === '') {
     return '-';
   }
   
