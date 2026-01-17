@@ -368,7 +368,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
               label: hasMallInfo ? '商城信息' : <Badge dot color="red"><span style={{ paddingRight: 6 }}>商城信息</span></Badge>,
               children: (
                 <Form layout="vertical" autoComplete="off">
-                  <Form.Item label="主图" tooltip="最多6张，建议尺寸 800 * 800px">
+                  <Form.Item label="主图" tooltip="最多6张，建议尺寸 800 * 800px。支持批量上传，可一次选择多张图片">
                     <Upload
                       maxCount={6}
                       multiple
@@ -387,7 +387,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                     />
                   </Form.Item>
 
-                  <Form.Item label="图文详情">
+                  <Form.Item label="图文详情" tooltip="最多100张。支持批量上传，可一次选择多张图片">
                     <Upload
                       maxCount={100}
                       multiple

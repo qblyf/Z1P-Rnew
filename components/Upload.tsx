@@ -154,11 +154,13 @@ function FileUpload(props: Props): JSX.Element {
     restProps.listType === 'picture-card' ? (
       <div>
         <PlusOutlined />
-        <div style={{ marginTop: 8 }}>上传</div>
+        <div style={{ marginTop: 8 }}>
+          {restProps.multiple ? '批量上传' : '上传'}
+        </div>
       </div>
     ) : (
       <Button loading={loading} disabled={loading}>
-        上传 <UploadOutlined />
+        {restProps.multiple ? '批量上传' : '上传'} <UploadOutlined />
       </Button>
     );
 
