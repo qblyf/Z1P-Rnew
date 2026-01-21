@@ -39,6 +39,11 @@ export const MENU_CONFIG: MenuItem[] = [
         label: 'SKU 列表',
         href: '/sku-list',
       },
+      {
+        id: 'spu-name-check',
+        label: 'SPU 命名规范检查',
+        href: '/spu-name-check',
+      },
     ],
   },
   {
