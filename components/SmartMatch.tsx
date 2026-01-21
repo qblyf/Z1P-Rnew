@@ -218,8 +218,14 @@ class SimpleMatcher {
   extractColor(str: string): string | null {
     // 完整颜色词优先（避免"钻黑"被识别为"黑"）
     const fullColors = [
-      '墨黛蓝', '雾凇蓝', '雾松蓝', '星空蓝', '天青', '钛金', '钛黑', '钛蓝', '钛色',
-      '午夜黑', '星光银', '极光绿', '极光紫', '钻黑', '白金', '微粉',
+      // 常见完整颜色词
+      '墨黛蓝', '雾凇蓝', '雾松蓝', '星空蓝', '天青', '冰川蓝', '海洋蓝',
+      '钛金', '钛黑', '钛蓝', '钛色',
+      '午夜黑', '玄武黑', '曜石黑', '陨石黑',
+      '星光银', '月光银', '流光银',
+      '极光绿', '翡翠绿', '森林绿',
+      '极光紫', '龙晶紫', '梦幻紫', '星云紫',
+      '钻黑', '白金', '微粉', '樱花粉',
       '百里丹霞', '雅川青', '羽砂黑', '羽砂白', '羽砂紫', '羽砂金',
       '黑色', '白色', '蓝色', '红色', '绿色', '紫色', '粉色', '金色', '银色', '灰色'
     ];
@@ -458,12 +464,22 @@ class SimpleMatcher {
         ) {
           paramScore += 0.3; // 雾凇和雾松视为完全匹配
         }
-        // 基础颜色包含关系（如"钻黑"包含"黑"）
+        // 基础颜色包含关系
         else if (
           inputColor.length > 1 && skuColor.length > 1 && 
           (inputColor.includes(skuColor) || skuColor.includes(inputColor))
         ) {
-          paramScore += 0.15; // 部分匹配给一半分数
+          paramScore += 0.2; // 部分匹配给2/3分数
+        }
+        // 基础颜色相同（如"龙晶紫"和"极光紫"都包含"紫"）
+        else {
+          const basicColors = ['黑', '白', '蓝', '红', '绿', '紫', '粉', '金', '银', '灰'];
+          for (const basic of basicColors) {
+            if (inputColor.includes(basic) && skuColor.includes(basic)) {
+              paramScore += 0.1; // 基础颜色相同给1/3分数
+              break;
+            }
+          }
         }
       }
       
