@@ -1,7 +1,7 @@
 'use client';
 import { SPU, SPUCateID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { getSPUListNew, getSPUCateBaseList } from '@zsqk/z1-sdk/es/z1p/product';
-import { Button, Col, Form, Row, Select, Table, Tag, Alert, Space, Cascader, Drawer } from 'antd';
+import { getSPUListNew, getSPUCateBaseList, editSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
+import { Button, Col, Form, Row, Select, Table, Tag, Alert, Space, Cascader, Drawer, Modal, message } from 'antd';
 import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import { PageHeader } from '@ant-design/pro-components';
@@ -15,6 +15,7 @@ import { SPUCateListProvider, SpuIDProvider, SPUListProvider, useSpuIDContext } 
 import { usePermission } from '../../datahooks/permission';
 import PageWrap from '../../components/PageWrap';
 import SPUEdit from '../../components/SPUEdit';
+import { useTokenContext } from '../../datahooks/auth';
 
 interface NamingIssue {
   type: 'no_space' | 'has_quanwangtong' | 'no_brand' | 'brand_mismatch' | 'lowercase_brand';
@@ -133,6 +134,216 @@ function buildCascaderOptions(cates: SPUCateData[]): CascaderOption[] {
   }
 
   return buildTree(0, cateMap);
+}
+
+/**
+ * [组件] 批量修改品牌的 Modal
+ */
+function BatchChangeBrandModal(props: {
+  visible: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  allBrands: string[];
+}) {
+  const { visible, onClose, onSuccess, allBrands } = props;
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [affectedCount, setAffectedCount] = useState(0);
+  const { token } = useTokenContext();
+
+  const oldBrand = Form.useWatch('oldBrand', form);
+
+  // 当选择原品牌时，获取该品牌的 SPU 数量
+  useEffect(() => {
+    if (!oldBrand) {
+      setAffectedCount(0);
+      return;
+    }
+
+    const fetchCount = async () => {
+      try {
+        const res = await getSPUListNew(
+          {
+            brands: [oldBrand],
+            states: [SPUState.在用],
+            limit: 10000,
+            offset: 0,
+            orderBy: [{ key: 'p."id"', sort: 'DESC' }],
+          },
+          ['id']
+        );
+        setAffectedCount(res.length);
+      } catch (error) {
+        console.error('获取 SPU 数量失败:', error);
+        setAffectedCount(0);
+      }
+    };
+
+    fetchCount();
+  }, [oldBrand]);
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      const { oldBrand, newBrand } = values;
+
+      if (oldBrand === newBrand) {
+        message.warning('原品牌和新品牌不能相同');
+        return;
+      }
+
+      if (!token) {
+        message.error('未获取到认证信息');
+        return;
+      }
+
+      Modal.confirm({
+        title: '确认批量修改品牌',
+        content: `确定要将 ${affectedCount} 个 SPU 的品牌从 "${oldBrand}" 修改为 "${newBrand}" 吗？此操作不可撤销。`,
+        okText: '确认修改',
+        cancelText: '取消',
+        okButtonProps: { danger: true },
+        onOk: async () => {
+          setLoading(true);
+          try {
+            // 获取所有需要修改的 SPU
+            const spuList = await getSPUListNew(
+              {
+                brands: [oldBrand],
+                states: [SPUState.在用],
+                limit: 10000,
+                offset: 0,
+                orderBy: [{ key: 'p."id"', sort: 'DESC' }],
+              },
+              ['id', 'name']
+            );
+
+            let successCount = 0;
+            let failCount = 0;
+
+            // 批量修改每个 SPU
+            for (const spu of spuList) {
+              try {
+                // 修改品牌，同时更新名称（将旧品牌名替换为新品牌名）
+                const newName = spu.name.replace(new RegExp(`^${oldBrand}\\s*`), `${newBrand} `);
+                
+                await editSPUInfo(
+                  spu.id,
+                  {
+                    brand: newBrand,
+                    name: newName,
+                  },
+                  { auth: token }
+                );
+                successCount++;
+              } catch (error) {
+                console.error(`修改 SPU ${spu.id} 失败:`, error);
+                failCount++;
+              }
+            }
+
+            setLoading(false);
+            
+            if (failCount === 0) {
+              message.success(`批量修改完成！成功修改 ${successCount} 个 SPU`);
+            } else {
+              message.warning(`批量修改完成！成功 ${successCount} 个，失败 ${failCount} 个`);
+            }
+
+            form.resetFields();
+            onSuccess();
+            onClose();
+          } catch (error) {
+            setLoading(false);
+            message.error('批量修改失败，请重试');
+            console.error(error);
+          }
+        },
+      });
+    } catch (error) {
+      // 表单验证失败
+    }
+  };
+
+  return (
+    <Modal
+      title="批量修改 SPU 品牌"
+      open={visible}
+      onCancel={onClose}
+      onOk={handleSubmit}
+      confirmLoading={loading}
+      okText="开始修改"
+      cancelText="取消"
+      width={600}
+    >
+      <Alert
+        message="注意事项"
+        description={
+          <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
+            <li>此操作将修改所有指定品牌的在用 SPU</li>
+            <li>SPU 名称中的品牌名也会自动更新</li>
+            <li>修改后无法撤销，请谨慎操作</li>
+          </ul>
+        }
+        type="warning"
+        showIcon
+        style={{ marginBottom: 16 }}
+      />
+
+      <Form form={form} layout="vertical">
+        <Form.Item
+          label="原品牌"
+          name="oldBrand"
+          rules={[{ required: true, message: '请选择原品牌' }]}
+        >
+          <Select
+            showSearch
+            placeholder="请选择要修改的原品牌"
+            optionFilterProp="children"
+            filterOption={(input, option) =>
+              String(option?.children || '')?.toLowerCase().includes(input.toLowerCase())
+            }
+          >
+            {allBrands.map((brand) => (
+              <Select.Option key={brand} value={brand}>
+                {brand}
+              </Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        {oldBrand && (
+          <Alert
+            message={`该品牌下有 ${affectedCount} 个在用 SPU`}
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        )}
+
+        <Form.Item
+          label="新品牌"
+          name="newBrand"
+          rules={[{ required: true, message: '请选择新品牌' }]}
+        >
+          <Select
+            showSearch
+            placeholder="请选择新品牌"
+            optionFilterProp="children"
+            filterOption={(input, option) =>
+              String(option?.children || '')?.toLowerCase().includes(input.toLowerCase())
+            }
+          >
+            {allBrands.map((brand) => (
+              <Select.Option key={brand} value={brand}>
+                {brand}
+              </Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
 }
 
 /**
@@ -266,6 +477,8 @@ export default function () {
   const [loading, setLoading] = useState(false);
   const [editingSpuID, setEditingSpuID] = useState<number | undefined>();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [batchBrandModalVisible, setBatchBrandModalVisible] = useState(false);
+  const [allBrands, setAllBrands] = useState<string[]>([]);
 
   // 获取权限
   const { permission, errMsg: permissionErrMsg } =
@@ -298,6 +511,12 @@ export default function () {
     setEditingSpuID(undefined);
   };
 
+  // 重新加载数据
+  const reloadData = () => {
+    // 触发重新检查，这里可以通过设置一个标志来触发
+    message.success('数据已更新，请重新点击"开始检查"按钮');
+  };
+
   return (
     <PageWrap ppKey="product-manage">
       <SPUCateListProvider>
@@ -310,6 +529,16 @@ export default function () {
               <PageHeader
                 title="SPU 命名规范检查"
                 subTitle="检查 SPU 名称是否符合命名规范"
+                extra={[
+                  <Button
+                    key="batch-brand"
+                    type="primary"
+                    onClick={() => setBatchBrandModalVisible(true)}
+                    disabled={allBrands.length === 0}
+                  >
+                    批量修改品牌
+                  </Button>,
+                ]}
               ></PageHeader>
               <Content>
           <Alert
@@ -360,6 +589,7 @@ export default function () {
 
                 // 获取所有品牌列表
                 const allBrands = Array.from(new Set(res.map(item => item.brand).filter(Boolean)));
+                setAllBrands(allBrands);
 
                 // 检查每个 SPU 的命名规范
                 const spuWithIssues: SPUWithIssues[] = res.map(spu => ({
@@ -460,13 +690,17 @@ export default function () {
           destroyOnClose
         >
           {editingSpuID && (
-            <SpuIDProvider>
-              <SPUListProvider>
-                <SPUEditWrapper spuId={editingSpuID} />
-              </SPUListProvider>
-            </SpuIDProvider>
+            <SPUEditWrapper spuId={editingSpuID} />
           )}
         </Drawer>
+
+        {/* 批量修改品牌 Modal */}
+        <BatchChangeBrandModal
+          visible={batchBrandModalVisible}
+          onClose={() => setBatchBrandModalVisible(false)}
+          onSuccess={reloadData}
+          allBrands={allBrands}
+        />
       </BrandListProvider>
     </SPUListProvider>
   </SpuIDProvider>
