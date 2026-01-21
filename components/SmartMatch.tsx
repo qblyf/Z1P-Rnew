@@ -64,17 +64,31 @@ class SimpleMatcher {
     const lowerStr = str.toLowerCase();
     
     // 先尝试匹配常见的完整型号格式
-    // Y300i, Y300, Y3, X Note, Mate60, iPhone15等
+    // Y300Pro+, Y300i, Y300, Y3, X Note, Mate60, iPhone15等
     
-    // 1. 匹配 "字母+数字+可选字母" 格式（如 Y300i, Y3, Mate60）
+    // 1. 匹配复杂型号：字母+数字+Pro/Max/Plus/Ultra等+可选的+号
+    // 例如：Y300Pro+, Y300Pro, Mate60Pro, iPhone15ProMax
+    const complexModelPattern = /\b([a-z])(\d+)\s*(pro|max|plus|ultra|mini|se|air|lite|note)(\+)?\b/gi;
+    const complexMatches = lowerStr.match(complexModelPattern);
+    
+    if (complexMatches && complexMatches.length > 0) {
+      // 返回最长的匹配（通常是最完整的型号）
+      const filtered = complexMatches.filter(m => {
+        const lower = m.toLowerCase();
+        return !lower.includes('gb') && !lower.endsWith('g');
+      });
+      
+      if (filtered.length > 0) {
+        return filtered.sort((a, b) => b.length - a.length)[0]
+          .toLowerCase()
+          .replace(/\s+/g, '');
+      }
+    }
+    
+    // 2. 匹配简单型号：字母+数字+可选字母（如 Y300i, Y3, Mate60）
     const simpleModelPattern = /\b([a-z])(\d+)([a-z]*)\b/gi;
     const simpleMatches = lowerStr.match(simpleModelPattern);
     
-    // 2. 匹配 "字母 字母" 格式（如 X Note, X Fold）
-    const wordModelPattern = /\b([a-z]+)\s+([a-z]+)\b/gi;
-    const wordMatches = lowerStr.match(wordModelPattern);
-    
-    // 优先返回包含数字的型号（更具体）
     if (simpleMatches && simpleMatches.length > 0) {
       // 过滤掉容量相关的匹配（如 5g, 4gb）
       const filtered = simpleMatches.filter(m => {
@@ -87,11 +101,16 @@ class SimpleMatcher {
       
       if (filtered.length > 0) {
         // 返回最长的匹配（通常是最完整的型号）
-        return filtered.sort((a, b) => b.length - a.length)[0].toLowerCase().replace(/\s+/g, '');
+        return filtered.sort((a, b) => b.length - a.length)[0]
+          .toLowerCase()
+          .replace(/\s+/g, '');
       }
     }
     
-    // 如果没有数字型号，返回字母型号（如 X Note）
+    // 3. 匹配 "字母 字母" 格式（如 X Note, X Fold）
+    const wordModelPattern = /\b([a-z]+)\s+([a-z]+)\b/gi;
+    const wordMatches = lowerStr.match(wordModelPattern);
+    
     if (wordMatches && wordMatches.length > 0) {
       // 过滤掉常见的非型号词组
       const filtered = wordMatches.filter(m => {
@@ -111,9 +130,12 @@ class SimpleMatcher {
 
   // 提取容量
   extractCapacity(str: string): string | null {
-    // 匹配 12+512, 12GB+512GB, 4+128 等格式
-    const capacityPattern = /(\d+)\s*(?:gb)?\s*\+\s*(\d+)\s*(?:gb)?/gi;
-    const match = str.match(capacityPattern);
+    // 匹配多种格式：
+    // (12+512), 12+512, 12GB+512GB, (12GB+512GB)
+    
+    // 1. 匹配括号内的容量
+    const bracketPattern = /\((\d+)\s*(?:gb)?\s*\+\s*(\d+)\s*(?:gb)?\)/gi;
+    let match = str.match(bracketPattern);
     
     if (match && match.length > 0) {
       const nums = match[0].match(/\d+/g);
@@ -122,7 +144,18 @@ class SimpleMatcher {
       }
     }
     
-    // 匹配单个容量 128GB, 256GB等
+    // 2. 匹配不在括号内的容量：12+512, 12GB+512GB
+    const capacityPattern = /(\d+)\s*(?:gb)?\s*\+\s*(\d+)\s*(?:gb)?/gi;
+    match = str.match(capacityPattern);
+    
+    if (match && match.length > 0) {
+      const nums = match[0].match(/\d+/g);
+      if (nums && nums.length === 2) {
+        return `${nums[0]}+${nums[1]}`;
+      }
+    }
+    
+    // 3. 匹配单个容量 128GB, 256GB等
     const singlePattern = /(\d+)\s*gb/gi;
     const singleMatch = str.match(singlePattern);
     if (singleMatch && singleMatch.length > 0) {
