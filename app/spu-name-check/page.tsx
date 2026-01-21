@@ -65,23 +65,51 @@ function checkSPUNaming(spu: Pick<SPU, 'name' | 'brand'>, brandList: string[]): 
     });
   }
 
-  // 检查品牌名是否在名称开头
-  if (!name.startsWith(brand)) {
-    issues.push({
-      type: 'brand_mismatch',
-      message: `名称未以品牌"${brand}"开头`,
-      severity: 'error',
-    });
-    return issues;
-  }
+  // 特殊品牌处理：Apple 品牌的产品使用 iPhone/iPad/MacBook 等开头
+  const appleProductPrefixes = ['iPhone', 'iPad', 'MacBook', 'iMac', 'Mac', 'AirPods', 'Apple Watch', 'Apple TV'];
+  const isAppleBrand = brand.toLowerCase() === 'apple';
+  
+  if (isAppleBrand) {
+    // Apple 品牌：检查是否以 Apple 产品系列名开头
+    const hasValidApplePrefix = appleProductPrefixes.some(prefix => name.startsWith(prefix));
+    
+    if (!hasValidApplePrefix) {
+      issues.push({
+        type: 'brand_mismatch',
+        message: `Apple 品牌产品名称应以 ${appleProductPrefixes.join('/')} 等开头`,
+        severity: 'error',
+      });
+      return issues;
+    }
+    
+    // 检查产品系列名后是否有空格
+    const matchedPrefix = appleProductPrefixes.find(prefix => name.startsWith(prefix));
+    if (matchedPrefix && name.length > matchedPrefix.length && name[matchedPrefix.length] !== ' ') {
+      issues.push({
+        type: 'no_space',
+        message: `${matchedPrefix} 后缺少空格`,
+        severity: 'error',
+      });
+    }
+  } else {
+    // 其他品牌：检查品牌名是否在名称开头
+    if (!name.startsWith(brand)) {
+      issues.push({
+        type: 'brand_mismatch',
+        message: `名称未以品牌"${brand}"开头`,
+        severity: 'error',
+      });
+      return issues;
+    }
 
-  // 检查品牌后是否有空格
-  if (name.length > brand.length && name[brand.length] !== ' ') {
-    issues.push({
-      type: 'no_space',
-      message: '品牌名后缺少空格',
-      severity: 'error',
-    });
+    // 检查品牌后是否有空格
+    if (name.length > brand.length && name[brand.length] !== ' ') {
+      issues.push({
+        type: 'no_space',
+        message: '品牌名后缺少空格',
+        severity: 'error',
+      });
+    }
   }
 
   // 检查品牌名大小写（常见品牌）
@@ -730,6 +758,18 @@ export default function () {
     setSelectedRowKeys([]);
   };
 
+  // 批量选择具有相同问题的 SPU
+  const handleSelectByIssueType = (issueType: NamingIssue['type']) => {
+    if (!list) return;
+    
+    const spusWithIssue = list
+      .filter(spu => spu.issues.some(issue => issue.type === issueType))
+      .map(spu => spu.id);
+    
+    setSelectedRowKeys(spusWithIssue);
+    message.success(`已选择 ${spusWithIssue.length} 个具有相同问题的 SPU`);
+  };
+
   // 行选择配置
   const rowSelection: TableRowSelection<SPUWithIssues> = {
     selectedRowKeys,
@@ -773,6 +813,7 @@ export default function () {
                   <li>✅ 使用官方名称大小写（如 <code>iPhone</code> 而不是 <code>iphone</code>）</li>
                   <li>✅ 不要有错别字</li>
                   <li>✅ 不要有"全网通"字样</li>
+                  <li>⚠️ <strong>特殊规则</strong>：Apple 品牌产品使用产品系列名开头（如 <code>iPhone 15 Pro</code>、<code>iPad Air</code>、<code>MacBook Pro</code>），而不是 "Apple" 开头</li>
                 </ul>
               </div>
             }
@@ -905,7 +946,7 @@ export default function () {
                 extra={
                   <Space>
                     <span style={{ color: '#8c8c8c' }}>
-                      仅显示有问题的 SPU
+                      💡 提示：点击问题标签可批量选择同类问题的 SPU
                     </span>
                   </Space>
                 }
@@ -947,7 +988,12 @@ export default function () {
                                 key={index}
                                 color={issue.severity === 'error' ? 'red' : 'orange'}
                                 icon={issue.severity === 'error' ? <CloseCircleOutlined /> : <WarningOutlined />}
-                                style={{ marginRight: 0 }}
+                                style={{ marginRight: 0, cursor: 'pointer' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectByIssueType(issue.type);
+                                }}
+                                title="点击选择所有具有此问题的 SPU"
                               >
                                 {issue.message}
                               </Tag>
