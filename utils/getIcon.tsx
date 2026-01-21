@@ -7,6 +7,7 @@ import {
   Clock,
   LogOut,
   Settings,
+  Search,
   LucideIcon,
 } from 'lucide-react';
 
@@ -19,6 +20,7 @@ const iconMap: Record<string, LucideIcon> = {
   Clock,
   LogOut,
   Settings,
+  Search,
 };
 
 export function getIcon(iconName?: string, size: number = 20) {
