@@ -288,6 +288,38 @@ class SimpleMatcher {
     return null;
   }
 
+  // 提取 SPU 部分（去掉容量和颜色）
+  // 例如：Vivo S30Promini 5G(12+512)可可黑 → Vivo S30Promini 5G
+  extractSPUPart(str: string): string {
+    let spuPart = str;
+    
+    // 1. 移除容量部分
+    // 匹配 (12+512), 12+512, 12GB+512GB, (12GB+512GB) 等格式
+    spuPart = spuPart.replace(/\(?\d+\s*(?:gb)?\s*\+\s*\d+\s*(?:gb)?\)?/gi, '');
+    
+    // 移除单个容量 128GB, 256GB等
+    spuPart = spuPart.replace(/\d+\s*gb/gi, '');
+    
+    // 2. 移除颜色部分（通常在末尾）
+    // 先尝试提取颜色
+    const color = this.extractColor(str);
+    if (color) {
+      // 从末尾移除颜色
+      const colorIndex = spuPart.lastIndexOf(color);
+      if (colorIndex !== -1) {
+        spuPart = spuPart.substring(0, colorIndex);
+      }
+    }
+    
+    // 3. 移除其他常见的 SKU 特征词
+    spuPart = spuPart.replace(/软胶|硅胶|皮革|陶瓷|玻璃/gi, '');
+    
+    // 4. 清理多余的空格和标点
+    spuPart = spuPart.trim().replace(/\s+/g, ' ');
+    
+    return spuPart;
+  }
+
   // 计算相似度（改进版）
   calculateSimilarity(str1: string, str2: string): number {
     const normalized1 = this.normalize(str1);
@@ -392,12 +424,16 @@ class SimpleMatcher {
     spu: SPUData | null;
     similarity: number;
   } {
+    // 提取输入的 SPU 部分（去掉容量和颜色）
+    const inputSPUPart = this.extractSPUPart(input);
+    
     // 提取输入的关键信息
-    const inputBrand = this.extractBrand(input);
-    const inputModel = this.extractModel(input);
+    const inputBrand = this.extractBrand(inputSPUPart);
+    const inputModel = this.extractModel(inputSPUPart);
     
     console.log('=== SPU匹配输入 ===');
     console.log('原始输入:', input);
+    console.log('SPU部分:', inputSPUPart);
     console.log('提取品牌:', inputBrand);
     console.log('提取型号:', inputModel);
     
@@ -405,8 +441,10 @@ class SimpleMatcher {
     let bestScore = 0;
     
     for (const spu of spuList) {
-      const spuBrand = this.extractBrand(spu.name);
-      const spuModel = this.extractModel(spu.name);
+      // 同样提取 SPU 的 SPU 部分
+      const spuSPUPart = this.extractSPUPart(spu.name);
+      const spuBrand = this.extractBrand(spuSPUPart);
+      const spuModel = this.extractModel(spuSPUPart);
       
       let score = 0;
       let matchCount = 0;
@@ -434,9 +472,9 @@ class SimpleMatcher {
         }
       }
       
-      // 如果既没有品牌也没有型号，使用字符串相似度
+      // 如果既没有品牌也没有型号，使用字符串相似度（基于 SPU 部分）
       if (!inputBrand && !inputModel) {
-        const similarity = this.calculateSimilarity(input, spu.name);
+        const similarity = this.calculateSimilarity(inputSPUPart, spuSPUPart);
         score = similarity;
       }
       
