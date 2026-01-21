@@ -364,25 +364,29 @@ class SimpleMatcher {
       const spuModel = this.extractModel(spu.name);
       
       let score = 0;
+      let matchCount = 0;
+      let totalCount = 0;
       
-      // 品牌匹配（必须，权重50%）
-      if (inputBrand && spuBrand) {
-        if (inputBrand !== spuBrand) {
+      // 品牌匹配（必须）
+      if (inputBrand) {
+        totalCount++;
+        if (spuBrand && inputBrand === spuBrand) {
+          matchCount++;
+          score += 0.4; // 品牌权重40%
+        } else {
           continue; // 品牌不匹配，跳过
         }
-        score += 0.5;
-      } else if (inputBrand) {
-        continue; // 有品牌要求但SPU没有品牌，跳过
       }
       
-      // 型号匹配（必须，权重50%）
-      if (inputModel && spuModel) {
-        if (inputModel !== spuModel) {
+      // 型号匹配（必须）
+      if (inputModel) {
+        totalCount++;
+        if (spuModel && inputModel === spuModel) {
+          matchCount++;
+          score += 0.6; // 型号权重60%
+        } else {
           continue; // 型号不匹配，跳过
         }
-        score += 0.5;
-      } else if (inputModel) {
-        continue; // 有型号要求但SPU没有型号，跳过
       }
       
       // 如果既没有品牌也没有型号，使用字符串相似度
@@ -671,8 +675,17 @@ export function SmartMatchComponent() {
           );
           
           if (matchedSKU) {
-            // 计算综合相似度：SPU相似度 * 0.6 + SKU参数相似度 * 0.4
-            const finalSimilarity = spuSimilarity * 0.6 + skuSimilarity * 0.4;
+            // 计算综合相似度
+            // SPU 匹配（品牌+型号）占 50%
+            // SKU 参数匹配（容量+颜色）占 50%
+            const finalSimilarity = spuSimilarity * 0.5 + skuSimilarity * 0.5;
+            
+            console.log('最终相似度计算:', {
+              spuSimilarity,
+              skuSimilarity,
+              finalSimilarity,
+              skuName: matchedSKU.name
+            });
             
             // 更新为完全匹配
             setResults(prev => prev.map((r, idx) => 
