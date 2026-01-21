@@ -1,10 +1,11 @@
 'use client';
 import { SPU, SPUCateID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { getSPUListNew, getSPUCateBaseList, editSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
-import { Button, Col, Form, Row, Select, Table, Tag, Alert, Space, Cascader, Drawer, Modal, message } from 'antd';
+import { Button, Col, Form, Row, Select, Table, Tag, Alert, Space, Cascader, Drawer, Modal, message, Card, Statistic, Divider } from 'antd';
 import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import { PageHeader } from '@ant-design/pro-components';
+import { CheckCircleOutlined, CloseCircleOutlined, WarningOutlined, SearchOutlined, EditOutlined, SwapOutlined } from '@ant-design/icons';
 
 import { SelectBrands } from '../../components/SelectBrands';
 import { Content } from '../../components/style/Content';
@@ -386,94 +387,103 @@ function QueryForm(props: {
   }, [cates]);
 
   return (
-    <Form {...formColProps}>
-      <Row gutter={14}>
-        <Col {...formItemCol}>
-          <Form.Item label="SPU 分类" tooltip="选择 SPU 分类">
-            <Cascader
-              options={cascaderOptions}
-              value={selectedCatePath}
-              onChange={(value) => {
-                setSelectedCatePath(value as number[]);
-                if (!value || value.length === 0) {
-                  // 没有选择任何分类
-                  setSpuCateIDs(undefined);
-                } else if (value.length === 1 && value[0] === 0) {
-                  // 只选择了"全部分类"
-                  setSpuCateIDs(undefined);
-                } else {
-                  // 使用最后一级的分类 ID（跳过"全部分类"这一级）
-                  const lastId = value[value.length - 1] as number;
-                  if (lastId === 0) {
+    <Card 
+      style={{ marginBottom: 16 }}
+      styles={{ body: { paddingBottom: 0 } }}
+    >
+      <Form {...formColProps}>
+        <Row gutter={16}>
+          <Col {...formItemCol}>
+            <Form.Item label="SPU 分类" tooltip="选择 SPU 分类">
+              <Cascader
+                options={cascaderOptions}
+                value={selectedCatePath}
+                onChange={(value) => {
+                  setSelectedCatePath(value as number[]);
+                  if (!value || value.length === 0) {
+                    // 没有选择任何分类
+                    setSpuCateIDs(undefined);
+                  } else if (value.length === 1 && value[0] === 0) {
+                    // 只选择了"全部分类"
                     setSpuCateIDs(undefined);
                   } else {
-                    setSpuCateIDs([lastId]);
+                    // 使用最后一级的分类 ID（跳过"全部分类"这一级）
+                    const lastId = value[value.length - 1] as number;
+                    if (lastId === 0) {
+                      setSpuCateIDs(undefined);
+                    } else {
+                      setSpuCateIDs([lastId]);
+                    }
                   }
+                }}
+                placeholder="请选择 SPU 分类"
+                showSearch={{
+                  filter: (inputValue, path) =>
+                    path.some(
+                      (option) =>
+                        option.label
+                          ?.toString()
+                          .toLowerCase()
+                          .indexOf(inputValue.toLowerCase()) > -1
+                    ),
+                }}
+                changeOnSelect
+                style={{ width: '100%' }}
+                size="large"
+              />
+            </Form.Item>
+          </Col>
+
+          <Col {...formItemCol}>
+            <Form.Item label="品牌" tooltip="选择要筛选的品牌">
+              <BrandListProvider>
+                <SelectBrands onSelected={setSelectedBrands} />
+              </BrandListProvider>
+            </Form.Item>
+          </Col>
+
+          <Col {...formItemCol}>
+            <Form.Item label="状态" tooltip="选择要筛选的状态">
+              <Select
+                value={spuState}
+                style={{ width: '100%' }}
+                onChange={v => {
+                  setSPUState(v);
+                }}
+                size="large"
+              >
+                <Select.Option value="valid">有效</Select.Option>
+                <Select.Option value="invalid">无效</Select.Option>
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row justify="end" style={{ marginTop: 8 }}>
+          <Col>
+            <Button
+              type="primary"
+              size="large"
+              icon={<SearchOutlined />}
+              onClick={() => {
+                let k3: string[] | undefined = selectedBrands;
+                if (k3?.length === 0) {
+                  k3 = undefined;
                 }
-              }}
-              placeholder="请选择 SPU 分类"
-              showSearch={{
-                filter: (inputValue, path) =>
-                  path.some(
-                    (option) =>
-                      option.label
-                        ?.toString()
-                        .toLowerCase()
-                        .indexOf(inputValue.toLowerCase()) > -1
-                  ),
-              }}
-              changeOnSelect
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-        </Col>
 
-        <Col {...formItemCol}>
-          <Form.Item label="品牌" tooltip="选择要筛选的品牌">
-            <BrandListProvider>
-              <SelectBrands onSelected={setSelectedBrands} />
-            </BrandListProvider>
-          </Form.Item>
-        </Col>
-
-        <Col {...formItemCol}>
-          <Form.Item label="状态" tooltip="选择要筛选的状态">
-            <Select
-              value={spuState}
-              style={{ width: '100%' }}
-              onChange={v => {
-                setSPUState(v);
+                onQuery({
+                  spuCateIDs,
+                  brands: k3,
+                  spuState,
+                });
               }}
             >
-              <Select.Option value="valid">有效</Select.Option>
-              <Select.Option value="invalid">无效</Select.Option>
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Row justify="end">
-        <Col>
-          <Button
-            type="primary"
-            onClick={() => {
-              let k3: string[] | undefined = selectedBrands;
-              if (k3?.length === 0) {
-                k3 = undefined;
-              }
-
-              onQuery({
-                spuCateIDs,
-                brands: k3,
-                spuState,
-              });
-            }}
-          >
-            开始检查
-          </Button>
-        </Col>
-      </Row>
-    </Form>
+              开始检查
+            </Button>
+          </Col>
+        </Row>
+      </Form>
+    </Card>
   );
 }
 
@@ -540,7 +550,8 @@ export default function () {
                 extra={[
                   <Button
                     key="batch-brand"
-                    type="primary"
+                    type="default"
+                    icon={<SwapOutlined />}
                     onClick={() => setBatchBrandModalVisible(true)}
                     disabled={allBrands.length === 0}
                   >
@@ -550,15 +561,15 @@ export default function () {
               ></PageHeader>
               <Content>
           <Alert
-            message="命名规范说明"
+            message="📋 命名规范说明"
             description={
               <div>
-                <p>SPU 命名应遵循以下规范：</p>
-                <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
-                  <li>SPU 名称使用 品牌名 + 官方名称，之间留空格</li>
-                  <li>使用官方名称大小写（如 iPhone 而不是 iphone）</li>
-                  <li>不要有错别字</li>
-                  <li>不要有"全网通"字样</li>
+                <p style={{ marginBottom: 8, fontWeight: 500 }}>SPU 命名应遵循以下规范：</p>
+                <ul style={{ marginBottom: 0, paddingLeft: 20, lineHeight: 1.8 }}>
+                  <li>✅ SPU 名称使用 <strong>品牌名 + 官方名称</strong>，之间留空格</li>
+                  <li>✅ 使用官方名称大小写（如 <code>iPhone</code> 而不是 <code>iphone</code>）</li>
+                  <li>✅ 不要有错别字</li>
+                  <li>✅ 不要有"全网通"字样</li>
                 </ul>
               </div>
             }
