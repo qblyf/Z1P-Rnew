@@ -108,7 +108,7 @@ function useSPUList() {
               { key: 'p."order"', sort: 'ASC' },
               { key: 'p."id"', sort: 'DESC' },
             ],
-            limit: 100,
+            limit: 1000,
             offset: 0,
           },
           [
