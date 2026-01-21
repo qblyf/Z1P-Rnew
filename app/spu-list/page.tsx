@@ -9,7 +9,7 @@ import type { TableRowSelection } from 'antd/es/table/interface';
 
 import { SelectBrands } from '../../components/SelectBrands';
 import { formColProps, formItemCol } from '../../constant/formProps';
-import { BrandListProvider } from '../../datahooks/brand';
+import { BrandListProvider, useBrandListContext } from '../../datahooks/brand';
 import { getAwait } from '../../error';
 import { SPUCateListProvider, SpuIDProvider, SPUListProvider, useSpuIDContext } from '../../datahooks/product';
 import { usePermission } from '../../datahooks/permission';
@@ -67,13 +67,13 @@ function BatchEditModal(props: {
   selectedIds: number[];
   onClose: () => void;
   onSuccess: () => void;
-  allBrands: string[];
   cates: SPUCateData[];
 }) {
-  const { visible, selectedIds, onClose, onSuccess, allBrands, cates } = props;
+  const { visible, selectedIds, onClose, onSuccess, cates } = props;
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const { token } = useTokenContext();
+  const { brandList } = useBrandListContext();
 
   const cascaderOptions = useMemo(() => {
     const options = buildCascaderOptions(cates);
@@ -161,19 +161,21 @@ function BatchEditModal(props: {
     >
       <Form form={form} layout="vertical">
         <Form.Item
-          label="品牌"
+          label={`品牌 (共 ${brandList.length} 个)`}
           name="brand"
           tooltip="留空则不修改"
         >
           <Select
             showSearch
             placeholder="选择新品牌（留空不修改）"
-            optionFilterProp="children"
             allowClear
+            filterOption={(input, option) =>
+              (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
+            }
           >
-            {allBrands.map((brand) => (
-              <Select.Option key={brand} value={brand}>
-                {brand}
+            {brandList.map((brand) => (
+              <Select.Option key={brand.name} value={brand.name} label={`${brand.name} ${brand.spell}`}>
+                {brand.name} {brand.spell}
               </Select.Option>
             ))}
           </Select>
@@ -451,7 +453,6 @@ export default function () {
   const [editingSpuID, setEditingSpuID] = useState<number | undefined>();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [cates, setCates] = useState<SPUCateData[]>([]);
-  const [allBrands, setAllBrands] = useState<string[]>([]);
 
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
@@ -474,29 +475,6 @@ export default function () {
       setCates(res);
     };
     loadCates();
-  }, []);
-
-  // 加载所有品牌列表（用于批量编辑）
-  useEffect(() => {
-    const loadAllBrands = async () => {
-      try {
-        // 获取所有在用的 SPU 的品牌
-        const res = await getSPUListNew(
-          {
-            states: [SPUState.在用],
-            limit: 10000,
-            offset: 0,
-            orderBy: [{ key: 'p."brand"', sort: 'ASC' }],
-          },
-          ['brand']
-        );
-        const brandList = Array.from(new Set(res.map(item => item.brand).filter(Boolean))) as string[];
-        setAllBrands(brandList.sort());
-      } catch (error) {
-        console.error('加载品牌列表失败:', error);
-      }
-    };
-    loadAllBrands();
   }, []);
 
   // 获取权限
@@ -753,7 +731,6 @@ export default function () {
                   selectedIds={selectedRowKeys as number[]}
                   onClose={() => setBatchEditVisible(false)}
                   onSuccess={refreshData}
-                  allBrands={allBrands}
                   cates={cates}
                 />
               </div>
