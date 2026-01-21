@@ -87,8 +87,8 @@ function useToken() {
 
   // 监听 localStorage 变化（来自其他标签页或同一页面的更新）
   useEffect(() => {
-    const handleStorageChange = () => {
-      console.log('Storage change detected, checking for token...');
+    const handleStorageChange = (e?: StorageEvent) => {
+      console.log('Storage change detected, checking for token...', e);
       const [t] = getCacheToken();
       if (t) {
         const [_, err] = getPayload(t as string);
@@ -102,11 +102,21 @@ function useToken() {
           setToken(t as string);
           setIsTokenExpired(false);
         }
+      } else {
+        console.log('No token in cache after storage change');
+        setToken(null);
       }
     };
 
+    // 监听来自其他标签页的 storage 事件
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    // 监听自定义的 storage 事件（同一页面内的更新）
+    window.addEventListener('storage', handleStorageChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('storage', handleStorageChange as EventListener);
+    };
   }, []);
 
   useEffect(() => {

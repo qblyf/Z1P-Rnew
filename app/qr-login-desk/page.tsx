@@ -108,9 +108,9 @@ function QrLoginDeskPage() {
           // 如果找到 storage 的值, 则写入到 local 中
           if (res.payload && res.payload.token) {
             setCacheToken(res.payload.token);
-            // 触发 storage 事件通知token已更新
-            window.dispatchEvent(new Event('storage'));
             console.log('Token saved to localStorage');
+            // 刷新页面以重新初始化 token context
+            window.location.reload();
           } else {
             console.error('No token in confirmed response:', res.payload);
           }
