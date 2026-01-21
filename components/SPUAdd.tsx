@@ -44,6 +44,7 @@ export default function SPUAdd() {
     remarks: '',
     images: { thumbnail: '', mainImages: [], detailsImages: [] },
     marketTime: '',
+    keywords: [],
   });
   const [order, setOrder] = useState('');
   const [mainImages, setMainImages] = useState<UploadFile[]>([]);
@@ -66,6 +67,7 @@ export default function SPUAdd() {
       remarks: '',
       images: { thumbnail: '', mainImages: [], detailsImages: [] },
       marketTime: '',
+      keywords: [],
     });
   };
 

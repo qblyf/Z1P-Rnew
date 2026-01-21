@@ -17,7 +17,7 @@
     "@ant-design/pro-components": "^2.7.10",
     "@tailwindcss/postcss": "^4.1.18",
     "@zsqk/somefn": "npm:@jsr/zsqk__somefn@^0.0.3",
-    "@zsqk/z1-sdk": "github:zsqk/z1-mid-build#v2025.08.29-1506",
+    "@zsqk/z1-sdk": "github:zsqk/z1-mid-build",
     "ali-oss": "^6.20.0",
     "antd": "^5.19.0",
     "constate": "^3.3.2",

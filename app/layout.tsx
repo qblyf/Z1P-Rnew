@@ -14,7 +14,6 @@ import { TokenProvider, useTokenContext } from '../datahooks/auth';
 import { AdminLayout } from '../components/Layout/AdminLayout';
 import './globals.css';
 
-import Test from './Test';
 import { WPK_BID } from '../constant/for-dev';
 
 import dayjs from 'dayjs';
@@ -87,7 +86,6 @@ export default function RootLayout({
             </AdminLayout>
           </TokenProvider>
         </ConfigProvider>
-        <Test />
       </body>
     </html>
   );
