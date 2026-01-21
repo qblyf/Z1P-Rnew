@@ -35,15 +35,15 @@ export default function SPUList(props: {
   const spuListFiltered = useMemo(() => {
     const s = search.replaceAll(/\s/g, '').toLowerCase();
     let filtered = spuList;
-    
+
     if (s) {
       filtered = spuList.filter(spu =>
         spu.name.replaceAll(/\s/g, '').toLowerCase().includes(s)
       );
     }
-    
+
     // 按排序号从大到小排序
-    return filtered.sort((a, b) => ((b as any).order || 0) - ((a as any).order || 0));
+    return filtered.sort((a, b) => (b.order || 0) - (a.order || 0));
   }, [spuList, search]);
 
   return (
@@ -62,10 +62,7 @@ export default function SPUList(props: {
           />
         </Col>
         <Col style={{ marginLeft: '8px' }}>
-          <Button
-            size="small"
-            onClick={onAddClick}
-          >
+          <Button size="small" onClick={onAddClick}>
             新增
           </Button>
           {spuID && (
@@ -90,7 +87,7 @@ export default function SPUList(props: {
         rowKey="id"
         dataSource={spuListFiltered}
         showHeader={false}
-        onRow={(record) => {
+        onRow={record => {
           return {
             onClick: () => {
               // 点击整行时切换选中状态
@@ -122,8 +119,23 @@ export default function SPUList(props: {
             key: 'd',
             render: (_v, v) => {
               return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                  <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    minWidth: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     {v.name}
                   </div>
                   <div style={{ flexShrink: 0, display: 'flex', gap: '4px' }}>
@@ -144,7 +156,7 @@ export default function SPUList(props: {
           type: 'radio',
           selectedRowKeys: spuID ? [spuID] : [],
           hideSelectAll: true,
-          onChange: (selectedRowKeys) => {
+          onChange: selectedRowKeys => {
             // 如果点击的是已选中的项，则取消选中
             if (selectedRowKeys.length === 0) {
               setSpuID(undefined);
