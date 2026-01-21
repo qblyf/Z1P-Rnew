@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
-import { Spin, Card, Alert } from 'antd';
+import { Spin, Card } from 'antd';
 import { RefreshCw, Smartphone } from 'lucide-react';
 
 import {
@@ -57,6 +57,9 @@ function QrLoginDeskPage() {
   // 已经扫码的设备
   const [scanner, setScanner] = useState<string>();
 
+  // 是否显示非钉钉扫码提示
+  const [showDingtalkWarning, setShowDingtalkWarning] = useState(false);
+
   // 前端生成的扫码地址
   const url = useMemo(() => {
     const baseUrl = HOST_URL.endsWith('/') ? HOST_URL.slice(0, -1) : HOST_URL;
@@ -84,11 +87,15 @@ function QrLoginDeskPage() {
     clearInterval(l);
     setIsTimeout(false);
     setScanner(undefined);
+    setShowDingtalkWarning(false);
 
     // 生成新的 uuid 及超时
     const uuid = crypto.randomUUID();
     setStorage(uuid);
     console.log('Generated QR UUID:', uuid);
+    
+    // 记录扫码时间，用于判断是否超时未登录
+    let scannedTime: number | null = null;
     
     l = window.setInterval(async () => {
       try {
@@ -108,9 +115,20 @@ function QrLoginDeskPage() {
             console.error('No token in confirmed response:', res.payload);
           }
           window.clearInterval(l);
+          setShowDingtalkWarning(false);
         } else if (res && res.state === 'scanned') {
           console.log('QR scanned by:', res.payload?.scanner);
           setScanner(res.payload?.scanner);
+          
+          // 记录扫码时间
+          if (scannedTime === null) {
+            scannedTime = Date.now();
+          }
+          
+          // 如果扫码后5秒还没有登录成功，显示钉钉提示
+          if (Date.now() - scannedTime > 5000) {
+            setShowDingtalkWarning(true);
+          }
         }
       } catch (err) {
         console.error('Error checking login status:', err);
@@ -121,6 +139,7 @@ function QrLoginDeskPage() {
       window.clearInterval(l);
       console.log('QR code expired');
       setIsTimeout(true);
+      setShowDingtalkWarning(false);
     }, 60000); // TODO: 调试成功后改为 60s 60000
   };
 
@@ -183,15 +202,6 @@ function QrLoginDeskPage() {
 
         {/* 主卡片 */}
         <Card className="shadow-xl">
-          {/* 钉钉扫码提示 */}
-          <Alert
-            message="请使用钉钉扫码"
-            description="请使用钉钉应用扫描下方二维码进行登录，其他扫码工具无法完成登录"
-            type="info"
-            showIcon
-            className="mb-6"
-          />
-
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-6">
               <Smartphone size={20} className="text-emerald-600" />
@@ -199,7 +209,7 @@ function QrLoginDeskPage() {
             </div>
 
             <p className="text-slate-600 text-sm mb-6">
-              使用钉钉应用扫描下方二维码进行登录
+              使用手机扫描下方二维码进行登录
             </p>
 
             {/* 二维码容器 */}
@@ -243,6 +253,17 @@ function QrLoginDeskPage() {
               </div>
             )}
 
+            {showDingtalkWarning && !isTimeout && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                <p className="text-amber-800 text-sm font-medium mb-2">
+                  ⚠️ 登录提示
+                </p>
+                <p className="text-amber-700 text-xs">
+                  请使用钉钉扫码登录。如果您使用的是其他应用（如微信、浏览器等），请切换到钉钉应用进行扫码。
+                </p>
+              </div>
+            )}
+
             {!isTimeout && !scanner && (
               <div className="text-slate-500 text-sm">
                 <p>等待扫码中...</p>
@@ -253,7 +274,7 @@ function QrLoginDeskPage() {
 
         {/* 底部提示 */}
         <div className="text-center mt-6 text-slate-600 text-sm">
-          <p>首次登录？请使用钉钉应用扫码</p>
+          <p>首次登录？请使用手机应用扫码</p>
         </div>
       </div>
     </div>

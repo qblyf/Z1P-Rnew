@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useTokenContext } from '../../datahooks/auth';
-import { Button, Card, Spin, Alert } from 'antd';
+import { Button, Card, Spin } from 'antd';
 import { airLoginConfirm, airLoginScan } from '@zsqk/z1-sdk/es/z1p/auth';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { parserUA } from '@zsqk/somefn/js/ua';
@@ -31,20 +31,9 @@ function QrLoginMobilePage() {
 
   const searchParams = useSearchParams();
   const storage = useMemo(() => searchParams?.get('storage'), [searchParams]);
-  const [status, setStatus] = useState<'等待确认' | '正在登录中' | '登录已完成' | string>('等待确认');
+  const [status, setStatus] = useState<'等待确认' | '正在登录中' | '登录已完成' | '登录失败' | string>('等待确认');
   const [isLoading, setIsLoading] = useState(false);
-  const [isDingTalk, setIsDingTalk] = useState(true);
-
-  // 检测是否为钉钉扫码
-  useEffect(() => {
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isDingTalkApp = userAgent.includes('dingtalk');
-    setIsDingTalk(isDingTalkApp);
-    
-    if (!isDingTalkApp) {
-      console.warn('非钉钉扫码访问');
-    }
-  }, []);
+  const [showDingtalkWarning, setShowDingtalkWarning] = useState(false);
 
   useEffect(() => {
     if (typeof storage !== 'string') {
@@ -52,6 +41,15 @@ function QrLoginMobilePage() {
     }
     const ua = parserUA(window.navigator.userAgent);
     airLoginScan(storage, { scanner: `${ua.os} ${ua.softwareName}` });
+    
+    // 检查是否在钉钉环境中
+    const isDingtalk = ua.softwareName?.toLowerCase().includes('dingtalk') || 
+                       ua.softwareName?.toLowerCase().includes('钉钉');
+    
+    if (!isDingtalk) {
+      // 如果不是钉钉环境，显示警告
+      setShowDingtalkWarning(true);
+    }
   }, [storage]);
 
   // 移动端登录成功后不跳转，保持在当前页面显示成功提示
@@ -113,17 +111,6 @@ function QrLoginMobilePage() {
 
         {/* 主卡片 */}
         <Card className="shadow-xl">
-          {/* 钉钉扫码提示 */}
-          {!isDingTalk && (
-            <Alert
-              message="请使用钉钉扫码"
-              description="检测到您未使用钉钉扫码，请使用钉钉应用扫描二维码进行登录"
-              type="warning"
-              showIcon
-              className="mb-4"
-            />
-          )}
-
           <div className="text-center">
             {status === '等待确认' && (
               <>
@@ -154,16 +141,29 @@ function QrLoginMobilePage() {
                       // 登录已完成, 将 token 写入 storage
                       await airLoginConfirm(storage, { token });
                       setStatus('登录已完成');
+                      setShowDingtalkWarning(false);
                     } catch (err) {
-                      setStatus(`登录失败: ${err}`);
+                      setStatus('登录失败');
                       setIsLoading(false);
+                      console.error('Login confirmation error:', err);
                     }
                   }}
                   loading={isLoading}
-                  disabled={!isDingTalk}
+                  disabled={!token}
                 >
-                  {isDingTalk ? '确认登录' : '请使用钉钉扫码'}
+                  确认登录
                 </Button>
+
+                {showDingtalkWarning && (
+                  <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p className="text-amber-800 text-sm font-medium mb-2">
+                      ⚠️ 重要提示
+                    </p>
+                    <p className="text-amber-700 text-xs">
+                      检测到您可能不是使用钉钉扫码。本系统仅支持钉钉登录，请使用钉钉应用扫描二维码。
+                    </p>
+                  </div>
+                )}
               </>
             )}
 
@@ -187,11 +187,27 @@ function QrLoginMobilePage() {
               </>
             )}
 
-            {status !== '等待确认' && status !== '正在登录中' && status !== '登录已完成' && (
+            {status !== '等待确认' && status !== '正在登录中' && status !== '登录已完成' && status !== '登录失败' && (
               <>
                 <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
                 <h2 className="text-lg font-bold text-slate-800 mb-2">出错了</h2>
                 <p className="text-slate-600 text-sm">{status}</p>
+              </>
+            )}
+
+            {status === '登录失败' && (
+              <>
+                <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
+                <h2 className="text-lg font-bold text-slate-800 mb-2">登录失败</h2>
+                <p className="text-slate-600 text-sm mb-4">登录过程中出现错误</p>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <p className="text-amber-800 text-sm font-medium mb-2">
+                    ⚠️ 请检查
+                  </p>
+                  <p className="text-amber-700 text-xs">
+                    请确保您使用的是钉钉应用扫码。如果使用其他应用（如微信、浏览器等）扫码，将无法完成登录。
+                  </p>
+                </div>
               </>
             )}
           </div>
