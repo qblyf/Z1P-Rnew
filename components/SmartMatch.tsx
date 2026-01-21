@@ -45,6 +45,84 @@ interface BrandData {
   order?: number;
 }
 
+// ==================== 配置常量 ====================
+
+// 型号标准化映射：将连写的型号标准化为带空格的形式
+// 例如：promini → pro mini, watchgt → watch gt
+const MODEL_NORMALIZATIONS: Record<string, string> = {
+  'promini': 'pro mini',
+  'promax': 'pro max',
+  'proplus': 'pro plus',
+  'watchgt': 'watch gt',
+  'watchse': 'watch se',
+  'watch3': 'watch 3',
+  'watch4': 'watch 4',
+  'watch5': 'watch 5',
+  'watch6': 'watch 6',
+  'watch7': 'watch 7',
+  'band3': 'band 3',
+  'band4': 'band 4',
+  'band5': 'band 5',
+  'band6': 'band 6',
+  'band7': 'band 7',
+  'buds3': 'buds 3',
+  'buds4': 'buds 4',
+  'buds5': 'buds 5',
+  'xnote': 'x note',
+  'xfold': 'x fold',
+  'xflip': 'x flip',
+};
+
+// 礼盒版过滤关键词：当输入不包含这些词时，应该过滤掉包含这些词的SPU
+const GIFT_BOX_KEYWORDS = ['礼盒', '套装', '系列', '礼品', '礼包'];
+
+// 版本关键词：用于版本互斥过滤（如蓝牙版 vs eSIM版）
+const VERSION_KEYWORDS = ['蓝牙版', 'eSIM版', 'esim版', '5G版', '4G版', '3G版', '全网通版'];
+
+// 材质关键词：用于识别材质信息
+const MATERIAL_KEYWORDS = ['软胶', '硅胶', '皮革', '陶瓷', '玻璃', '金属', '塑料', '尼龙'];
+
+// 颜色变体映射：定义已知的颜色变体对，这些颜色应该被视为等价
+// 例如："雾凇蓝" 和 "雾松蓝" 是同一种颜色的不同写法
+// Requirements: 2.4.3, 3.2.4
+const COLOR_VARIANTS: Record<string, string[]> = {
+  '雾凇蓝': ['雾松蓝'],
+  '雾松蓝': ['雾凇蓝'],
+  // 可以在此扩展更多颜色变体对
+};
+
+/**
+ * 检查两个颜色是否为已知的变体对
+ * 
+ * 颜色变体是指同一种颜色的不同写法或表达方式，应该被视为等价。
+ * 例如："雾凇蓝" 和 "雾松蓝" 是同一种颜色。
+ * 
+ * @param color1 - 第一个颜色
+ * @param color2 - 第二个颜色
+ * @returns true 表示两个颜色是已知的变体对，false 表示不是
+ * 
+ * Requirements: 2.4.3, 3.2.4
+ */
+function isColorVariant(color1: string, color2: string): boolean {
+  if (!color1 || !color2) return false;
+  
+  // 检查 color1 的变体列表中是否包含 color2
+  const variants1 = COLOR_VARIANTS[color1];
+  if (variants1 && variants1.includes(color2)) {
+    return true;
+  }
+  
+  // 检查 color2 的变体列表中是否包含 color1
+  const variants2 = COLOR_VARIANTS[color2];
+  if (variants2 && variants2.includes(color1)) {
+    return true;
+  }
+  
+  return false;
+}
+
+// ==================== 匹配算法类 ====================
+
 // 简化的匹配算法
 class SimpleMatcher {
   private dynamicColors: string[] = [];
@@ -52,6 +130,104 @@ class SimpleMatcher {
   // 设置动态颜色列表
   setColorList(colors: string[]) {
     this.dynamicColors = colors;
+  }
+
+  /**
+   * 检查是否应该过滤某个SPU
+   * 
+   * 实现版本过滤规则：
+   * 1. 礼盒版过滤：当输入不包含"礼盒"、"套装"、"系列"等关键词时，过滤掉包含这些词的SPU
+   * 2. 版本互斥过滤：当输入包含"蓝牙版"时，过滤掉"eSIM版"SPU；反之亦然
+   * 
+   * @param inputName - 用户输入的商品名称
+   * @param spuName - SPU名称
+   * @returns true 表示应该过滤掉该SPU，false 表示不过滤
+   * 
+   * Requirements: 2.2.1, 2.2.2, 3.1.1, 3.1.2
+   */
+  shouldFilterSPU(inputName: string, spuName: string): boolean {
+    const lowerInput = inputName.toLowerCase();
+    const lowerSPU = spuName.toLowerCase();
+    
+    // 规则1：礼盒版过滤
+    // 当输入不包含礼盒相关关键词时，过滤掉包含这些词的SPU
+    const hasGiftBoxKeywordInInput = GIFT_BOX_KEYWORDS.some(keyword => 
+      lowerInput.includes(keyword.toLowerCase())
+    );
+    
+    const hasGiftBoxKeywordInSPU = GIFT_BOX_KEYWORDS.some(keyword => 
+      lowerSPU.includes(keyword.toLowerCase())
+    );
+    
+    if (!hasGiftBoxKeywordInInput && hasGiftBoxKeywordInSPU) {
+      console.log(`过滤SPU（礼盒版）: ${spuName}`);
+      return true; // 输入不含礼盒关键词，但SPU含有，应该过滤
+    }
+    
+    // 规则2：版本互斥过滤（蓝牙版 vs eSIM版）
+    const hasBluetooth = lowerInput.includes('蓝牙版');
+    const hasESIM = lowerInput.includes('esim版') || lowerInput.includes('esim版');
+    
+    // 输入包含"蓝牙版"时，过滤掉"eSIM版"SPU
+    if (hasBluetooth && (lowerSPU.includes('esim版') || lowerSPU.includes('esim版'))) {
+      console.log(`过滤SPU（版本互斥-蓝牙vs eSIM）: ${spuName}`);
+      return true;
+    }
+    
+    // 输入包含"eSIM版"时，过滤掉"蓝牙版"SPU
+    if (hasESIM && lowerSPU.includes('蓝牙版')) {
+      console.log(`过滤SPU（版本互斥-eSIM vs 蓝牙）: ${spuName}`);
+      return true;
+    }
+    
+    return false; // 不过滤
+  }
+
+  /**
+   * 计算SPU的优先级分数
+   * 
+   * 优先级规则：
+   * 1. 标准版（不含特殊关键词）：优先级最高（分数 3）
+   * 2. 版本匹配的特殊版（如输入含"蓝牙版"，SPU也含"蓝牙版"）：优先级中等（分数 2）
+   * 3. 其他特殊版（含礼盒、系列等关键词）：优先级最低（分数 1）
+   * 
+   * @param inputName - 用户输入的商品名称
+   * @param spuName - SPU名称
+   * @returns 优先级分数（3=最高，2=中等，1=最低）
+   * 
+   * Requirements: 2.2.3, 3.1.3
+   */
+  getSPUPriority(inputName: string, spuName: string): number {
+    const lowerInput = inputName.toLowerCase();
+    const lowerSPU = spuName.toLowerCase();
+    
+    // 检查SPU是否包含特殊关键词
+    const hasGiftBoxKeyword = GIFT_BOX_KEYWORDS.some(keyword => 
+      lowerSPU.includes(keyword.toLowerCase())
+    );
+    
+    const hasSpecialVersion = VERSION_KEYWORDS.some(keyword => 
+      lowerSPU.includes(keyword.toLowerCase())
+    );
+    
+    // 如果SPU不包含任何特殊关键词，则为标准版，优先级最高
+    if (!hasGiftBoxKeyword && !hasSpecialVersion) {
+      return 3; // 标准版：优先级最高
+    }
+    
+    // 如果SPU包含特殊版本关键词，检查是否与输入匹配
+    if (hasSpecialVersion) {
+      // 检查输入和SPU是否包含相同的版本关键词
+      for (const keyword of VERSION_KEYWORDS) {
+        const lowerKeyword = keyword.toLowerCase();
+        if (lowerInput.includes(lowerKeyword) && lowerSPU.includes(lowerKeyword)) {
+          return 2; // 版本匹配的特殊版：优先级中等
+        }
+      }
+    }
+    
+    // 其他情况（礼盒版、不匹配的特殊版等）：优先级最低
+    return 1;
   }
   
   // 标准化字符串
@@ -90,65 +266,98 @@ class SimpleMatcher {
   }
 
   // 提取型号（包括字母和数字）
+  // 实现多层次型号匹配，应用 MODEL_NORMALIZATIONS 映射
   extractModel(str: string): string | null {
     const lowerStr = str.toLowerCase();
     
-    // 先尝试匹配常见的完整型号格式
-    // Y300Pro+, Y300i, Y300, Y50, Y3, X Note, Mate60, iPhone15等
-    
-    // 特殊处理：连写的型号标准化
-    let normalizedStr = lowerStr
-      .replace(/promini/g, 'pro mini')
-      .replace(/promax/g, 'pro max')
-      .replace(/proplus/g, 'pro plus')
-      .replace(/watchgt/g, 'watch gt')  // WatchGT -> Watch GT
-      .replace(/watchse/g, 'watch se')  // WatchSE -> Watch SE
-      .replace(/watch\s*(\d+)/g, 'watch $1'); // Watch3 -> Watch 3
-    
-    // 移除括号内的内容（如型号代码），避免干扰
+    // 步骤1: 移除括号内的型号代码（如（WA2456C）），避免干扰
     // vivo WATCH GT（WA2456C） -> vivo WATCH GT
-    normalizedStr = normalizedStr.replace(/[（(][^)）]*[)）]/g, '');
+    // 注意：需要在括号前后添加空格，避免括号内容与其他词连接
+    let normalizedStr = lowerStr.replace(/[（(][^)）]*[)）]/g, ' ');
     
-    // 1. 优先匹配 "字母 字母" 格式（如 WATCH GT, X Note, X Fold, BAND等）
-    // 这个要放在最前面，因为 WATCH GT 这种格式很特殊
-    const wordModelPattern = /\b(watch|band|buds|pad|fold|flip|note)\s+(gt|se|pro|max|plus|ultra|air|lite|[a-z]+\d*)\b/gi;
-    const wordMatches = normalizedStr.match(wordModelPattern);
+    // 步骤1.5: 提取并移除品牌，避免品牌与型号混淆
+    // 例如：vivo promini -> promini (移除vivo后再处理)
+    const brands = ['apple', 'huawei', 'honor', 'xiaomi', 'vivo', 'oppo', 'samsung', 'oneplus', 'realme'];
+    for (const brand of brands) {
+      // 使用单词边界确保完整匹配品牌词
+      const brandRegex = new RegExp(`\\b${brand}\\b`, 'gi');
+      normalizedStr = normalizedStr.replace(brandRegex, ' ');
+    }
+    
+    // 清理多余空格
+    normalizedStr = normalizedStr.replace(/\s+/g, ' ').trim();
+    
+    // 步骤2: 应用 MODEL_NORMALIZATIONS 映射进行标准化
+    // 将连写的型号标准化为带空格的形式
+    // 例如：promini -> pro mini, watchgt -> watch gt
+    Object.entries(MODEL_NORMALIZATIONS).forEach(([from, to]) => {
+      const regex = new RegExp(`\\b${from}\\b`, 'gi');
+      normalizedStr = normalizedStr.replace(regex, to);
+    });
+    
+    // 步骤3: 多层次型号匹配（按优先级依次尝试）
+    
+    // 优先级1: 字母+字母格式（如 WATCH GT, X Note, X Fold, BAND SE等）
+    // 这种格式很特殊，需要优先匹配
+    // 包括三种模式：
+    // 1. 单字母 + 产品词 (x note, x fold, x flip) - 最高优先级
+    // 2. 特定产品词 + 修饰词 (watch gt, band se, etc.)
+    // 3. 特定产品词 + 数字 (watch 5, band 3, etc.)
+    const wordModelPattern2 = /\b([a-z])\s+(note|fold|flip|pad)\b/gi;
+    const wordModelPattern1 = /\b(watch|band|buds|pad|fold|flip)\s+(gt|se|pro|max|plus|ultra|air|lite|\d+|[a-z]+\d*)\b/gi;
+    
+    // 优先匹配 pattern2（单字母+产品词），因为它更具体
+    const wordMatches2 = normalizedStr.match(wordModelPattern2);
+    const wordMatches1 = normalizedStr.match(wordModelPattern1);
+    const wordMatches = [...(wordMatches2 || []), ...(wordMatches1 || [])];
     
     if (wordMatches && wordMatches.length > 0) {
       // 返回第一个匹配（通常是最准确的）
-      return wordMatches[0].toLowerCase().replace(/\s+/g, '');
+      const model = wordMatches[0].toLowerCase().replace(/\s+/g, '');
+      console.log('提取型号（优先级1-字母+字母）:', model);
+      return model;
     }
     
-    // 2. 匹配复杂型号：字母+数字+Pro/Max/Plus/Ultra等+可选的+号
+    // 优先级2: 复杂型号格式（字母+数字+Pro/Max/Plus/Ultra等+可选的mini/max/plus/ultra）
     // 支持有空格和无空格：Y500Pro, Y500 Pro, Mate60Pro, Mate60 Pro, S30 Pro mini, iPhone 15 Pro Max
-    // 改进：支持多个字母开头（如 iPhone, Mate），支持字母和数字之间有空格
     const complexModelPattern = /\b([a-z]+)\s*(\d+)\s*(pro|max|plus|ultra|mini|se|air|lite|note)(\s+(mini|max|plus|ultra))?\b/gi;
     const complexMatches = normalizedStr.match(complexModelPattern);
     
     if (complexMatches && complexMatches.length > 0) {
-      // 返回最长的匹配（通常是最完整的型号）
+      // 过滤掉包含容量标识的匹配
       const filtered = complexMatches.filter(m => {
         const lower = m.toLowerCase();
-        return !lower.includes('gb') && !lower.endsWith('g');
+        // 排除包含gb的（容量）
+        if (lower.includes('gb')) {
+          return false;
+        }
+        // 排除以g结尾的（如 5g 网络制式）
+        if (/\d+g$/i.test(lower)) {
+          return false;
+        }
+        return true;
       });
       
       if (filtered.length > 0) {
+        // 返回最长的匹配（通常是最完整的型号）
         // 统一去除空格，使 Y500Pro 和 Y500 Pro 都变成 y500pro
         // S30 Pro mini -> s30promini
         // iPhone 15 Pro Max -> iphone15promax
-        return filtered.sort((a, b) => b.length - a.length)[0]
+        const model = filtered.sort((a, b) => b.length - a.length)[0]
           .toLowerCase()
           .replace(/\s+/g, '');
+        console.log('提取型号（优先级2-复杂型号）:', model);
+        return model;
       }
     }
     
-    // 2. 匹配简单型号：字母+数字+可选字母（如 Y300i, Y50, Y3, Mate60）
-    // 改进：先匹配所有可能的型号，然后按优先级过滤
+    // 优先级3: 简单型号格式（字母+数字+可选字母，如 Y300i, Y50, Y3, Mate60）
+    // 注意：使用 normalizedStr 而不是 lowerStr，避免提取已删除的括号内容
     const simpleModelPattern = /\b([a-z]+)(\d+)([a-z]*)\b/gi;
-    const simpleMatches = lowerStr.match(simpleModelPattern);
+    const simpleMatches = normalizedStr.match(simpleModelPattern);
     
     if (simpleMatches && simpleMatches.length > 0) {
-      // 过滤掉容量和网络制式相关的匹配
+      // 步骤4: 应用过滤逻辑
       const filtered = simpleMatches.filter(m => {
         const lower = m.toLowerCase();
         
@@ -162,7 +371,7 @@ class SimpleMatcher {
           return false;
         }
         
-        // 排除：纯数字+g（如 8g, 12g）
+        // 排除：纯数字+g（如 8g, 12g - 内存容量）
         if (/^\d+g$/i.test(lower)) {
           return false;
         }
@@ -174,7 +383,6 @@ class SimpleMatcher {
         // 优先选择：
         // 1. 包含字母后缀的（如 Y300i）
         // 2. 较长的型号
-        // 3. 字母开头的
         const sorted = filtered.sort((a, b) => {
           const aLower = a.toLowerCase();
           const bLower = b.toLowerCase();
@@ -190,11 +398,13 @@ class SimpleMatcher {
           return b.length - a.length;
         });
         
-        return sorted[0].toLowerCase().replace(/\s+/g, '');
+        const model = sorted[0].toLowerCase().replace(/\s+/g, '');
+        console.log('提取型号（优先级3-简单型号）:', model);
+        return model;
       }
     }
     
-    // 4. 匹配通用 "字母 字母" 格式（如 X Note, X Fold）- 作为后备方案
+    // 后备方案: 匹配通用 "字母 字母" 格式（如 X Note, X Fold）
     const generalWordPattern = /\b([a-z]+)\s+([a-z]+)\b/gi;
     const generalWordMatches = normalizedStr.match(generalWordPattern);
     
@@ -208,10 +418,13 @@ class SimpleMatcher {
       });
       
       if (filtered.length > 0) {
-        return filtered[0].toLowerCase().replace(/\s+/g, '');
+        const model = filtered[0].toLowerCase().replace(/\s+/g, '');
+        console.log('提取型号（后备方案-通用字母+字母）:', model);
+        return model;
       }
     }
     
+    console.log('未能提取型号');
     return null;
   }
 
@@ -255,44 +468,98 @@ class SimpleMatcher {
     return null;
   }
 
-  // 提取颜色（改进版：使用多种方法）
+  /**
+   * 提取颜色（改进版：使用多种方法）
+   * 
+   * 采用多层次提取策略，按优先级依次尝试：
+   * 1. 动态颜色列表匹配（从实际SKU数据提取，支持复合颜色和带修饰词的颜色）
+   * 2. 从"版"字后提取（处理"蓝牙版夏夜黑"这类格式）
+   * 3. 从字符串末尾提取（通常颜色在最后）
+   * 4. 从容量后提取
+   * 5. 基础颜色后备
+   * 
+   * 支持的颜色类型：
+   * - 复合颜色名称：可可黑、薄荷青、柠檬黄、酷莓粉
+   * - 带修饰词的颜色：夏夜黑、辰夜黑、龙晶紫
+   * - 基础颜色：黑、白、蓝、红等
+   * 
+   * @param str - 输入字符串
+   * @returns 提取的颜色，如果未找到则返回 null
+   * 
+   * Requirements: 2.4.1, 2.4.2, 3.2.2, 3.2.3
+   */
   extractColor(str: string): string | null {
     // 方法1：优先使用动态颜色列表（从实际数据中提取的）
+    // 动态列表已按长度降序排序，确保优先匹配更长的颜色词
+    // 例如："夏夜黑"会优先于"黑"被匹配
+    // Requirements: 2.4.1, 2.4.2, 3.2.2, 3.2.3
     if (this.dynamicColors.length > 0) {
       for (const color of this.dynamicColors) {
         if (str.includes(color)) {
+          console.log(`提取颜色（方法1-动态列表）: ${color}`);
           return color;
         }
       }
     }
     
-    // 方法2：从字符串末尾提取颜色（通常颜色在最后）
+    // 方法2：从"版"字后提取颜色（处理"蓝牙版夏夜黑"、"eSIM版曜石黑"这类格式）
+    // 这种格式很常见，需要特殊处理
+    // Requirements: 2.4.1, 2.4.2, 3.2.2, 3.2.3
+    const afterVersion = str.match(/版([\u4e00-\u9fa5]{2,5})$/);
+    if (afterVersion && afterVersion[1]) {
+      const word = afterVersion[1];
+      console.log(`提取颜色（方法2-版字后提取）: ${word}`);
+      return word;
+    }
+    
+    // 方法3：从字符串末尾提取颜色（通常颜色在最后）
+    // 支持2-5个汉字的颜色名称
     // 例如：vivo Y500 全网通5G 12GB+512GB 龙晶紫 → 龙晶紫
+    // Requirements: 2.4.1, 2.4.2, 3.2.2, 3.2.3
     const lastWords = str.match(/[\u4e00-\u9fa5]{2,5}$/);
     if (lastWords) {
       const word = lastWords[0];
       // 排除常见的非颜色词
-      const excludeWords = ['全网通', '网通', '版本', '标准', '套餐'];
+      const excludeWords = ['全网通', '网通', '版本', '标准', '套餐', '蓝牙版'];
       if (!excludeWords.includes(word)) {
+        console.log(`提取颜色（方法3-末尾提取）: ${word}`);
         return word;
       }
     }
     
-    // 方法3：从容量后提取颜色
+    // 方法4：从容量后提取颜色
     // 例如：12GB+512GB 龙晶紫 → 龙晶紫
+    // 例如：(12+512)可可黑 → 可可黑
+    // Requirements: 2.4.1, 2.4.2, 3.2.2, 3.2.3
     const afterCapacity = str.match(/\d+GB[+]\d+GB\s*([\u4e00-\u9fa5]{2,5})/);
     if (afterCapacity && afterCapacity[1]) {
+      console.log(`提取颜色（方法4-容量后提取）: ${afterCapacity[1]}`);
       return afterCapacity[1];
     }
     
-    // 方法4：使用基础颜色作为后备
+    // 也尝试括号格式的容量后提取
+    const afterBracketCapacity = str.match(/\)\s*([\u4e00-\u9fa5]{2,5})/);
+    if (afterBracketCapacity && afterBracketCapacity[1]) {
+      const word = afterBracketCapacity[1];
+      const excludeWords = ['全网通', '网通', '版本', '标准', '套餐'];
+      if (!excludeWords.includes(word)) {
+        console.log(`提取颜色（方法4-括号容量后提取）: ${word}`);
+        return word;
+      }
+    }
+    
+    // 方法5：使用基础颜色作为后备
+    // 只在前面的方法都失败时使用
+    // Requirements: 2.4.1, 3.2.2
     const basicColors = ['黑', '白', '蓝', '红', '绿', '紫', '粉', '金', '银', '灰'];
     for (const color of basicColors) {
       if (str.includes(color)) {
+        console.log(`提取颜色（方法5-基础颜色）: ${color}`);
         return color;
       }
     }
     
+    console.log('未能提取颜色');
     return null;
   }
 
@@ -397,9 +664,7 @@ class SimpleMatcher {
     // 颜色匹配（权重5%）
     if (color1 && color2) {
       totalWeight += 0.05;
-      if (color1 === color2 || 
-          (color1.includes('雾凇') && color2.includes('雾松')) ||
-          (color1.includes('雾松') && color2.includes('雾凇'))) {
+      if (color1 === color2 || isColorVariant(color1, color2)) {
         score += 0.05;
       }
     }
@@ -439,16 +704,27 @@ class SimpleMatcher {
     const inputBrand = this.extractBrand(inputSPUPart);
     const inputModel = this.extractModel(inputSPUPart);
     
-    console.log('=== SPU匹配输入 ===');
+    console.log('=== SPU匹配开始 ===');
     console.log('原始输入:', input);
     console.log('SPU部分:', inputSPUPart);
     console.log('提取品牌:', inputBrand);
     console.log('提取型号:', inputModel);
+    console.log('匹配阈值:', threshold);
     
     let bestMatch: SPUData | null = null;
     let bestScore = 0;
+    let bestPriority = 0;
+    let filteredCount = 0; // 统计被过滤的SPU数量
+    let candidateCount = 0; // 统计候选SPU数量
     
     for (const spu of spuList) {
+      // 应用版本过滤：在匹配前先检查是否应该过滤该SPU
+      // Requirements: 2.2.1, 2.2.2, 3.1.1, 3.1.2
+      if (this.shouldFilterSPU(input, spu.name)) {
+        filteredCount++;
+        continue; // 应该过滤，跳过该SPU
+      }
+      
       // 同样提取 SPU 的 SPU 部分
       const spuSPUPart = this.extractSPUPart(spu.name);
       const spuBrand = this.extractBrand(spuSPUPart);
@@ -486,22 +762,51 @@ class SimpleMatcher {
         score = similarity;
       }
       
-      if (score > bestScore) {
+      // 只有分数达到阈值的才算候选
+      if (score >= threshold) {
+        candidateCount++;
+      }
+      
+      // 计算该SPU的优先级
+      // Requirements: 2.2.3, 3.1.3
+      const priority = this.getSPUPriority(input, spu.name);
+      
+      // 更新最佳匹配：
+      // 1. 如果分数更高，直接更新
+      // 2. 如果分数相同，比较优先级（优先级高的优先）
+      // Requirements: 2.2.3, 3.1.3
+      if (score > bestScore || (score === bestScore && priority > bestPriority)) {
+        const previousBest = bestMatch?.name;
         bestScore = score;
         bestMatch = spu;
+        bestPriority = priority;
+        
+        console.log('更新最佳SPU匹配:', {
+          previousBest,
+          newBest: spu.name,
+          score: score.toFixed(3),
+          priority,
+          priorityLabel: priority === 3 ? '标准版' : priority === 2 ? '版本匹配' : '其他特殊版',
+          reason: score > bestScore ? '分数更高' : '分数相同但优先级更高'
+        });
       }
     }
     
-    console.log('最佳SPU匹配:', {
-      spu: bestMatch?.name,
-      score: bestScore,
-      threshold
-    });
+    console.log('=== SPU匹配结果 ===');
+    console.log('总SPU数量:', spuList.length);
+    console.log('过滤SPU数量:', filteredCount);
+    console.log('候选SPU数量:', candidateCount);
+    console.log('最佳匹配SPU:', bestMatch?.name || '无');
+    console.log('最佳匹配分数:', bestScore.toFixed(3));
+    console.log('最佳匹配优先级:', bestPriority, `(${bestPriority === 3 ? '标准版' : bestPriority === 2 ? '版本匹配' : '其他特殊版'})`);
+    console.log('是否达到阈值:', bestScore >= threshold ? '是' : '否');
     
     if (bestScore < threshold) {
+      console.log('匹配失败：分数未达到阈值');
       return { spu: null, similarity: 0 };
     }
     
+    console.log('匹配成功！');
     return { spu: bestMatch, similarity: bestScore };
   }
 
@@ -542,12 +847,10 @@ class SimpleMatcher {
         if (inputColor === skuColor) {
           paramScore += 0.3;
         }
-        // 特殊颜色变体匹配（雾凇/雾松）
-        else if (
-          (inputColor.includes('雾凇') && skuColor.includes('雾松')) ||
-          (inputColor.includes('雾松') && skuColor.includes('雾凇'))
-        ) {
-          paramScore += 0.3; // 雾凇和雾松视为完全匹配
+        // 颜色变体匹配（使用 isColorVariant 辅助函数）
+        // Requirements: 2.4.3, 3.2.4
+        else if (isColorVariant(inputColor, skuColor)) {
+          paramScore += 0.3; // 变体匹配视为完全匹配
         }
         // 基础颜色包含关系
         else if (
@@ -659,10 +962,19 @@ export function SmartMatchComponent() {
         
         // 从实际 SKU 数据中提取颜色词
         // 采样部分 SPU 来提取颜色（避免加载太多数据）
+        // Requirements: 2.4.1, 3.2.1, 3.2.2
         const extractedColors = new Set<string>();
         const sampleSize = Math.min(200, data.length); // 采样前200个SPU
         
-        console.log('开始从 SPU 颜色规格中提取颜色词...');
+        console.log('=== 开始提取动态颜色列表 ===');
+        console.log(`总SPU数量: ${data.length}`);
+        console.log(`采样数量: ${sampleSize}`);
+        console.log('提取策略: 从SKU的color字段提取颜色');
+        
+        const startTime = Date.now();
+        let processedSPUs = 0;
+        let processedSKUs = 0;
+        let failedSPUs = 0;
         
         for (let i = 0; i < sampleSize; i++) {
           const spu = data[i];
@@ -674,24 +986,47 @@ export function SmartMatchComponent() {
             for (const sku of skuIDs) {
               if ('color' in sku && sku.color) {
                 extractedColors.add(sku.color);
+                processedSKUs++;
               }
             }
+            
+            processedSPUs++;
           } catch (error) {
-            console.error(`提取 SPU ${spu.id} 的颜色失败:`, error);
+            console.error(`提取 SPU ${spu.id} (${spu.name}) 的颜色失败:`, error);
+            failedSPUs++;
           }
           
-          // 每20个显示进度
-          if ((i + 1) % 20 === 0) {
-            console.log(`已处理 ${i + 1}/${sampleSize} 个 SPU，提取 ${extractedColors.size} 个颜色`);
+          // 每10个显示详细进度
+          if ((i + 1) % 10 === 0) {
+            const progress = ((i + 1) / sampleSize * 100).toFixed(1);
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            console.log(`[进度 ${progress}%] 已处理 ${i + 1}/${sampleSize} 个SPU，提取 ${extractedColors.size} 个颜色，耗时 ${elapsed}秒`);
           }
         }
         
         // 转换为数组并按长度降序排序（优先匹配更长的颜色词）
+        // 长度排序确保"夏夜黑"优先于"黑"被匹配
+        // Requirements: 2.4.1, 3.2.1, 3.2.2
         const colors = Array.from(extractedColors).sort((a, b) => b.length - a.length);
         setColorList(colors);
         
-        console.log('提取的颜色列表:', colors);
-        message.success(`已加载 ${data.length} 个SPU，从 ${sampleSize} 个SPU中提取 ${colors.length} 个颜色词`);
+        const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+        
+        console.log('=== 颜色列表提取完成 ===');
+        console.log(`成功处理: ${processedSPUs} 个SPU`);
+        console.log(`失败处理: ${failedSPUs} 个SPU`);
+        console.log(`处理SKU: ${processedSKUs} 个`);
+        console.log(`提取颜色: ${colors.length} 个`);
+        console.log(`总耗时: ${totalTime}秒`);
+        console.log('颜色列表（按长度降序）:', colors.slice(0, 20), colors.length > 20 ? `... 还有 ${colors.length - 20} 个` : '');
+        
+        // 显示一些特殊颜色示例（如果存在）
+        const specialColors = colors.filter(c => c.length >= 3);
+        if (specialColors.length > 0) {
+          console.log('特殊颜色示例（3字及以上）:', specialColors.slice(0, 10));
+        }
+        
+        message.success(`已加载 ${data.length} 个SPU，从 ${sampleSize} 个SPU中提取 ${colors.length} 个颜色词（耗时${totalTime}秒）`);
       } catch (error) {
         message.error('加载SPU数据失败');
         console.error(error);
