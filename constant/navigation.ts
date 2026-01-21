@@ -39,6 +39,11 @@ export const MENU_CONFIG: MenuItem[] = [
         label: 'SKU 列表',
         href: '/sku-list',
       },
+      {
+        id: 'smart-match',
+        label: '智能匹配',
+        href: '/smart-match',
+      },
     ],
   },
   {
