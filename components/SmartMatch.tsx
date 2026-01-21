@@ -552,7 +552,7 @@ export function SmartMatchComponent() {
   ]);
   const matcher = new SimpleMatcher();
 
-  // 加载所有SPU数据并从SKU中提取颜色
+  // 加载所有SPU数据并从SPU的颜色规格中提取颜色
   useEffect(() => {
     const loadSPUData = async () => {
       try {
@@ -571,9 +571,9 @@ export function SmartMatchComponent() {
         // 从实际 SKU 数据中提取颜色词
         // 采样部分 SPU 来提取颜色（避免加载太多数据）
         const extractedColors = new Set<string>();
-        const sampleSize = Math.min(100, data.length); // 采样前100个SPU
+        const sampleSize = Math.min(200, data.length); // 采样前200个SPU
         
-        console.log('开始从 SKU 中提取颜色词...');
+        console.log('开始从 SPU 颜色规格中提取颜色词...');
         
         for (let i = 0; i < sampleSize; i++) {
           const spu = data[i];
@@ -581,50 +581,18 @@ export function SmartMatchComponent() {
             const spuInfo = await getSPUInfo(spu.id);
             const skuIDs = spuInfo.skuIDs || [];
             
-            if (skuIDs.length > 0) {
-              const skuDetails = await getSKUsInfo(skuIDs.map(s => s.skuID));
-              
-              for (const sku of skuDetails) {
-                if ('errInfo' in sku) continue;
-                
-                const name = sku.name;
-                
-                // 方法1：提取最后2-5个字符（通常是颜色）
-                const lastWords = name.match(/[\u4e00-\u9fa5]{2,5}$/);
-                if (lastWords) {
-                  const word = lastWords[0];
-                  // 排除常见的非颜色词
-                  const excludeWords = ['全网通', '网通', '版本', '标准', '套餐'];
-                  if (!excludeWords.includes(word)) {
-                    extractedColors.add(word);
-                  }
-                }
-                
-                // 方法2：提取容量后面的词（通常是颜色）
-                // 例如：12GB+512GB 龙晶紫 → 龙晶紫
-                const afterCapacity = name.match(/\d+GB[+]\d+GB\s*([\u4e00-\u9fa5]{2,5})/);
-                if (afterCapacity && afterCapacity[1]) {
-                  extractedColors.add(afterCapacity[1]);
-                }
-                
-                // 方法3：提取所有2-5个字符的词，包含基础颜色的
-                const allWords = name.match(/[\u4e00-\u9fa5]{2,5}/g);
-                if (allWords) {
-                  const basicColors = ['黑', '白', '蓝', '红', '绿', '紫', '粉', '金', '银', '灰'];
-                  for (const word of allWords) {
-                    if (basicColors.some(c => word.includes(c))) {
-                      extractedColors.add(word);
-                    }
-                  }
-                }
+            // 从 SKU 的 color 字段提取颜色
+            for (const sku of skuIDs) {
+              if ('color' in sku && sku.color) {
+                extractedColors.add(sku.color);
               }
             }
           } catch (error) {
             console.error(`提取 SPU ${spu.id} 的颜色失败:`, error);
           }
           
-          // 每10个显示进度
-          if ((i + 1) % 10 === 0) {
+          // 每20个显示进度
+          if ((i + 1) % 20 === 0) {
             console.log(`已处理 ${i + 1}/${sampleSize} 个 SPU，提取 ${extractedColors.size} 个颜色`);
           }
         }
