@@ -67,7 +67,7 @@ class SimpleMatcher {
     // Y300Pro+, Y300i, Y300, Y50, Y3, X Note, Mate60, iPhone15等
     
     // 1. 匹配复杂型号：字母+数字+Pro/Max/Plus/Ultra等+可选的+号
-    // 例如：Y300Pro+, Y300Pro, Mate60Pro, iPhone15ProMax
+    // 支持有空格和无空格：Y500Pro, Y500 Pro, Mate60Pro, Mate60 Pro
     const complexModelPattern = /\b([a-z])(\d+)\s*(pro|max|plus|ultra|mini|se|air|lite|note)(\+)?\b/gi;
     const complexMatches = lowerStr.match(complexModelPattern);
     
@@ -79,6 +79,7 @@ class SimpleMatcher {
       });
       
       if (filtered.length > 0) {
+        // 统一去除空格，使 Y500Pro 和 Y500 Pro 都变成 y500pro
         return filtered.sort((a, b) => b.length - a.length)[0]
           .toLowerCase()
           .replace(/\s+/g, '');
