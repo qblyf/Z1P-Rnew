@@ -87,28 +87,27 @@ class SimpleMatcher {
     }
     
     // 2. 匹配简单型号：字母+数字+可选字母（如 Y300i, Y50, Y3, Mate60）
-    const simpleModelPattern = /\b([a-z])(\d+)([a-z]*)\b/gi;
+    // 改进：先匹配所有可能的型号，然后按优先级过滤
+    const simpleModelPattern = /\b([a-z]+)(\d+)([a-z]*)\b/gi;
     const simpleMatches = lowerStr.match(simpleModelPattern);
     
     if (simpleMatches && simpleMatches.length > 0) {
       // 过滤掉容量和网络制式相关的匹配
       const filtered = simpleMatches.filter(m => {
         const lower = m.toLowerCase();
-        // 排除：5g, 4g, 8gb, 256gb 等
-        // 但保留：y50, y3, mate60 等
         
-        // 如果是纯数字+g的格式（如5g, 4g），排除
-        if (/^\d+g$/.test(lower)) {
+        // 排除：5g, 4g, 3g（网络制式）
+        if (/^[345]g$/i.test(lower)) {
           return false;
         }
         
-        // 如果包含gb，排除
+        // 排除：包含gb的（容量）
         if (lower.includes('gb')) {
           return false;
         }
         
-        // 如果是单个字母+g（如g5），排除
-        if (/^[a-z]g$/.test(lower)) {
+        // 排除：纯数字+g（如 8g, 12g）
+        if (/^\d+g$/i.test(lower)) {
           return false;
         }
         
@@ -116,10 +115,26 @@ class SimpleMatcher {
       });
       
       if (filtered.length > 0) {
-        // 返回最长的匹配（通常是最完整的型号）
-        return filtered.sort((a, b) => b.length - a.length)[0]
-          .toLowerCase()
-          .replace(/\s+/g, '');
+        // 优先选择：
+        // 1. 包含字母后缀的（如 Y300i）
+        // 2. 较长的型号
+        // 3. 字母开头的
+        const sorted = filtered.sort((a, b) => {
+          const aLower = a.toLowerCase();
+          const bLower = b.toLowerCase();
+          
+          // 检查是否有字母后缀（数字后面还有字母）
+          const aHasSuffix = /[a-z]\d+[a-z]+/i.test(aLower);
+          const bHasSuffix = /[a-z]\d+[a-z]+/i.test(bLower);
+          
+          if (aHasSuffix && !bHasSuffix) return -1;
+          if (!aHasSuffix && bHasSuffix) return 1;
+          
+          // 按长度排序
+          return b.length - a.length;
+        });
+        
+        return sorted[0].toLowerCase().replace(/\s+/g, '');
       }
     }
     
@@ -301,6 +316,7 @@ class SimpleMatcher {
   }
 
   // 查找最佳匹配（两阶段匹配：先SPU，再参数）
+  // 查找最佳匹配（两阶段匹配：先SPU，再参数）
   findBestMatch(input: string, skuList: SKUData[], threshold: number = 0.6): {
     sku: SKUData | null;
     similarity: number;
@@ -323,6 +339,7 @@ class SimpleMatcher {
       const spuModel = this.extractModel(spuName);
       
       let spuScore = 0;
+      let hasMatch = false;
       
       // 品牌匹配（必须）
       const brandMatch = (inputBrand && skuBrand && inputBrand === skuBrand) ||
@@ -332,20 +349,26 @@ class SimpleMatcher {
       }
       if (brandMatch) {
         spuScore += 0.5; // 品牌匹配得分
+        hasMatch = true;
       }
       
-      // 型号匹配（必须）
-      const modelMatch = (inputModel && skuModel && inputModel === skuModel) ||
-                        (inputModel && spuModel && inputModel === spuModel);
-      if (!modelMatch && inputModel) {
-        continue; // 型号不匹配，跳过
-      }
-      if (modelMatch) {
+      // 型号匹配（如果有型号信息则必须匹配）
+      if (inputModel) {
+        const modelMatch = (skuModel && inputModel === skuModel) ||
+                          (spuModel && inputModel === spuModel);
+        if (!modelMatch) {
+          continue; // 有型号但不匹配，跳过
+        }
         spuScore += 0.5; // 型号匹配得分
+      } else {
+        // 没有输入型号，只要品牌匹配就给一定分数
+        if (hasMatch) {
+          spuScore += 0.3; // 没有型号信息时的基础分
+        }
       }
       
-      // SPU匹配分数必须达到阈值
-      if (spuScore >= 0.5) {
+      // 只要有匹配就加入候选
+      if (hasMatch) {
         spuCandidates.push({ sku, spuScore });
       }
     }
