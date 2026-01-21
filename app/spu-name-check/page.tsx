@@ -20,7 +20,7 @@ import SPUEdit from '../../components/SPUEdit';
 import { useTokenContext } from '../../datahooks/auth';
 
 interface NamingIssue {
-  type: 'no_space' | 'has_quanwangtong' | 'no_brand' | 'brand_mismatch' | 'lowercase_brand' | 'leading_space';
+  type: 'no_space' | 'has_quanwangtong' | 'no_brand' | 'brand_mismatch' | 'lowercase_brand' | 'leading_space' | 'has_non_new_keywords' | 'has_forbidden_keywords';
   message: string;
   severity: 'error' | 'warning';
 }
@@ -44,6 +44,28 @@ function checkSPUNaming(spu: Pick<SPU, 'name' | 'brand'>, brandList: string[]): 
       severity: 'error',
     });
     return issues;
+  }
+
+  // 检查是否包含非新机字样（样机、演示机、二手、老款）
+  const nonNewKeywords = ['样机', '演示机', '二手', '老款'];
+  const foundNonNewKeyword = nonNewKeywords.find(keyword => name.includes(keyword));
+  if (foundNonNewKeyword) {
+    issues.push({
+      type: 'has_non_new_keywords',
+      message: `名称包含非新机字样"${foundNonNewKeyword}"`,
+      severity: 'error',
+    });
+  }
+
+  // 检查是否包含禁用字样（专卖、金币）
+  const forbiddenKeywords = ['专卖', '金币'];
+  const foundForbiddenKeyword = forbiddenKeywords.find(keyword => name.includes(keyword));
+  if (foundForbiddenKeyword) {
+    issues.push({
+      type: 'has_forbidden_keywords',
+      message: `名称包含禁用字样"${foundForbiddenKeyword}"`,
+      severity: 'error',
+    });
   }
 
   // 检查是否有品牌
