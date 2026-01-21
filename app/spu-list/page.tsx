@@ -476,6 +476,29 @@ export default function () {
     loadCates();
   }, []);
 
+  // 加载所有品牌列表（用于批量编辑）
+  useEffect(() => {
+    const loadAllBrands = async () => {
+      try {
+        // 获取所有在用的 SPU 的品牌
+        const res = await getSPUListNew(
+          {
+            states: [SPUState.在用],
+            limit: 10000,
+            offset: 0,
+            orderBy: [{ key: 'p."brand"', sort: 'ASC' }],
+          },
+          ['brand']
+        );
+        const brandList = Array.from(new Set(res.map(item => item.brand).filter(Boolean))) as string[];
+        setAllBrands(brandList.sort());
+      } catch (error) {
+        console.error('加载品牌列表失败:', error);
+      }
+    };
+    loadAllBrands();
+  }, []);
+
   // 获取权限
   const { permission, errMsg: permissionErrMsg } = usePermission('product-manage');
   
@@ -516,10 +539,6 @@ export default function () {
         },
         ['id', 'name', 'brand', 'state', 'cateID']
       );
-
-      // 获取所有品牌列表
-      const brandList = Array.from(new Set(res.map(item => item.brand).filter(Boolean))) as string[];
-      setAllBrands(brandList);
 
       setList(res);
       setTotal(res.length < size ? (page - 1) * size + res.length : page * size + 1);
