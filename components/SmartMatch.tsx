@@ -16,10 +16,10 @@ interface MatchResult {
 }
 
 interface SKUData {
-  z1_SKU名称: string;
-  z1_SPU名称: string;
-  z1_SPU品牌: string;
-  z1_SKU规格?: string;
+  id: number;
+  name: string;
+  spuName: string;
+  brand: string;
 }
 
 // 简化的匹配算法
@@ -69,8 +69,8 @@ class SimpleMatcher {
     let bestScore = 0;
 
     for (const sku of skuList) {
-      const score1 = this.calculateSimilarity(input, sku.z1_SKU名称);
-      const score2 = this.calculateSimilarity(input, sku.z1_SPU名称);
+      const score1 = this.calculateSimilarity(input, sku.name);
+      const score2 = this.calculateSimilarity(input, sku.spuName);
       const score = Math.max(score1, score2);
 
       if (score > bestScore && score >= threshold) {
@@ -108,7 +108,7 @@ export function SmartMatchComponent() {
             spu: ['spuName', 'brand'],
           }
         );
-        setSKUList(data as any);
+        setSKUList(data);
         message.success(`已加载 ${data.length} 个SKU商品`);
       } catch (error) {
         message.error('加载SKU数据失败');
@@ -143,9 +143,9 @@ export function SmartMatchComponent() {
         if (sku) {
           return {
             inputName: line.trim(),
-            matchedSKU: sku.z1_SKU名称,
-            matchedSPU: sku.z1_SPU名称,
-            matchedBrand: sku.z1_SPU品牌,
+            matchedSKU: sku.name,
+            matchedSPU: sku.spuName,
+            matchedBrand: sku.brand,
             similarity,
             status: 'matched' as const,
           };
