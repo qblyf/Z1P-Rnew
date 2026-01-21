@@ -203,6 +203,8 @@ export default function () {
                   states: spuState ? [spuState] : undefined,
                   lonely,
                   orderBy: [
+                    { key: 'p."brand"', sort: 'ASC' },
+                    { key: 'p."cate_id"', sort: 'ASC' },
                     { key: 'p."order"', sort: 'ASC' },
                     { key: 'p."id"', sort: 'DESC' },
                   ],
