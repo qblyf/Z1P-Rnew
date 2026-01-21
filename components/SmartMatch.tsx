@@ -12,7 +12,7 @@ interface MatchResult {
   matchedSPU: string | null;
   matchedBrand: string | null;
   similarity: number;
-  status: 'matched' | 'unmatched';
+  status: 'matched' | 'unmatched' | 'spu-matched'; // 添加 SPU 已匹配但 SKU 未匹配的状态
 }
 
 interface SPUData {
@@ -535,15 +535,15 @@ export function SmartMatchComponent() {
     }
 
     setLoading(true);
+    setResults([]); // 清空之前的结果
+    
     try {
       // 将输入按行分割
       const lines = inputText.split('\n').filter(line => line.trim());
       
       // 对每一行进行匹配
-      const matchResults: MatchResult[] = [];
-      
-      for (const line of lines) {
-        const trimmedLine = line.trim();
+      for (let i = 0; i < lines.length; i++) {
+        const trimmedLine = lines[i].trim();
         
         // 第一阶段：匹配SPU
         const { spu: matchedSPU, similarity: spuSimilarity } = matcher.findBestSPUMatch(
@@ -553,17 +553,29 @@ export function SmartMatchComponent() {
         );
         
         if (!matchedSPU) {
-          // SPU未匹配
-          matchResults.push({
+          // SPU未匹配，立即显示结果
+          setResults(prev => [...prev, {
             inputName: trimmedLine,
             matchedSKU: null,
             matchedSPU: null,
             matchedBrand: null,
             similarity: 0,
             status: 'unmatched' as const,
-          });
+          }]);
           continue;
         }
+        
+        // SPU匹配成功，先显示SPU结果
+        const tempResult: MatchResult = {
+          inputName: trimmedLine,
+          matchedSKU: null,
+          matchedSPU: matchedSPU.name,
+          matchedBrand: matchedSPU.brand || null,
+          similarity: spuSimilarity,
+          status: 'spu-matched' as const,
+        };
+        
+        setResults(prev => [...prev, tempResult]);
         
         console.log('匹配到SPU:', matchedSPU.name, 'ID:', matchedSPU.id);
         
@@ -573,15 +585,10 @@ export function SmartMatchComponent() {
           const skuIDs = spuInfo.skuIDs || [];
           
           if (skuIDs.length === 0) {
-            // 该SPU没有SKU
-            matchResults.push({
-              inputName: trimmedLine,
-              matchedSKU: null,
-              matchedSPU: matchedSPU.name,
-              matchedBrand: matchedSPU.brand || null,
-              similarity: spuSimilarity,
-              status: 'unmatched' as const,
-            });
+            // 该SPU没有SKU，更新为未匹配
+            setResults(prev => prev.map((r, idx) => 
+              idx === prev.length - 1 ? { ...r, status: 'unmatched' as const } : r
+            ));
             continue;
           }
           
@@ -602,15 +609,10 @@ export function SmartMatchComponent() {
           console.log(`SPU ${matchedSPU.name} 的在用SKU数量:`, skuData.length);
           
           if (skuData.length === 0) {
-            // 该SPU没有SKU
-            matchResults.push({
-              inputName: trimmedLine,
-              matchedSKU: null,
-              matchedSPU: matchedSPU.name,
-              matchedBrand: matchedSPU.brand || null,
-              similarity: spuSimilarity,
-              status: 'unmatched' as const,
-            });
+            // 该SPU没有在用的SKU，更新为未匹配
+            setResults(prev => prev.map((r, idx) => 
+              idx === prev.length - 1 ? { ...r, status: 'unmatched' as const } : r
+            ));
             continue;
           }
           
@@ -624,41 +626,41 @@ export function SmartMatchComponent() {
             // 计算综合相似度：SPU相似度 * 0.6 + SKU参数相似度 * 0.4
             const finalSimilarity = spuSimilarity * 0.6 + skuSimilarity * 0.4;
             
-            matchResults.push({
-              inputName: trimmedLine,
-              matchedSKU: matchedSKU.name || null,
-              matchedSPU: matchedSKU.spuName || matchedSPU.name,
-              matchedBrand: matchedSKU.brand || matchedSPU.brand || null,
-              similarity: finalSimilarity,
-              status: 'matched' as const,
-            });
+            // 更新为完全匹配
+            setResults(prev => prev.map((r, idx) => 
+              idx === prev.length - 1 ? {
+                ...r,
+                matchedSKU: matchedSKU.name || null,
+                similarity: finalSimilarity,
+                status: 'matched' as const,
+              } : r
+            ));
           } else {
-            // SKU参数未匹配，但SPU匹配了
-            matchResults.push({
-              inputName: trimmedLine,
-              matchedSKU: null,
-              matchedSPU: matchedSPU.name,
-              matchedBrand: matchedSPU.brand || null,
-              similarity: spuSimilarity,
-              status: 'unmatched' as const,
-            });
+            // SKU参数未匹配，保持 SPU 已匹配状态
+            setResults(prev => prev.map((r, idx) => 
+              idx === prev.length - 1 ? { ...r, status: 'unmatched' as const } : r
+            ));
           }
         } catch (error) {
           console.error('加载SKU失败:', error);
-          matchResults.push({
-            inputName: trimmedLine,
-            matchedSKU: null,
-            matchedSPU: matchedSPU.name,
-            matchedBrand: matchedSPU.brand || null,
-            similarity: spuSimilarity,
-            status: 'unmatched' as const,
-          });
+          // 更新为未匹配
+          setResults(prev => prev.map((r, idx) => 
+            idx === prev.length - 1 ? { ...r, status: 'unmatched' as const } : r
+          ));
         }
       }
 
-      setResults(matchResults);
-      const matchedCount = matchResults.filter(r => r.status === 'matched').length;
-      message.success(`匹配完成，共处理 ${lines.length} 条记录，成功匹配 ${matchedCount} 条`);
+      const finalResults = await new Promise<MatchResult[]>(resolve => {
+        setTimeout(() => {
+          setResults(current => {
+            const matchedCount = current.filter(r => r.status === 'matched').length;
+            message.success(`匹配完成，共处理 ${lines.length} 条记录，成功匹配 ${matchedCount} 条`);
+            resolve(current);
+            return current;
+          });
+        }, 100);
+      });
+      
     } catch (error) {
       message.error('匹配失败，请重试');
       console.error(error);
@@ -706,24 +708,39 @@ export function SmartMatchComponent() {
       dataIndex: 'status',
       key: 'status',
       width: 120,
-      render: (status: string) => (
-        status === 'matched' ? (
-          <Tag icon={<CheckCircle size={14} />} color="success">
-            已匹配
-          </Tag>
-        ) : (
-          <Tag icon={<XCircle size={14} />} color="error">
-            未匹配
-          </Tag>
-        )
-      ),
+      render: (status: string) => {
+        if (status === 'matched') {
+          return (
+            <Tag icon={<CheckCircle size={14} />} color="success">
+              已匹配
+            </Tag>
+          );
+        } else if (status === 'spu-matched') {
+          return (
+            <Tag icon={<Loader2 size={14} className="animate-spin" />} color="processing">
+              匹配中...
+            </Tag>
+          );
+        } else {
+          return (
+            <Tag icon={<XCircle size={14} />} color="error">
+              未匹配
+            </Tag>
+          );
+        }
+      },
     },
     {
       title: '匹配的SKU',
       dataIndex: 'matchedSKU',
       key: 'matchedSKU',
       width: 300,
-      render: (text: string | null) => text || '-',
+      render: (text: string | null, record: MatchResult) => {
+        if (record.status === 'spu-matched') {
+          return <span className="text-gray-400">正在匹配SKU...</span>;
+        }
+        return text || '-';
+      },
     },
     {
       title: '匹配的SPU',
@@ -745,13 +762,19 @@ export function SmartMatchComponent() {
       key: 'similarity',
       width: 100,
       fixed: 'right' as const,
-      render: (similarity: number, record: MatchResult) => (
-        record.status === 'matched' ? (
-          <Tag color={similarity >= 0.8 ? 'green' : similarity >= 0.6 ? 'orange' : 'red'}>
-            {(similarity * 100).toFixed(0)}%
-          </Tag>
-        ) : '-'
-      ),
+      render: (similarity: number, record: MatchResult) => {
+        if (record.status === 'spu-matched') {
+          return <span className="text-gray-400">-</span>;
+        }
+        if (record.status === 'matched') {
+          return (
+            <Tag color={similarity >= 0.8 ? 'green' : similarity >= 0.6 ? 'orange' : 'red'}>
+              {(similarity * 100).toFixed(0)}%
+            </Tag>
+          );
+        }
+        return '-';
+      },
     },
   ];
 

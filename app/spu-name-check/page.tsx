@@ -1,20 +1,20 @@
 'use client';
 import { SPU, SPUCateID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { getSPUListNew } from '@zsqk/z1-sdk/es/z1p/product';
-import { Button, Col, Form, Row, Select, Table, Tag, Alert, Space } from 'antd';
-import { useState } from 'react';
+import { getSPUListNew, getSPUCateBaseList } from '@zsqk/z1-sdk/es/z1p/product';
+import { Button, Col, Form, Row, Select, Table, Tag, Alert, Space, Cascader, Drawer } from 'antd';
+import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import { PageHeader } from '@ant-design/pro-components';
 
-import { SelectSPUCate } from '../../components/SelectSPUCate';
 import { SelectBrands } from '../../components/SelectBrands';
 import { Content } from '../../components/style/Content';
 import { formColProps, formItemCol } from '../../constant/formProps';
 import { BrandListProvider } from '../../datahooks/brand';
 import { getAwait } from '../../error';
-import { SPUCateListProvider } from '../../datahooks/product';
+import { SPUCateListProvider, SpuIDProvider, SPUListProvider, useSpuIDContext } from '../../datahooks/product';
 import { usePermission } from '../../datahooks/permission';
 import PageWrap from '../../components/PageWrap';
+import SPUEdit from '../../components/SPUEdit';
 
 interface NamingIssue {
   type: 'no_space' | 'has_quanwangtong' | 'no_brand' | 'brand_mismatch' | 'lowercase_brand';
@@ -95,6 +95,46 @@ function checkSPUNaming(spu: Pick<SPU, 'name' | 'brand'>, brandList: string[]): 
   return issues;
 }
 
+type SPUCateData = Awaited<ReturnType<typeof getSPUCateBaseList>>[0];
+
+interface CascaderOption {
+  value: number;
+  label: string;
+  children?: CascaderOption[];
+}
+
+/**
+ * 将 SPU 分类数据转换为级联选择器的树形结构
+ */
+function buildCascaderOptions(cates: SPUCateData[]): CascaderOption[] {
+  if (!cates.length) {
+    return [];
+  }
+
+  const cateMap = cates.map((cate) => ({
+    value: cate.id,
+    label: `${cate.name} (${cate.id})`,
+    pid: cate.pid,
+    children: [] as CascaderOption[],
+  }));
+
+  function buildTree(pid: number, data: typeof cateMap): CascaderOption[] {
+    return data.reduce((acc, item) => {
+      if (item.pid === pid) {
+        const children = buildTree(item.value, data);
+        acc.push({
+          value: item.value,
+          label: item.label,
+          ...(children.length > 0 ? { children } : {}),
+        });
+      }
+      return acc;
+    }, [] as CascaderOption[]);
+  }
+
+  return buildTree(0, cateMap);
+}
+
 /**
  * [页面组件] SPU 命名规范检查的搜索过滤框
  */
@@ -110,20 +150,61 @@ function QueryForm(props: {
   const [spuCateIDs, setSpuCateIDs] = useState<SPUCateID[]>();
   const [selectedBrands, setSelectedBrands] = useState<string[]>();
   const [spuState, setSPUState] = useState<SPU['state']>(SPUState.在用);
+  const [cates, setCates] = useState<SPUCateData[]>([]);
+  const [selectedCatePath, setSelectedCatePath] = useState<number[]>();
+
+  // 加载 SPU 分类数据
+  useEffect(() => {
+    const loadCates = async () => {
+      const res = await getSPUCateBaseList();
+      setCates(res);
+    };
+    loadCates();
+  }, []);
+
+  // 构建级联选择器选项
+  const cascaderOptions = useMemo(() => {
+    const options = buildCascaderOptions(cates);
+    return [
+      {
+        value: 0,
+        label: '全部分类',
+        children: options,
+      },
+    ];
+  }, [cates]);
 
   return (
     <Form {...formColProps}>
       <Row gutter={14}>
         <Col {...formItemCol}>
           <Form.Item label="SPU 分类" tooltip="选择 SPU 分类">
-            <SelectSPUCate
-              onSelect={v => {
-                if (v === 0) {
+            <Cascader
+              options={cascaderOptions}
+              value={selectedCatePath}
+              onChange={(value) => {
+                setSelectedCatePath(value as number[]);
+                if (!value || value.length === 0 || value[0] === 0) {
                   setSpuCateIDs(undefined);
-                  return;
+                } else {
+                  // 使用最后一级的分类 ID
+                  const lastId = value[value.length - 1] as number;
+                  setSpuCateIDs([lastId]);
                 }
-                setSpuCateIDs([v]);
               }}
+              placeholder="请选择 SPU 分类"
+              showSearch={{
+                filter: (inputValue, path) =>
+                  path.some(
+                    (option) =>
+                      option.label
+                        ?.toString()
+                        .toLowerCase()
+                        .indexOf(inputValue.toLowerCase()) > -1
+                  ),
+              }}
+              changeOnSelect
+              style={{ width: '100%' }}
             />
           </Form.Item>
         </Col>
@@ -182,8 +263,9 @@ function QueryForm(props: {
  */
 export default function () {
   const [list, setList] = useState<SPUWithIssues[]>();
-  const [brandList, setBrandList] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editingSpuID, setEditingSpuID] = useState<number | undefined>();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // 获取权限
   const { permission, errMsg: permissionErrMsg } =
@@ -204,17 +286,32 @@ export default function () {
     !item.issues.some(issue => issue.severity === 'error')
   ).length || 0;
 
+  // 打开编辑抽屉
+  const handleEdit = (spuId: number) => {
+    setEditingSpuID(spuId);
+    setDrawerOpen(true);
+  };
+
+  // 关闭编辑抽屉
+  const handleCloseDrawer = () => {
+    setDrawerOpen(false);
+    setEditingSpuID(undefined);
+  };
+
   return (
     <PageWrap ppKey="product-manage">
       <SPUCateListProvider>
-        <Head>
-          <title>SPU 命名规范检查</title>
-        </Head>
-        <PageHeader
-          title="SPU 命名规范检查"
-          subTitle="检查 SPU 名称是否符合命名规范"
-        ></PageHeader>
-        <Content>
+        <SpuIDProvider>
+          <SPUListProvider>
+            <BrandListProvider>
+              <Head>
+                <title>SPU 命名规范检查</title>
+              </Head>
+              <PageHeader
+                title="SPU 命名规范检查"
+                subTitle="检查 SPU 名称是否符合命名规范"
+              ></PageHeader>
+              <Content>
           <Alert
             message="命名规范说明"
             description={
@@ -263,7 +360,6 @@ export default function () {
 
                 // 获取所有品牌列表
                 const allBrands = Array.from(new Set(res.map(item => item.brand).filter(Boolean)));
-                setBrandList(allBrands);
 
                 // 检查每个 SPU 的命名规范
                 const spuWithIssues: SPUWithIssues[] = res.map(spu => ({
@@ -334,9 +430,7 @@ export default function () {
                           <Button
                             type="link"
                             size="small"
-                            onClick={() => {
-                              window.open(`/product-manage?spuId=${record.id}`, '_blank');
-                            }}
+                            onClick={() => handleEdit(record.id)}
                           >
                             编辑
                           </Button>
@@ -355,7 +449,41 @@ export default function () {
             </>
           )}
         </Content>
-      </SPUCateListProvider>
-    </PageWrap>
-  );
+
+        {/* SPU 编辑抽屉 */}
+        <Drawer
+          title="编辑 SPU"
+          placement="right"
+          onClose={handleCloseDrawer}
+          open={drawerOpen}
+          width="66%"
+          destroyOnClose
+        >
+          {editingSpuID && (
+            <SpuIDProvider>
+              <SPUListProvider>
+                <SPUEditWrapper spuId={editingSpuID} />
+              </SPUListProvider>
+            </SpuIDProvider>
+          )}
+        </Drawer>
+      </BrandListProvider>
+    </SPUListProvider>
+  </SpuIDProvider>
+</SPUCateListProvider>
+</PageWrap>
+);
+}
+
+/**
+ * SPU 编辑包装组件 - 用于设置 spuID 上下文
+ */
+function SPUEditWrapper({ spuId }: { spuId: number }) {
+  const { setSpuID } = useSpuIDContext();
+  
+  useEffect(() => {
+    setSpuID(spuId);
+  }, [spuId, setSpuID]);
+
+  return <SPUEdit defaultTab="basic" />;
 }
