@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Search, Loader2, CheckCircle, XCircle, Download } from 'lucide-react';
 import { Card, Input, Button, Table, Tag, Space, message, Spin } from 'antd';
-import { getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
-import { SKUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
+import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
+import { SKUState, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 
 interface MatchResult {
   inputName: string;
@@ -15,9 +15,16 @@ interface MatchResult {
   status: 'matched' | 'unmatched';
 }
 
+interface SPUData {
+  id: number;
+  name: string;
+  brand?: string;
+}
+
 interface SKUData {
   id: number;
   name: string;
+  spuID?: number;
   spuName?: string;
   brand?: string;
 }
@@ -315,74 +322,90 @@ class SimpleMatcher {
     return totalWeight > 0 ? score / totalWeight : 0;
   }
 
-  // 查找最佳匹配（两阶段匹配：先SPU，再参数）
-  // 查找最佳匹配（两阶段匹配：先SPU，再参数）
-  findBestMatch(input: string, skuList: SKUData[], threshold: number = 0.6): {
-    sku: SKUData | null;
+  // 查找最佳匹配的SPU
+  findBestSPUMatch(input: string, spuList: SPUData[], threshold: number = 0.6): {
+    spu: SPUData | null;
     similarity: number;
   } {
     // 提取输入的关键信息
     const inputBrand = this.extractBrand(input);
     const inputModel = this.extractModel(input);
+    
+    console.log('=== SPU匹配输入 ===');
+    console.log('原始输入:', input);
+    console.log('提取品牌:', inputBrand);
+    console.log('提取型号:', inputModel);
+    
+    let bestMatch: SPUData | null = null;
+    let bestScore = 0;
+    
+    for (const spu of spuList) {
+      const spuBrand = this.extractBrand(spu.name);
+      const spuModel = this.extractModel(spu.name);
+      
+      let score = 0;
+      
+      // 品牌匹配（必须，权重50%）
+      if (inputBrand && spuBrand) {
+        if (inputBrand !== spuBrand) {
+          continue; // 品牌不匹配，跳过
+        }
+        score += 0.5;
+      } else if (inputBrand) {
+        continue; // 有品牌要求但SPU没有品牌，跳过
+      }
+      
+      // 型号匹配（必须，权重50%）
+      if (inputModel && spuModel) {
+        if (inputModel !== spuModel) {
+          continue; // 型号不匹配，跳过
+        }
+        score += 0.5;
+      } else if (inputModel) {
+        continue; // 有型号要求但SPU没有型号，跳过
+      }
+      
+      // 如果既没有品牌也没有型号，使用字符串相似度
+      if (!inputBrand && !inputModel) {
+        const similarity = this.calculateSimilarity(input, spu.name);
+        score = similarity;
+      }
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = spu;
+      }
+    }
+    
+    console.log('最佳SPU匹配:', {
+      spu: bestMatch?.name,
+      score: bestScore,
+      threshold
+    });
+    
+    if (bestScore < threshold) {
+      return { spu: null, similarity: 0 };
+    }
+    
+    return { spu: bestMatch, similarity: bestScore };
+  }
+
+  // 在SKU列表中查找最佳匹配（基于参数）
+  findBestSKUInList(input: string, skuList: SKUData[]): {
+    sku: SKUData | null;
+    similarity: number;
+  } {
     const inputCapacity = this.extractCapacity(input);
     const inputColor = this.extractColor(input);
     
-    // 第一阶段：筛选SPU匹配的候选项
-    const spuCandidates: Array<{ sku: SKUData; spuScore: number }> = [];
+    console.log('=== SKU参数匹配 ===');
+    console.log('提取容量:', inputCapacity);
+    console.log('提取颜色:', inputColor);
     
-    for (const sku of skuList) {
-      // 计算SPU匹配分数（品牌 + 型号）
-      const skuBrand = this.extractBrand(sku.name);
-      const skuModel = this.extractModel(sku.name);
-      const spuName = sku.spuName || '';
-      const spuBrand = this.extractBrand(spuName);
-      const spuModel = this.extractModel(spuName);
-      
-      let spuScore = 0;
-      let hasMatch = false;
-      
-      // 品牌匹配（必须）
-      const brandMatch = (inputBrand && skuBrand && inputBrand === skuBrand) ||
-                        (inputBrand && spuBrand && inputBrand === spuBrand);
-      if (!brandMatch && inputBrand) {
-        continue; // 品牌不匹配，跳过
-      }
-      if (brandMatch) {
-        spuScore += 0.5; // 品牌匹配得分
-        hasMatch = true;
-      }
-      
-      // 型号匹配（如果有型号信息则必须匹配）
-      if (inputModel) {
-        const modelMatch = (skuModel && inputModel === skuModel) ||
-                          (spuModel && inputModel === spuModel);
-        if (!modelMatch) {
-          continue; // 有型号但不匹配，跳过
-        }
-        spuScore += 0.5; // 型号匹配得分
-      } else {
-        // 没有输入型号，只要品牌匹配就给一定分数
-        if (hasMatch) {
-          spuScore += 0.3; // 没有型号信息时的基础分
-        }
-      }
-      
-      // 只要有匹配就加入候选
-      if (hasMatch) {
-        spuCandidates.push({ sku, spuScore });
-      }
-    }
-    
-    // 如果没有SPU匹配的候选项，返回空
-    if (spuCandidates.length === 0) {
-      return { sku: null, similarity: 0 };
-    }
-    
-    // 第二阶段：在SPU匹配的候选项中，根据参数（容量、颜色）找最佳匹配
     let bestMatch: SKUData | null = null;
     let bestScore = 0;
     
-    for (const { sku, spuScore } of spuCandidates) {
+    for (const sku of skuList) {
       const skuCapacity = this.extractCapacity(sku.name);
       const skuColor = this.extractColor(sku.name);
       
@@ -407,15 +430,25 @@ class SimpleMatcher {
         }
       }
       
-      // 计算最终分数：SPU分数 * 0.6 + 参数分数 * 0.4
-      // 如果没有参数信息，只用SPU分数
-      let finalScore: number;
-      if (paramWeight > 0) {
-        const normalizedParamScore = paramScore / paramWeight;
-        finalScore = spuScore * 0.6 + normalizedParamScore * 0.4;
-      } else {
-        finalScore = spuScore;
+      // 如果没有参数信息，返回第一个SKU
+      if (paramWeight === 0) {
+        if (!bestMatch) {
+          bestMatch = sku;
+          bestScore = 0.8; // 给一个默认分数
+        }
+        continue;
       }
+      
+      const finalScore = paramScore / paramWeight;
+      
+      console.log('SKU评分:', {
+        skuName: sku.name,
+        skuCapacity,
+        skuColor,
+        paramScore,
+        paramWeight,
+        finalScore
+      });
       
       if (finalScore > bestScore) {
         bestScore = finalScore;
@@ -423,50 +456,48 @@ class SimpleMatcher {
       }
     }
     
-    // 检查最终分数是否达到阈值
-    if (bestScore < threshold) {
-      return { sku: null, similarity: 0 };
-    }
+    console.log('最佳SKU匹配:', {
+      sku: bestMatch?.name,
+      score: bestScore
+    });
     
     return { sku: bestMatch, similarity: bestScore };
   }
+
 }
 
 export function SmartMatchComponent() {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [loadingSKU, setLoadingSKU] = useState(true);
+  const [loadingSPU, setLoadingSPU] = useState(true);
   const [results, setResults] = useState<MatchResult[]>([]);
-  const [skuList, setSKUList] = useState<SKUData[]>([]);
+  const [spuList, setSPUList] = useState<SPUData[]>([]);
   const matcher = new SimpleMatcher();
 
-  // 加载SKU数据
+  // 加载所有SPU数据
   useEffect(() => {
-    const loadSKUData = async () => {
+    const loadSPUData = async () => {
       try {
-        setLoadingSKU(true);
-        const data = await getSKUListJoinSPU(
+        setLoadingSPU(true);
+        const data = await getSPUListNew(
           {
-            states: [SKUState.在用],
-            limit: 10000,
+            states: [SPUState.在用],
+            limit: 100000, // 加载所有SPU
             offset: 0,
-            orderBy: { key: 'p.id', sort: 'DESC' },
+            orderBy: [{ key: 'p."id"', sort: 'DESC' }],
           },
-          {
-            sku: ['id', 'name'],
-            spu: ['spuName', 'brand'],
-          }
+          ['id', 'name', 'brand']
         );
-        setSKUList(data);
-        message.success(`已加载 ${data.length} 个SKU商品`);
+        setSPUList(data);
+        message.success(`已加载 ${data.length} 个SPU商品`);
       } catch (error) {
-        message.error('加载SKU数据失败');
+        message.error('加载SPU数据失败');
         console.error(error);
       } finally {
-        setLoadingSKU(false);
+        setLoadingSPU(false);
       }
     };
-    loadSKUData();
+    loadSPUData();
   }, []);
 
   const handleMatch = async () => {
@@ -475,8 +506,8 @@ export function SmartMatchComponent() {
       return;
     }
 
-    if (skuList.length === 0) {
-      message.warning('SKU数据未加载完成，请稍候');
+    if (spuList.length === 0) {
+      message.warning('SPU数据未加载完成，请稍候');
       return;
     }
 
@@ -486,29 +517,121 @@ export function SmartMatchComponent() {
       const lines = inputText.split('\n').filter(line => line.trim());
       
       // 对每一行进行匹配
-      const matchResults: MatchResult[] = lines.map(line => {
-        const { sku, similarity } = matcher.findBestMatch(line.trim(), skuList);
+      const matchResults: MatchResult[] = [];
+      
+      for (const line of lines) {
+        const trimmedLine = line.trim();
         
-        if (sku) {
-          return {
-            inputName: line.trim(),
-            matchedSKU: sku.name || null,
-            matchedSPU: sku.spuName || null,
-            matchedBrand: sku.brand || null,
-            similarity,
-            status: 'matched' as const,
-          };
-        } else {
-          return {
-            inputName: line.trim(),
+        // 第一阶段：匹配SPU
+        const { spu: matchedSPU, similarity: spuSimilarity } = matcher.findBestSPUMatch(
+          trimmedLine,
+          spuList,
+          0.5 // SPU匹配阈值降低到50%
+        );
+        
+        if (!matchedSPU) {
+          // SPU未匹配
+          matchResults.push({
+            inputName: trimmedLine,
             matchedSKU: null,
             matchedSPU: null,
             matchedBrand: null,
             similarity: 0,
             status: 'unmatched' as const,
-          };
+          });
+          continue;
         }
-      });
+        
+        console.log('匹配到SPU:', matchedSPU.name, 'ID:', matchedSPU.id);
+        
+        // 第二阶段：加载该SPU的所有SKU
+        try {
+          const spuInfo = await getSPUInfo(matchedSPU.id);
+          const skuIDs = spuInfo.skuIDs || [];
+          
+          if (skuIDs.length === 0) {
+            // 该SPU没有SKU
+            matchResults.push({
+              inputName: trimmedLine,
+              matchedSKU: null,
+              matchedSPU: matchedSPU.name,
+              matchedBrand: matchedSPU.brand || null,
+              similarity: spuSimilarity,
+              status: 'unmatched' as const,
+            });
+            continue;
+          }
+          
+          // 获取SKU详细信息
+          const skuDetails = await getSKUsInfo(skuIDs.map(s => s.skuID));
+          
+          // 转换为 SKUData 格式
+          const skuData: SKUData[] = skuDetails
+            .filter(sku => !('errInfo' in sku) && sku.state === SKUState.在用)
+            .map(sku => ({
+              id: sku.id,
+              name: sku.name,
+              spuID: matchedSPU.id,
+              spuName: matchedSPU.name,
+              brand: matchedSPU.brand,
+            }));
+          
+          console.log(`SPU ${matchedSPU.name} 的在用SKU数量:`, skuData.length);
+          
+          if (skuData.length === 0) {
+            // 该SPU没有SKU
+            matchResults.push({
+              inputName: trimmedLine,
+              matchedSKU: null,
+              matchedSPU: matchedSPU.name,
+              matchedBrand: matchedSPU.brand || null,
+              similarity: spuSimilarity,
+              status: 'unmatched' as const,
+            });
+            continue;
+          }
+          
+          // 第三阶段：在SKU中匹配参数（容量、颜色）
+          const { sku: matchedSKU, similarity: skuSimilarity } = matcher.findBestSKUInList(
+            trimmedLine,
+            skuData
+          );
+          
+          if (matchedSKU) {
+            // 计算综合相似度：SPU相似度 * 0.6 + SKU参数相似度 * 0.4
+            const finalSimilarity = spuSimilarity * 0.6 + skuSimilarity * 0.4;
+            
+            matchResults.push({
+              inputName: trimmedLine,
+              matchedSKU: matchedSKU.name || null,
+              matchedSPU: matchedSKU.spuName || matchedSPU.name,
+              matchedBrand: matchedSKU.brand || matchedSPU.brand || null,
+              similarity: finalSimilarity,
+              status: 'matched' as const,
+            });
+          } else {
+            // SKU参数未匹配，但SPU匹配了
+            matchResults.push({
+              inputName: trimmedLine,
+              matchedSKU: null,
+              matchedSPU: matchedSPU.name,
+              matchedBrand: matchedSPU.brand || null,
+              similarity: spuSimilarity,
+              status: 'unmatched' as const,
+            });
+          }
+        } catch (error) {
+          console.error('加载SKU失败:', error);
+          matchResults.push({
+            inputName: trimmedLine,
+            matchedSKU: null,
+            matchedSPU: matchedSPU.name,
+            matchedBrand: matchedSPU.brand || null,
+            similarity: spuSimilarity,
+            status: 'unmatched' as const,
+          });
+        }
+      }
 
       setResults(matchResults);
       const matchedCount = matchResults.filter(r => r.status === 'matched').length;
@@ -609,10 +732,10 @@ export function SmartMatchComponent() {
     },
   ];
 
-  if (loadingSKU) {
+  if (loadingSPU) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Spin size="large" tip="正在加载SKU数据..." />
+        <Spin size="large" tip="正在加载SPU数据..." />
       </div>
     );
   }
@@ -627,7 +750,7 @@ export function SmartMatchComponent() {
                 输入商品名称（每行一个）
               </label>
               <div className="text-sm text-slate-500">
-                已加载 {skuList.length} 个SKU商品
+                已加载 {spuList.length} 个SPU商品
               </div>
             </div>
             <Input.TextArea
@@ -641,7 +764,7 @@ export function SmartMatchComponent() {
 
           <div className="flex justify-between items-center">
             <div className="text-sm text-slate-500">
-              支持批量输入，系统将自动匹配最相似的SKU商品（相似度阈值：60%）
+              支持批量输入，系统将先匹配SPU，再匹配对应的SKU参数（容量、颜色）
             </div>
             <Space>
               <Button
