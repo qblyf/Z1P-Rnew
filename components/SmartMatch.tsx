@@ -495,6 +495,8 @@ export function SmartMatchComponent() {
   const [loadingSPU, setLoadingSPU] = useState(true);
   const [results, setResults] = useState<MatchResult[]>([]);
   const [spuList, setSPUList] = useState<SPUData[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const matcher = new SimpleMatcher();
 
   // 加载所有SPU数据
@@ -536,6 +538,7 @@ export function SmartMatchComponent() {
 
     setLoading(true);
     setResults([]); // 清空之前的结果
+    setCurrentPage(1); // 重置到第一页
     
     try {
       // 将输入按行分割
@@ -787,95 +790,129 @@ export function SmartMatchComponent() {
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <div className="space-y-4">
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-slate-700">
-                输入商品名称（每行一个）
-              </label>
+    <div className="flex gap-4 h-[calc(100vh-200px)]">
+      {/* 左侧：输入区域 */}
+      <div className="w-1/3 flex flex-col">
+        <Card className="flex-1 flex flex-col">
+          <div className="flex flex-col h-full">
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  输入商品名称（每行一个）
+                </label>
+                <div className="text-sm text-slate-500">
+                  已加载 {spuList.length} 个SPU
+                </div>
+              </div>
+              <Input.TextArea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="请输入商品名称，每行一个&#10;例如：&#10;华为 Mate 60 Pro 12+256 雅川青&#10;苹果 iPhone 15 Pro Max 256GB 钛金色&#10;小米14 Ultra 16GB+512GB 黑色"
+                className="flex-1"
+                style={{ height: 'calc(100vh - 400px)', minHeight: '300px' }}
+                disabled={loading}
+              />
+            </div>
+
+            <div className="mt-auto space-y-3">
               <div className="text-sm text-slate-500">
-                已加载 {spuList.length} 个SPU商品
+                支持批量输入，系统将先匹配SPU，再匹配对应的SKU参数（容量、颜色）
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    setInputText('');
+                    setResults([]);
+                    setCurrentPage(1);
+                  }}
+                  disabled={loading}
+                  block
+                >
+                  清空
+                </Button>
+                <Button
+                  type="primary"
+                  icon={loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                  onClick={handleMatch}
+                  disabled={loading || !inputText.trim()}
+                  block
+                >
+                  {loading ? '匹配中...' : '开始匹配'}
+                </Button>
               </div>
             </div>
-            <Input.TextArea
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="请输入商品名称，每行一个&#10;例如：&#10;华为 Mate 60 Pro 12+256 雅川青&#10;苹果 iPhone 15 Pro Max 256GB 钛金色&#10;小米14 Ultra 16GB+512GB 黑色"
-              rows={10}
-              disabled={loading}
-            />
-          </div>
-
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-slate-500">
-              支持批量输入，系统将先匹配SPU，再匹配对应的SKU参数（容量、颜色）
-            </div>
-            <Space>
-              <Button
-                onClick={() => {
-                  setInputText('');
-                  setResults([]);
-                }}
-                disabled={loading}
-              >
-                清空
-              </Button>
-              <Button
-                type="primary"
-                icon={loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                onClick={handleMatch}
-                disabled={loading || !inputText.trim()}
-              >
-                {loading ? '匹配中...' : '开始匹配'}
-              </Button>
-            </Space>
-          </div>
-        </div>
-      </Card>
-
-      {results.length > 0 && (
-        <Card 
-          title={
-            <div className="flex justify-between items-center">
-              <span>匹配结果</span>
-              <Button
-                icon={<Download size={16} />}
-                onClick={exportResults}
-                size="small"
-              >
-                导出CSV
-              </Button>
-            </div>
-          }
-        >
-          <div className="mb-4 flex gap-4">
-            <Tag color="blue">
-              总计：{results.length} 条
-            </Tag>
-            <Tag color="success">
-              已匹配：{results.filter(r => r.status === 'matched').length} 条
-            </Tag>
-            <Tag color="error">
-              未匹配：{results.filter(r => r.status === 'unmatched').length} 条
-            </Tag>
-          </div>
-          <div className="overflow-x-auto">
-            <Table
-              columns={columns}
-              dataSource={results}
-              rowKey={(record, index) => `${record.inputName}-${index}`}
-              scroll={{ x: 'max-content' }}
-              pagination={{
-                pageSize: 20,
-                showSizeChanger: true,
-                showTotal: (total) => `共 ${total} 条记录`,
-              }}
-            />
           </div>
         </Card>
-      )}
+      </div>
+
+      {/* 右侧：结果区域 */}
+      <div className="w-2/3 flex flex-col">
+        {results.length > 0 ? (
+          <Card 
+            className="flex-1 flex flex-col"
+            title={
+              <div className="flex justify-between items-center">
+                <div className="flex gap-4">
+                  <span>匹配结果</span>
+                  <div className="flex gap-2">
+                    <Tag color="blue">
+                      总计：{results.length} 条
+                    </Tag>
+                    <Tag color="success">
+                      已匹配：{results.filter(r => r.status === 'matched').length} 条
+                    </Tag>
+                    <Tag color="error">
+                      未匹配：{results.filter(r => r.status === 'unmatched').length} 条
+                    </Tag>
+                  </div>
+                </div>
+                <Button
+                  icon={<Download size={16} />}
+                  onClick={exportResults}
+                  size="small"
+                >
+                  导出CSV
+                </Button>
+              </div>
+            }
+          >
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="flex-1 overflow-x-auto">
+                <Table
+                  columns={columns}
+                  dataSource={results}
+                  rowKey={(record, index) => `${record.inputName}-${index}`}
+                  scroll={{ x: 'max-content', y: 'calc(100vh - 450px)' }}
+                  pagination={{
+                    current: currentPage,
+                    pageSize: pageSize,
+                    total: results.length,
+                    showSizeChanger: true,
+                    showQuickJumper: true,
+                    showTotal: (total) => `共 ${total} 条记录`,
+                    pageSizeOptions: ['10', '20', '50', '100'],
+                    onChange: (page, size) => {
+                      setCurrentPage(page);
+                      setPageSize(size);
+                    },
+                    onShowSizeChange: (current, size) => {
+                      setCurrentPage(1);
+                      setPageSize(size);
+                    },
+                  }}
+                />
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <Card className="flex-1 flex items-center justify-center">
+            <div className="text-center text-slate-400">
+              <Search size={48} className="mx-auto mb-4 opacity-50" />
+              <p className="text-lg">请在左侧输入商品名称并点击"开始匹配"</p>
+            </div>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
