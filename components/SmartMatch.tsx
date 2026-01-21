@@ -18,14 +18,15 @@ interface MatchResult {
 interface SKUData {
   id: number;
   name: string;
-  spuName: string;
-  brand: string;
+  spuName?: string;
+  brand?: string;
 }
 
 // 简化的匹配算法
 class SimpleMatcher {
   // 标准化字符串
-  normalize(str: string): string {
+  normalize(str: string | null | undefined): string {
+    if (!str) return '';
     return str
       .toLowerCase()
       .trim()
@@ -70,7 +71,7 @@ class SimpleMatcher {
 
     for (const sku of skuList) {
       const score1 = this.calculateSimilarity(input, sku.name);
-      const score2 = this.calculateSimilarity(input, sku.spuName);
+      const score2 = sku.spuName ? this.calculateSimilarity(input, sku.spuName) : 0;
       const score = Math.max(score1, score2);
 
       if (score > bestScore && score >= threshold) {
@@ -143,9 +144,9 @@ export function SmartMatchComponent() {
         if (sku) {
           return {
             inputName: line.trim(),
-            matchedSKU: sku.name,
-            matchedSPU: sku.spuName,
-            matchedBrand: sku.brand,
+            matchedSKU: sku.name || null,
+            matchedSPU: sku.spuName || null,
+            matchedBrand: sku.brand || null,
             similarity,
             status: 'matched' as const,
           };
