@@ -1,16 +1,17 @@
 'use client';
 import { SPU, SPUCateID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { getSPUListNew, getSPUCateBaseList, editSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
-import { Button, Col, Form, Row, Select, Table, Tag, Alert, Space, Cascader, Drawer, Modal, message, Card, Statistic, Divider } from 'antd';
+import { Button, Col, Form, Row, Select, Table, Tag, Alert, Space, Cascader, Drawer, Modal, message, Card, Input, Statistic } from 'antd';
 import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import { PageHeader } from '@ant-design/pro-components';
 import { CheckCircleOutlined, CloseCircleOutlined, WarningOutlined, SearchOutlined, EditOutlined, SwapOutlined } from '@ant-design/icons';
+import type { TableRowSelection } from 'antd/es/table/interface';
 
 import { SelectBrands } from '../../components/SelectBrands';
 import { Content } from '../../components/style/Content';
 import { formColProps, formItemCol } from '../../constant/formProps';
-import { BrandListProvider } from '../../datahooks/brand';
+import { BrandListProvider, useBrandListContext } from '../../datahooks/brand';
 import { getAwait } from '../../error';
 import { SPUCateListProvider, SpuIDProvider, SPUListProvider, useSpuIDContext } from '../../datahooks/product';
 import { usePermission } from '../../datahooks/permission';
@@ -19,7 +20,7 @@ import SPUEdit from '../../components/SPUEdit';
 import { useTokenContext } from '../../datahooks/auth';
 
 interface NamingIssue {
-  type: 'no_space' | 'has_quanwangtong' | 'no_brand' | 'brand_mismatch' | 'lowercase_brand';
+  type: 'no_space' | 'has_quanwangtong' | 'no_brand' | 'brand_mismatch' | 'lowercase_brand' | 'leading_space';
   message: string;
   severity: 'error' | 'warning';
 }
@@ -34,6 +35,16 @@ interface SPUWithIssues extends Pick<SPU, 'state' | 'name' | 'id' | 'brand' | 'c
 function checkSPUNaming(spu: Pick<SPU, 'name' | 'brand'>, brandList: string[]): NamingIssue[] {
   const issues: NamingIssue[] = [];
   const { name, brand } = spu;
+
+  // 检查名称前面是否有空格
+  if (name.startsWith(' ')) {
+    issues.push({
+      type: 'leading_space',
+      message: '名称前面有空格',
+      severity: 'error',
+    });
+    return issues;
+  }
 
   // 检查是否有品牌
   if (!brand) {
@@ -348,6 +359,177 @@ function BatchChangeBrandModal(props: {
 }
 
 /**
+ * [组件] 批量编辑 SPU Modal
+ */
+function BatchEditModal(props: {
+  visible: boolean;
+  selectedIds: number[];
+  onClose: () => void;
+  onSuccess: () => void;
+  cates: SPUCateData[];
+}) {
+  const { visible, selectedIds, onClose, onSuccess, cates } = props;
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const { token } = useTokenContext();
+  const { brandList } = useBrandListContext();
+
+  const cascaderOptions = useMemo(() => {
+    const options = buildCascaderOptions(cates);
+    return options;
+  }, [cates]);
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      
+      if (!token) {
+        message.error('未获取到认证信息');
+        return;
+      }
+
+      // 检查是否至少选择了一个要修改的字段
+      const hasChanges = values.brand || values.cateID || values.description || values.remark;
+      if (!hasChanges) {
+        message.warning('请至少选择一个要修改的字段');
+        return;
+      }
+
+      Modal.confirm({
+        title: '确认批量编辑',
+        content: `确定要批量编辑 ${selectedIds.length} 个 SPU 吗？`,
+        okText: '确认',
+        cancelText: '取消',
+        onOk: async () => {
+          setLoading(true);
+          try {
+            let successCount = 0;
+            let failCount = 0;
+
+            // 准备更新参数
+            const updateParams: any = {};
+            if (values.brand) updateParams.brand = values.brand;
+            if (values.cateID) updateParams.cateID = values.cateID[values.cateID.length - 1];
+            if (values.description) updateParams.description = values.description;
+            if (values.remark) updateParams.remark = values.remark;
+
+            // 批量修改每个 SPU
+            for (const spuId of selectedIds) {
+              try {
+                await editSPUInfo(spuId, updateParams, { auth: token });
+                successCount++;
+              } catch (error) {
+                console.error(`修改 SPU ${spuId} 失败:`, error);
+                failCount++;
+              }
+            }
+
+            setLoading(false);
+            
+            if (failCount === 0) {
+              message.success(`批量编辑完成！成功修改 ${successCount} 个 SPU`);
+            } else {
+              message.warning(`批量编辑完成！成功 ${successCount} 个，失败 ${failCount} 个`);
+            }
+
+            form.resetFields();
+            onSuccess();
+            onClose();
+          } catch (error) {
+            setLoading(false);
+            message.error('批量编辑失败，请重试');
+            console.error(error);
+          }
+        },
+      });
+    } catch (error) {
+      // 表单验证失败
+    }
+  };
+
+  return (
+    <Modal
+      title={`批量编辑 SPU (已选择 ${selectedIds.length} 个)`}
+      open={visible}
+      onCancel={onClose}
+      onOk={handleSubmit}
+      confirmLoading={loading}
+      okText="开始编辑"
+      cancelText="取消"
+      width={600}
+    >
+      <Form form={form} layout="vertical">
+        <Form.Item
+          label={`品牌 (共 ${brandList.length} 个)`}
+          name="brand"
+          tooltip="留空则不修改"
+        >
+          <Select
+            showSearch
+            placeholder="选择新品牌（留空不修改）"
+            allowClear
+            filterOption={(input, option) =>
+              (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
+            }
+          >
+            {brandList.map((brand) => (
+              <Select.Option key={brand.name} value={brand.name} label={`${brand.name} ${brand.spell}`}>
+                {brand.name} {brand.spell}
+              </Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        <Form.Item
+          label="SPU 分类"
+          name="cateID"
+          tooltip="留空则不修改"
+        >
+          <Cascader
+            options={cascaderOptions}
+            placeholder="选择新分类（留空不修改）"
+            showSearch={{
+              filter: (inputValue, path) =>
+                path.some(
+                  (option) =>
+                    option.label
+                      ?.toString()
+                      .toLowerCase()
+                      .indexOf(inputValue.toLowerCase()) > -1
+                ),
+            }}
+            changeOnSelect
+            allowClear
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="描述"
+          name="description"
+          tooltip="留空则不修改"
+        >
+          <Input.TextArea
+            rows={3}
+            placeholder="输入新描述（留空不修改）"
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="备注"
+          name="remark"
+          tooltip="留空则不修改"
+        >
+          <Input.TextArea
+            rows={3}
+            placeholder="输入新备注（留空不修改）"
+          />
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
+}
+
+/**
  * [页面组件] SPU 命名规范检查的搜索过滤框
  */
 function QueryForm(props: {
@@ -496,7 +678,19 @@ export default function () {
   const [editingSpuID, setEditingSpuID] = useState<number | undefined>();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [batchBrandModalVisible, setBatchBrandModalVisible] = useState(false);
+  const [batchEditVisible, setBatchEditVisible] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [allBrands, setAllBrands] = useState<string[]>([]);
+  const [cates, setCates] = useState<SPUCateData[]>([]);
+
+  // 加载 SPU 分类数据
+  useEffect(() => {
+    const loadCates = async () => {
+      const res = await getSPUCateBaseList();
+      setCates(res);
+    };
+    loadCates();
+  }, []);
 
   // 获取权限
   const { permission, errMsg: permissionErrMsg } =
@@ -533,6 +727,15 @@ export default function () {
   const reloadData = () => {
     // 触发重新检查，这里可以通过设置一个标志来触发
     message.success('数据已更新，请重新点击"开始检查"按钮');
+    setSelectedRowKeys([]);
+  };
+
+  // 行选择配置
+  const rowSelection: TableRowSelection<SPUWithIssues> = {
+    selectedRowKeys,
+    onChange: (selectedKeys) => {
+      setSelectedRowKeys(selectedKeys);
+    },
   };
 
   return (
@@ -625,45 +828,126 @@ export default function () {
 
           {list && (
             <>
-              <Space style={{ marginBottom: 16, marginTop: 16 }}>
-                <Tag color="default">总计: {list.length}</Tag>
-                <Tag color="red">错误: {errorCount}</Tag>
-                <Tag color="orange">警告: {warningCount}</Tag>
-                <Tag color="green">正常: {list.length - issueCount}</Tag>
-              </Space>
+              {/* 统计卡片 */}
+              <Row gutter={16} style={{ marginBottom: 16, marginTop: 16 }}>
+                <Col span={6}>
+                  <Card>
+                    <Statistic
+                      title="检查总数"
+                      value={list.length}
+                      prefix={<SearchOutlined />}
+                      valueStyle={{ color: '#1890ff' }}
+                    />
+                  </Card>
+                </Col>
+                <Col span={6}>
+                  <Card>
+                    <Statistic
+                      title="错误"
+                      value={errorCount}
+                      prefix={<CloseCircleOutlined />}
+                      valueStyle={{ color: '#ff4d4f' }}
+                      suffix={`/ ${list.length}`}
+                    />
+                  </Card>
+                </Col>
+                <Col span={6}>
+                  <Card>
+                    <Statistic
+                      title="警告"
+                      value={warningCount}
+                      prefix={<WarningOutlined />}
+                      valueStyle={{ color: '#faad14' }}
+                      suffix={`/ ${list.length}`}
+                    />
+                  </Card>
+                </Col>
+                <Col span={6}>
+                  <Card>
+                    <Statistic
+                      title="正常"
+                      value={list.length - issueCount}
+                      prefix={<CheckCircleOutlined />}
+                      valueStyle={{ color: '#52c41a' }}
+                      suffix={`/ ${list.length}`}
+                    />
+                  </Card>
+                </Col>
+              </Row>
 
-              <Row>
-                <Col flex="auto">
-                  <Table
-                    rowKey={'id'}
-                    size="small"
-                    dataSource={list.filter(item => item.issues.length > 0)}
-                    loading={loading}
+              {/* 操作栏 */}
+              {selectedRowKeys.length > 0 && (
+                <Card style={{ marginBottom: 16 }}>
+                  <Space>
+                    <span>已选择 <strong>{selectedRowKeys.length}</strong> 项</span>
+                    <Button
+                      type="primary"
+                      icon={<EditOutlined />}
+                      onClick={() => setBatchEditVisible(true)}
+                    >
+                      批量编辑
+                    </Button>
+                    <Button onClick={() => setSelectedRowKeys([])}>
+                      取消选择
+                    </Button>
+                  </Space>
+                </Card>
+              )}
+
+              {/* 问题列表 */}
+              <Card 
+                title={
+                  <Space>
+                    <span style={{ fontSize: 16, fontWeight: 600 }}>问题列表</span>
+                    <Tag color="red">{issueCount} 条异常</Tag>
+                  </Space>
+                }
+                extra={
+                  <Space>
+                    <span style={{ color: '#8c8c8c' }}>
+                      仅显示有问题的 SPU
+                    </span>
+                  </Space>
+                }
+              >
+                <Table
+                  rowKey={'id'}
+                  size="middle"
+                  dataSource={list.filter(item => item.issues.length > 0)}
+                  loading={loading}
+                  rowSelection={rowSelection}
                     columns={[
                       {
                         dataIndex: 'id',
                         title: 'SPU ID',
                         width: 100,
+                        fixed: 'left',
+                        render: (id) => <span style={{ fontFamily: 'monospace', fontWeight: 500 }}>{id}</span>,
                       },
                       {
                         dataIndex: 'name',
                         title: '名称',
                         width: 300,
+                        ellipsis: true,
+                        render: (name) => <span style={{ fontWeight: 500 }}>{name}</span>,
                       },
                       {
                         dataIndex: 'brand',
                         title: '品牌',
                         width: 120,
+                        render: (brand) => brand ? <Tag color="blue">{brand}</Tag> : <Tag>未设置</Tag>,
                       },
                       {
                         dataIndex: 'issues',
-                        title: '问题',
+                        title: '问题详情',
                         render: (_, record) => (
-                          <Space direction="vertical" size="small">
+                          <Space direction="vertical" size="small" style={{ width: '100%' }}>
                             {record.issues.map((issue, index) => (
                               <Tag
                                 key={index}
                                 color={issue.severity === 'error' ? 'red' : 'orange'}
+                                icon={issue.severity === 'error' ? <CloseCircleOutlined /> : <WarningOutlined />}
+                                style={{ marginRight: 0 }}
                               >
                                 {issue.message}
                               </Tag>
@@ -675,10 +959,12 @@ export default function () {
                         dataIndex: 'action',
                         title: '操作',
                         width: 100,
+                        fixed: 'right',
                         render: (_, record) => (
                           <Button
-                            type="link"
+                            type="primary"
                             size="small"
+                            icon={<EditOutlined />}
                             onClick={() => handleEdit(record.id)}
                           >
                             编辑
@@ -687,17 +973,22 @@ export default function () {
                       },
                     ]}
                     pagination={{
-                      defaultPageSize: 50,
+                      defaultPageSize: 20,
                       showSizeChanger: true,
-                      showTotal: (total) => `共 ${total} 条异常记录`,
+                      pageSizeOptions: ['10', '20', '50', '100'],
+                      showTotal: (total) => (
+                        <span style={{ fontWeight: 500 }}>
+                          共 <span style={{ color: '#ff4d4f' }}>{total}</span> 条异常记录
+                        </span>
+                      ),
                     }}
+                    scroll={{ x: 'max-content' }}
                     sticky
                   />
-                </Col>
-              </Row>
-            </>
-          )}
-        </Content>
+                </Card>
+              </>
+            )}
+          </Content>
 
         {/* SPU 编辑抽屉 */}
         <Drawer
@@ -712,6 +1003,15 @@ export default function () {
             <SPUEditWrapper spuId={editingSpuID} />
           )}
         </Drawer>
+
+        {/* 批量编辑 Modal */}
+        <BatchEditModal
+          visible={batchEditVisible}
+          selectedIds={selectedRowKeys as number[]}
+          onClose={() => setBatchEditVisible(false)}
+          onSuccess={reloadData}
+          cates={cates}
+        />
 
         {/* 批量修改品牌 Modal */}
         <BatchChangeBrandModal
