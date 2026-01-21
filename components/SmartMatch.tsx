@@ -61,13 +61,49 @@ class SimpleMatcher {
 
   // 提取型号（包括字母和数字）
   extractModel(str: string): string | null {
-    // 匹配常见型号格式：Y300i, Y3, Mate60, iPhone15等
-    const modelPattern = /([a-z]+\s*)(\d+[a-z]*)/gi;
-    const matches = str.match(modelPattern);
+    const lowerStr = str.toLowerCase();
     
-    if (matches && matches.length > 0) {
-      // 返回最长的匹配（通常是最完整的型号）
-      return matches.sort((a, b) => b.length - a.length)[0].toLowerCase().replace(/\s+/g, '');
+    // 先尝试匹配常见的完整型号格式
+    // Y300i, Y300, Y3, X Note, Mate60, iPhone15等
+    
+    // 1. 匹配 "字母+数字+可选字母" 格式（如 Y300i, Y3, Mate60）
+    const simpleModelPattern = /\b([a-z])(\d+)([a-z]*)\b/gi;
+    const simpleMatches = lowerStr.match(simpleModelPattern);
+    
+    // 2. 匹配 "字母 字母" 格式（如 X Note, X Fold）
+    const wordModelPattern = /\b([a-z]+)\s+([a-z]+)\b/gi;
+    const wordMatches = lowerStr.match(wordModelPattern);
+    
+    // 优先返回包含数字的型号（更具体）
+    if (simpleMatches && simpleMatches.length > 0) {
+      // 过滤掉容量相关的匹配（如 5g, 4gb）
+      const filtered = simpleMatches.filter(m => {
+        const lower = m.toLowerCase();
+        return !lower.includes('gb') && 
+               !lower.includes('g') && 
+               !lower.endsWith('g') &&
+               !/^\d+g$/.test(lower);
+      });
+      
+      if (filtered.length > 0) {
+        // 返回最长的匹配（通常是最完整的型号）
+        return filtered.sort((a, b) => b.length - a.length)[0].toLowerCase().replace(/\s+/g, '');
+      }
+    }
+    
+    // 如果没有数字型号，返回字母型号（如 X Note）
+    if (wordMatches && wordMatches.length > 0) {
+      // 过滤掉常见的非型号词组
+      const filtered = wordMatches.filter(m => {
+        const lower = m.toLowerCase();
+        return !lower.includes('全网通') && 
+               !lower.includes('版本') &&
+               !lower.includes('网通');
+      });
+      
+      if (filtered.length > 0) {
+        return filtered[0].toLowerCase().replace(/\s+/g, '');
+      }
     }
     
     return null;
@@ -133,29 +169,44 @@ class SimpleMatcher {
     const color1 = this.extractColor(str1);
     const color2 = this.extractColor(str2);
     
-    let score = 0;
-    let totalWeight = 0;
+    // 品牌必须匹配
+    if (brand1 && brand2 && brand1 !== brand2) {
+      return 0.1; // 品牌不匹配，直接拒绝
+    }
     
-    // 品牌匹配（权重40%）
-    if (brand1 && brand2) {
-      totalWeight += 0.4;
-      if (brand1 === brand2) {
-        score += 0.4;
-      } else {
-        // 品牌不匹配，直接返回低分
+    // 型号必须匹配（最关键）
+    if (model1 && model2) {
+      if (model1 !== model2) {
+        // 型号不匹配，直接拒绝
+        // Y300i vs xnote 应该被拒绝
         return 0.2;
       }
     }
     
-    // 型号匹配（权重40%）- 最关键
-    if (model1 && model2) {
-      totalWeight += 0.4;
-      if (model1 === model2) {
-        score += 0.4;
-      } else {
-        // 型号不匹配，大幅降低分数
-        // 例如：Y300i vs Y3 应该被拒绝
+    // 如果没有提取到型号，使用更严格的匹配
+    if (!model1 || !model2) {
+      // 至少要有包含关系
+      if (!normalized2.includes(normalized1) && !normalized1.includes(normalized2)) {
         return 0.3;
+      }
+    }
+    
+    let score = 0;
+    let totalWeight = 0;
+    
+    // 品牌匹配（权重30%）
+    if (brand1 && brand2) {
+      totalWeight += 0.3;
+      if (brand1 === brand2) {
+        score += 0.3;
+      }
+    }
+    
+    // 型号匹配（权重50%）- 最关键
+    if (model1 && model2) {
+      totalWeight += 0.5;
+      if (model1 === model2) {
+        score += 0.5;
       }
     }
     
@@ -180,7 +231,7 @@ class SimpleMatcher {
     // 如果没有足够的信息进行匹配，使用基础字符串相似度
     if (totalWeight < 0.5) {
       if (normalized2.includes(normalized1) || normalized1.includes(normalized2)) {
-        return 0.6;
+        return 0.5;
       }
       
       // 简单的关键词匹配
@@ -194,7 +245,7 @@ class SimpleMatcher {
         }
       }
       
-      return words1.length > 0 ? matchCount / words1.length * 0.7 : 0;
+      return words1.length > 0 ? matchCount / words1.length * 0.6 : 0;
     }
     
     return totalWeight > 0 ? score / totalWeight : 0;
