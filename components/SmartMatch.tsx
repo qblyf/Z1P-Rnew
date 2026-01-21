@@ -39,6 +39,13 @@ interface SKUData {
 
 // 简化的匹配算法
 class SimpleMatcher {
+  private dynamicColors: string[] = [];
+  
+  // 设置动态颜色列表
+  setColorList(colors: string[]) {
+    this.dynamicColors = colors;
+  }
+  
   // 标准化字符串
   normalize(str: string | null | undefined): string {
     if (!str) return '';
@@ -216,28 +223,16 @@ class SimpleMatcher {
 
   // 提取颜色
   extractColor(str: string): string | null {
-    // 完整颜色词优先（避免"钻黑"被识别为"黑"）
-    const fullColors = [
-      // 常见完整颜色词
-      '墨黛蓝', '雾凇蓝', '雾松蓝', '星空蓝', '天青', '冰川蓝', '海洋蓝',
-      '钛金', '钛黑', '钛蓝', '钛色',
-      '午夜黑', '玄武黑', '曜石黑', '陨石黑',
-      '星光银', '月光银', '流光银',
-      '极光绿', '翡翠绿', '森林绿',
-      '极光紫', '龙晶紫', '梦幻紫', '星云紫',
-      '钻黑', '白金', '微粉', '樱花粉',
-      '百里丹霞', '雅川青', '羽砂黑', '羽砂白', '羽砂紫', '羽砂金',
-      '黑色', '白色', '蓝色', '红色', '绿色', '紫色', '粉色', '金色', '银色', '灰色'
-    ];
-    
-    // 先匹配完整颜色词
-    for (const color of fullColors) {
-      if (str.includes(color)) {
-        return color;
+    // 优先使用动态颜色列表
+    if (this.dynamicColors.length > 0) {
+      for (const color of this.dynamicColors) {
+        if (str.includes(color)) {
+          return color;
+        }
       }
     }
     
-    // 再匹配基础颜色
+    // 如果动态列表没有匹配，使用基础颜色作为后备
     const basicColors = ['黑', '白', '蓝', '红', '绿', '紫', '粉', '金', '银', '灰'];
     
     for (const color of basicColors) {
@@ -525,6 +520,7 @@ export function SmartMatchComponent() {
   const [loadingSPU, setLoadingSPU] = useState(true);
   const [results, setResults] = useState<MatchResult[]>([]);
   const [spuList, setSPUList] = useState<SPUData[]>([]);
+  const [colorList, setColorList] = useState<string[]>([]); // 动态颜色列表
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
@@ -538,7 +534,7 @@ export function SmartMatchComponent() {
   ]);
   const matcher = new SimpleMatcher();
 
-  // 加载所有SPU数据
+  // 加载所有SPU数据并提取颜色
   useEffect(() => {
     const loadSPUData = async () => {
       try {
@@ -553,7 +549,40 @@ export function SmartMatchComponent() {
           ['id', 'name', 'brand']
         );
         setSPUList(data);
-        message.success(`已加载 ${data.length} 个SPU商品`);
+        
+        // 从 SPU 名称中提取颜色词
+        const extractedColors = new Set<string>();
+        
+        // 定义颜色关键字（用于识别可能的颜色词）
+        const colorKeywords = [
+          '黑', '白', '蓝', '红', '绿', '紫', '粉', '金', '银', '灰', '黄', '橙', '棕',
+          '色', '钛', '午夜', '星光', '极光', '雾凇', '雾松', '龙晶', '冰川', '玄武',
+          '曜石', '陨石', '月光', '流光', '翡翠', '森林', '梦幻', '星云', '樱花',
+          '百里', '丹霞', '雅川', '羽砂', '墨黛', '星空', '天青'
+        ];
+        
+        // 从所有 SPU 名称中提取包含颜色关键字的词
+        for (const spu of data) {
+          if (!spu.name) continue;
+          
+          // 使用正则提取可能的颜色词（2-5个字符，包含颜色关键字）
+          const matches = spu.name.match(/[\u4e00-\u9fa5]{2,5}/g);
+          if (matches) {
+            for (const match of matches) {
+              // 检查是否包含颜色关键字
+              if (colorKeywords.some(keyword => match.includes(keyword))) {
+                extractedColors.add(match);
+              }
+            }
+          }
+        }
+        
+        // 转换为数组并按长度降序排序（优先匹配更长的颜色词）
+        const colors = Array.from(extractedColors).sort((a, b) => b.length - a.length);
+        setColorList(colors);
+        
+        console.log('提取的颜色列表:', colors);
+        message.success(`已加载 ${data.length} 个SPU，提取 ${colors.length} 个颜色词`);
       } catch (error) {
         message.error('加载SPU数据失败');
         console.error(error);
@@ -578,6 +607,10 @@ export function SmartMatchComponent() {
     setLoading(true);
     setResults([]); // 清空之前的结果
     setCurrentPage(1); // 重置到第一页
+    
+    // 设置动态颜色列表到 matcher
+    matcher.setColorList(colorList);
+    console.log('使用颜色列表:', colorList.length, '个颜色');
     
     try {
       // 将输入按行分割
