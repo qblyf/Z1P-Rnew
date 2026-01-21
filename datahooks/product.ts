@@ -1,5 +1,5 @@
-import { SPUCateID, SpuID } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { getSPUCateBaseList, getSPUList } from '@zsqk/z1-sdk/es/z1p/product';
+import { SPUCateID, SpuID, SPU } from '@zsqk/z1-sdk/es/z1p/alltypes';
+import { getSPUCateBaseList, getSPUListNew } from '@zsqk/z1-sdk/es/z1p/product';
 import constate from 'constate';
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import { getAwait, lessAwait } from '../error';
@@ -10,7 +10,10 @@ import { getAwait, lessAwait } from '../error';
  */
 function useSPUCateID() {
   const [spuCateID, setSelected] = useState<SPUCateID | undefined>(undefined);
-  const setSpuCateID = useCallback((v: SPUCateID | undefined) => setSelected(v), []);
+  const setSpuCateID = useCallback(
+    (v: SPUCateID | undefined) => setSelected(v),
+    []
+  );
   return { spuCateID, setSpuCateID };
 }
 
@@ -74,7 +77,17 @@ export const [SpuIDProvider, useSpuIDContext] = constate(useSpuID);
  */
 function useSPUList() {
   const [spuList, setSpuList] = useState<
-    Awaited<ReturnType<typeof getSPUList>>
+    Pick<
+      SPU,
+      | 'id'
+      | 'name'
+      | 'brand'
+      | 'series'
+      | 'generation'
+      | 'marketTime'
+      | 'skuIDs'
+      | 'order'
+    >[]
   >([]);
   const [isPending, startTransition] = useTransition();
 
@@ -86,9 +99,30 @@ function useSPUList() {
     startTransition(() => {
       lessAwait(async () => {
         // 如果 spuCateID 为空，获取所有 SPU；否则获取指定分类的 SPU
-        const d = spuCateID 
-          ? await getSPUList({ spuCateIDs: [spuCateID] })
-          : await getSPUList({});
+        const d = await getSPUListNew(
+          {
+            cateIDs: spuCateID ? [spuCateID] : undefined,
+            orderBy: [
+              { key: 'p."brand"', sort: 'ASC' },
+              { key: 'p."cate_id"', sort: 'ASC' },
+              { key: 'p."order"', sort: 'ASC' },
+              { key: 'p."id"', sort: 'DESC' },
+            ],
+            limit: 100,
+            offset: 0,
+          },
+          [
+            'id',
+            'name',
+            'brand',
+            'state',
+            'series',
+            'generation',
+            'marketTime',
+            'skuIDs',
+            'order',
+          ]
+        );
         setSpuList(d);
         setSpuID(undefined);
       })();
