@@ -534,7 +534,7 @@ export function SmartMatchComponent() {
   ]);
   const matcher = new SimpleMatcher();
 
-  // 加载所有SPU数据并提取颜色
+  // 加载所有SPU数据并从SKU中提取颜色
   useEffect(() => {
     const loadSPUData = async () => {
       try {
@@ -550,27 +550,50 @@ export function SmartMatchComponent() {
         );
         setSPUList(data);
         
-        // 从 SPU 名称中提取颜色词
+        // 从实际 SKU 数据中提取颜色词
+        // 采样部分 SPU 来提取颜色（避免加载太多数据）
         const extractedColors = new Set<string>();
+        const sampleSize = Math.min(100, data.length); // 采样前100个SPU
         
-        // 基础颜色关键字（用于识别可能的颜色词）
-        const colorKeywords = [
-          '黑', '白', '蓝', '红', '绿', '紫', '粉', '金', '银', '灰', '黄', '橙', '棕', '色'
-        ];
+        console.log('开始从 SKU 中提取颜色词...');
         
-        // 从所有 SPU 名称中提取包含颜色关键字的词
-        for (const spu of data) {
-          if (!spu.name) continue;
-          
-          // 使用正则提取可能的颜色词（2-5个字符，包含颜色关键字）
-          const matches = spu.name.match(/[\u4e00-\u9fa5]{2,5}/g);
-          if (matches) {
-            for (const match of matches) {
-              // 检查是否包含颜色关键字
-              if (colorKeywords.some(keyword => match.includes(keyword))) {
-                extractedColors.add(match);
+        for (let i = 0; i < sampleSize; i++) {
+          const spu = data[i];
+          try {
+            const spuInfo = await getSPUInfo(spu.id);
+            const skuIDs = spuInfo.skuIDs || [];
+            
+            if (skuIDs.length > 0) {
+              const skuDetails = await getSKUsInfo(skuIDs.map(s => s.skuID));
+              
+              for (const sku of skuDetails) {
+                if ('errInfo' in sku) continue;
+                
+                // 从 SKU 名称中提取最后一个词（通常是颜色）
+                // 例如：vivo Y500 全网通5G 12GB+512GB 龙晶紫 → 龙晶紫
+                const name = sku.name;
+                
+                // 方法1：提取最后2-5个字符（通常是颜色）
+                const lastWords = name.match(/[\u4e00-\u9fa5]{2,5}$/);
+                if (lastWords) {
+                  extractedColors.add(lastWords[0]);
+                }
+                
+                // 方法2：提取容量后面的词（通常是颜色）
+                // 例如：12GB+512GB 龙晶紫 → 龙晶紫
+                const afterCapacity = name.match(/\d+GB[+]\d+GB\s*([\u4e00-\u9fa5]{2,5})/);
+                if (afterCapacity && afterCapacity[1]) {
+                  extractedColors.add(afterCapacity[1]);
+                }
               }
             }
+          } catch (error) {
+            console.error(`提取 SPU ${spu.id} 的颜色失败:`, error);
+          }
+          
+          // 每10个显示进度
+          if ((i + 1) % 10 === 0) {
+            console.log(`已处理 ${i + 1}/${sampleSize} 个 SPU，提取 ${extractedColors.size} 个颜色`);
           }
         }
         
@@ -579,7 +602,7 @@ export function SmartMatchComponent() {
         setColorList(colors);
         
         console.log('提取的颜色列表:', colors);
-        message.success(`已加载 ${data.length} 个SPU，提取 ${colors.length} 个颜色词`);
+        message.success(`已加载 ${data.length} 个SPU，从 ${sampleSize} 个SPU中提取 ${colors.length} 个颜色词`);
       } catch (error) {
         message.error('加载SPU数据失败');
         console.error(error);
