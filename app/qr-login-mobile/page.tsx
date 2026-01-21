@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useTokenContext } from '../../datahooks/auth';
-import { Button, Card, Spin } from 'antd';
+import { Button, Card, Spin, Alert } from 'antd';
 import { airLoginConfirm, airLoginScan } from '@zsqk/z1-sdk/es/z1p/auth';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { parserUA } from '@zsqk/somefn/js/ua';
@@ -33,6 +33,18 @@ function QrLoginMobilePage() {
   const storage = useMemo(() => searchParams?.get('storage'), [searchParams]);
   const [status, setStatus] = useState<'等待确认' | '正在登录中' | '登录已完成' | string>('等待确认');
   const [isLoading, setIsLoading] = useState(false);
+  const [isDingTalk, setIsDingTalk] = useState(true);
+
+  // 检测是否为钉钉扫码
+  useEffect(() => {
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isDingTalkApp = userAgent.includes('dingtalk');
+    setIsDingTalk(isDingTalkApp);
+    
+    if (!isDingTalkApp) {
+      console.warn('非钉钉扫码访问');
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof storage !== 'string') {
@@ -101,6 +113,17 @@ function QrLoginMobilePage() {
 
         {/* 主卡片 */}
         <Card className="shadow-xl">
+          {/* 钉钉扫码提示 */}
+          {!isDingTalk && (
+            <Alert
+              message="请使用钉钉扫码"
+              description="检测到您未使用钉钉扫码，请使用钉钉应用扫描二维码进行登录"
+              type="warning"
+              showIcon
+              className="mb-4"
+            />
+          )}
+
           <div className="text-center">
             {status === '等待确认' && (
               <>
@@ -137,8 +160,9 @@ function QrLoginMobilePage() {
                     }
                   }}
                   loading={isLoading}
+                  disabled={!isDingTalk}
                 >
-                  确认登录
+                  {isDingTalk ? '确认登录' : '请使用钉钉扫码'}
                 </Button>
               </>
             )}

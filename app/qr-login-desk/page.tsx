@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
-import { Spin, Card } from 'antd';
+import { Spin, Card, Alert } from 'antd';
 import { RefreshCw, Smartphone } from 'lucide-react';
 
 import {
@@ -183,6 +183,15 @@ function QrLoginDeskPage() {
 
         {/* 主卡片 */}
         <Card className="shadow-xl">
+          {/* 钉钉扫码提示 */}
+          <Alert
+            message="请使用钉钉扫码"
+            description="请使用钉钉应用扫描下方二维码进行登录，其他扫码工具无法完成登录"
+            type="info"
+            showIcon
+            className="mb-6"
+          />
+
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-6">
               <Smartphone size={20} className="text-emerald-600" />
@@ -190,7 +199,7 @@ function QrLoginDeskPage() {
             </div>
 
             <p className="text-slate-600 text-sm mb-6">
-              使用手机扫描下方二维码进行登录
+              使用钉钉应用扫描下方二维码进行登录
             </p>
 
             {/* 二维码容器 */}
@@ -244,7 +253,7 @@ function QrLoginDeskPage() {
 
         {/* 底部提示 */}
         <div className="text-center mt-6 text-slate-600 text-sm">
-          <p>首次登录？请使用手机应用扫码</p>
+          <p>首次登录？请使用钉钉应用扫码</p>
         </div>
       </div>
     </div>
