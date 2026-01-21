@@ -2,6 +2,7 @@ import { GyCsvRow, MatchingResult, MatchMode, ErrorCode } from '../types';
 import { dbLoaderService } from './dbLoader';
 import { AppError } from '../middleware/errorHandler';
 import { smartMatcher } from './smartMatcher';
+import { versionExtractor } from './versionExtractor';
 import { progressTracker } from './progressTracker';
 
 // Configuration for batch processing
@@ -808,6 +809,17 @@ export class MatchingService {
     
     if (inputYear && candidateYear && inputYear !== candidateYear) {
       reasons.push(`年份不匹配: ${inputYear} vs ${candidateYear}`);
+    }
+
+    // 8. 版本标识验证 (如果都有则必须匹配)
+    const inputVersion = versionExtractor.extractVersion(inputProduct);
+    const candidateVersion = versionExtractor.extractVersion(candidateProduct.z1_SKU名称) ||
+                            versionExtractor.extractVersion(candidateProduct.z1_SKU规格);
+    
+    if (inputVersion && candidateVersion) {
+      if (!versionExtractor.versionsMatch(inputVersion, candidateVersion)) {
+        reasons.push(`版本标识不匹配: ${inputVersion} vs ${candidateVersion}`);
+      }
     }
 
     return {

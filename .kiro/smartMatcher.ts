@@ -3,6 +3,11 @@
  * 智能匹配服务 - 处理不同命名规范的产品数据匹配
  */
 
+import { spaceHandler } from './spaceHandler';
+import { watchRecognizer } from './watchRecognizer';
+import { versionExtractor } from './versionExtractor';
+import { modelDisambiguator } from './modelDisambiguator';
+
 export class SmartMatcher {
   // 品牌名映射表
   private brandMapping: Map<string, string[]> = new Map([
@@ -158,7 +163,8 @@ export class SmartMatcher {
   deepNormalize(str: string): string {
     if (!str) return '';
 
-    let normalized = str
+    // 首先使用 SpaceHandler 标准化空格
+    let normalized = this.normalizeSpaces(str)
       .toLowerCase()
       .trim()
       
@@ -246,60 +252,8 @@ export class SmartMatcher {
   normalizeSpaces(str: string): string {
     if (!str) return '';
 
-    let normalized = str
-      // 0. 先处理全角/半角符号（在处理空格前）
-      .replace(/＋/g, '+')
-      .replace(/（/g, '(')
-      .replace(/）/g, ')')
-      .replace(/【/g, '[')
-      .replace(/】/g, ']')
-      .replace(/，/g, ',')
-      .replace(/。/g, '.')
-      .replace(/；/g, ';')
-      .replace(/：/g, ':')
-      .replace(/　/g, ' ')  // 全角空格转半角
-      
-      // 1. 品牌后添加空格（处理IQOOZ10 -> IQOO Z10, OPPO A5 -> OPPO A5等）
-      .replace(/^(IQOO)([A-Z0-9])/g, '$1 $2')
-      .replace(/^(OPPO)([A-Z0-9])/g, '$1 $2')
-      .replace(/^(VIVO)([A-Z0-9])/g, '$1 $2')
-      .replace(/^(Hi)([A-Z0-9])/g, '$1 $2')
-      .replace(/^(iqoo)([a-z0-9])/gi, '$1 $2')
-      .replace(/^(oppo)([a-z0-9])/gi, '$1 $2')
-      .replace(/^(vivo)([a-z0-9])/gi, '$1 $2')
-      // 处理 MateBook 系列（MateBookD16 -> MateBook D 16）
-      .replace(/matebook([a-z])(\d+)/gi, 'matebook $1 $2')
-      .replace(/matebook(\d+)([a-z])/gi, (match, digits, letter) => `matebook ${digits} ${letter.toLowerCase()}`)
-      .replace(/matebook([a-z])/gi, 'matebook $1')
-      .replace(/^(hi)([a-z0-9])/gi, '$1 $2')
-      
-      // 2. 特殊处理 Ace 系列（在其他处理前）
-      .replace(/ACE(\d)/gi, 'Ace $1')
-      .replace(/ace(\d)/gi, 'Ace $1')
-      
-      // 3. 型号和版本之间添加空格
-      // 处理 Z10Turbo -> Z10 Turbo, A5Pro -> A5 Pro, A5活力版 -> A5 活力版
-      // 也处理 Z10Turbo+ -> Z10 Turbo+（在Turbo后添加空格，但保留+号）
-      .replace(/([A-Z0-9])(Turbo|Pro|Max|Mini|SE|Air|Ultra|Plus|竞速版|至尊版|活力版|标准版|青春版|极速版)(\+)?/gi, '$1 $2$3')
-      
-      // 4. 处理大小写不一致（A5x -> A5X, A5pro -> A5 Pro）
-      .replace(/([A-Z]\d+)x\b/gi, '$1X')
-      .replace(/([A-Z]\d+)pro\b/gi, '$1 Pro')
-      .replace(/([A-Z]\d+)max\b/gi, '$1 Max')
-      .replace(/([A-Z]\d+)plus\b/gi, '$1 Plus')
-      .replace(/([A-Z]\d+)ultra\b/gi, '$1 Ultra')
-      .replace(/([A-Z]\d+)mini\b/gi, '$1 Mini')
-      .replace(/([A-Z]\d+)se\b/gi, '$1 SE')
-      .replace(/([A-Z]\d+)air\b/gi, '$1 Air')
-      
-      // 5. 数字和中文之间添加空格
-      .replace(/(\d)([一-龥])/g, '$1 $2')
-      
-      // 6. 清理多余空格
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    return normalized;
+    // 使用 SpaceHandler 进行空格标准化
+    return spaceHandler.normalizeSpaces(str);
   }
 
   /**
@@ -358,6 +312,11 @@ export class SmartMatcher {
    */
   extractProductType(str: string): string | null {
     if (!str) return null;
+
+    // 首先使用 WatchRecognizer 检查是否为手表产品
+    if (watchRecognizer.isWatchProduct(str)) {
+      return 'Watch';
+    }
 
     const lowerStr = str.toLowerCase().trim();
 
@@ -495,6 +454,23 @@ export class SmartMatcher {
    */
   extractKeywords(str: string): string[] {
     if (!str) return [];
+
+    // 如果是手表产品，提取手表型号代码
+    if (watchRecognizer.isWatchProduct(str)) {
+      const modelCode = watchRecognizer.extractWatchModelCode(str);
+      if (modelCode) {
+        // 对于手表，型号代码是最重要的关键词
+        const keywords = [modelCode];
+        
+        // 也提取其他属性作为关键词
+        const attributes = watchRecognizer.extractWatchAttributes(str);
+        if (attributes.connectionType) keywords.push(attributes.connectionType);
+        if (attributes.size) keywords.push(attributes.size);
+        if (attributes.strapMaterial) keywords.push(attributes.strapMaterial);
+        
+        return keywords;
+      }
+    }
 
     // 移除样品机相关标记，以便匹配到正式商品
     // 例如："苹果样品16" -> "苹果16", "2021版第九代ipad样机" -> "2021版第九代ipad"
@@ -724,6 +700,12 @@ export class SmartMatcher {
     const yearMatches = lowerStr.match(yearPattern);
     if (yearMatches) {
       keywords.push(...yearMatches);
+    }
+
+    // 提取版本标识（如"活力版"、"标准版"等）
+    const version = versionExtractor.extractVersion(str);
+    if (version) {
+      keywords.push(version.toLowerCase());
     }
 
     return [...new Set(keywords)]; // 去重
@@ -1204,6 +1186,26 @@ export class SmartMatcher {
     const normalizedExcel = this.normalizeSpaces(excelValue);
     const normalizedCsv = this.normalizeSpaces(csvValue);
     
+    // 0.5. 特殊处理手表产品
+    const isWatch1 = watchRecognizer.isWatchProduct(normalizedExcel);
+    const isWatch2 = watchRecognizer.isWatchProduct(normalizedCsv);
+    
+    if (isWatch1 && isWatch2) {
+      // 两个都是手表产品，使用手表专用匹配逻辑
+      const watchMatch = watchRecognizer.compareWatchProducts(normalizedExcel, normalizedCsv);
+      
+      if (watchMatch) {
+        // 手表匹配成功，返回高分
+        return 0.95;
+      } else {
+        // 手表不匹配，但仍然计算基础相似度
+        // 继续执行下面的通用匹配逻辑，但会应用更严格的阈值
+      }
+    } else if (isWatch1 !== isWatch2) {
+      // 一个是手表，另一个不是，直接返回低分
+      return 0.0;
+    }
+    
     // 1. 字符串相似度（权重40%，从30%提升到40%）
     const stringSimilarity = this.calculateSimilarity(normalizedExcel, normalizedCsv);
 
@@ -1222,6 +1224,30 @@ export class SmartMatcher {
       // 型号前缀不匹配，这是关键差异，应该大幅降低分数
       // 例如：V75 vs V65 应该被拒绝
       modelPrefixPenalty = 0.7; // 降低70%的分数
+    }
+
+    // 3.2. 完整型号检查 - 使用 ModelDisambiguator 进行精确型号匹配
+    // 例如：X200 Pro vs X200 Pro mini，虽然相似但是不同型号
+    const fullModel1 = modelDisambiguator.extractFullModel(normalizedExcel);
+    const fullModel2 = modelDisambiguator.extractFullModel(normalizedCsv);
+    
+    let modelDisambiguationPenalty = 0;
+    if (fullModel1 && fullModel2) {
+      // 计算型号匹配分数
+      const modelMatchScore = modelDisambiguator.calculateModelMatchScore(fullModel1, fullModel2);
+      
+      if (modelMatchScore === 0.0) {
+        // 完全不匹配，应该大幅降低分数
+        modelDisambiguationPenalty = 0.8; // 降低80%的分数
+      } else if (modelMatchScore < 1.0) {
+        // 部分匹配（如基础型号相同但后缀不同），降低更多分数
+        // 例如：Mate60 Pro vs Mate60，或 X200 Pro vs X200 Pro mini
+        // 从 0.5 * (1.0 - modelMatchScore) 改为 0.7 * (1.0 - modelMatchScore)
+        // 这样对于 modelMatchScore = 0.5 的情况，惩罚从 0.25 提升到 0.35
+        // 对于 modelMatchScore = 0.3 的情况，惩罚从 0.35 提升到 0.49
+        modelDisambiguationPenalty = 0.7 * (1.0 - modelMatchScore);
+      }
+      // 如果 modelMatchScore === 1.0，则完全匹配，不惩罚
     }
 
     // 3.5. 产品系列检查 - 如果两边都有产品系列，必须匹配
@@ -1277,6 +1303,25 @@ export class SmartMatcher {
         // 例如：2023款 vs 2021款 应该被拒绝
         yearPenalty = 0.6; // 降低60%的分数
       }
+    }
+
+    // 3.9. 版本标识检查 - 如果两边都有版本标识，必须匹配
+    // 例如：活力版 vs 标准版，这是不同的产品版本
+    const version1 = versionExtractor.extractVersion(normalizedExcel);
+    const version2 = versionExtractor.extractVersion(normalizedCsv);
+    
+    let versionPenalty = 0;
+    if (version1 && version2) {
+      // 两边都有版本标识
+      if (!versionExtractor.versionsMatch(version1, version2)) {
+        // 版本不匹配，降低80%的分数（从50%提升到80%）
+        // 版本标识是关键产品差异，应该严格区分
+        versionPenalty = 0.8;
+      }
+    } else if ((version1 && !version2) || (!version1 && version2)) {
+      // 一边有版本标识，另一边没有
+      // 这可能表示不同的产品版本，降低50%的分数（从30%提升到50%）
+      versionPenalty = 0.5;
     }
 
     // 4. 容量验证 - 如果两边都有容量信息且不匹配，大幅降低分数
@@ -1353,9 +1398,9 @@ export class SmartMatcher {
     // 综合分数
     let finalScore = stringSimilarity * 0.6 + keywordMatch * 0.4;
     
-    // 应用惩罚（产品系列、处理器、型号前缀、容量、颜色、产品类型、尺寸、年份）
-    // 注意：产品系列和处理器的惩罚最严格，因为它们是关键的产品标识符
-    finalScore = Math.max(0, finalScore - seriesPenalty - processorPenalty - modelPrefixPenalty - capacityPenalty - colorPenalty - productTypePenalty - sizePenalty - yearPenalty);
+    // 应用惩罚（产品系列、处理器、型号前缀、型号消歧、容量、颜色、产品类型、尺寸、年份、版本）
+    // 注意：产品系列、处理器和型号消歧的惩罚最严格，因为它们是关键的产品标识符
+    finalScore = Math.max(0, finalScore - seriesPenalty - processorPenalty - modelPrefixPenalty - modelDisambiguationPenalty - capacityPenalty - colorPenalty - productTypePenalty - sizePenalty - yearPenalty - versionPenalty);
 
     return finalScore;
   }
