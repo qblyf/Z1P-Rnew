@@ -88,10 +88,34 @@ class SimpleMatcher {
     // 先尝试匹配常见的完整型号格式
     // Y300Pro+, Y300i, Y300, Y50, Y3, X Note, Mate60, iPhone15等
     
-    // 1. 匹配复杂型号：字母+数字+Pro/Max/Plus/Ultra等+可选的+号
-    // 支持有空格和无空格：Y500Pro, Y500 Pro, Mate60Pro, Mate60 Pro
-    const complexModelPattern = /\b([a-z])(\d+)\s*(pro|max|plus|ultra|mini|se|air|lite|note)(\+)?\b/gi;
-    const complexMatches = lowerStr.match(complexModelPattern);
+    // 特殊处理：连写的型号标准化
+    let normalizedStr = lowerStr
+      .replace(/promini/g, 'pro mini')
+      .replace(/promax/g, 'pro max')
+      .replace(/proplus/g, 'pro plus')
+      .replace(/watchgt/g, 'watch gt')  // WatchGT -> Watch GT
+      .replace(/watchse/g, 'watch se')  // WatchSE -> Watch SE
+      .replace(/watch\s*(\d+)/g, 'watch $1'); // Watch3 -> Watch 3
+    
+    // 移除括号内的内容（如型号代码），避免干扰
+    // vivo WATCH GT（WA2456C） -> vivo WATCH GT
+    normalizedStr = normalizedStr.replace(/[（(][^)）]*[)）]/g, '');
+    
+    // 1. 优先匹配 "字母 字母" 格式（如 WATCH GT, X Note, X Fold, BAND等）
+    // 这个要放在最前面，因为 WATCH GT 这种格式很特殊
+    const wordModelPattern = /\b(watch|band|buds|pad|fold|flip|note)\s+(gt|se|pro|max|plus|ultra|air|lite|[a-z]+\d*)\b/gi;
+    const wordMatches = normalizedStr.match(wordModelPattern);
+    
+    if (wordMatches && wordMatches.length > 0) {
+      // 返回第一个匹配（通常是最准确的）
+      return wordMatches[0].toLowerCase().replace(/\s+/g, '');
+    }
+    
+    // 2. 匹配复杂型号：字母+数字+Pro/Max/Plus/Ultra等+可选的+号
+    // 支持有空格和无空格：Y500Pro, Y500 Pro, Mate60Pro, Mate60 Pro, S30 Pro mini, iPhone 15 Pro Max
+    // 改进：支持多个字母开头（如 iPhone, Mate），支持字母和数字之间有空格
+    const complexModelPattern = /\b([a-z]+)\s*(\d+)\s*(pro|max|plus|ultra|mini|se|air|lite|note)(\s+(mini|max|plus|ultra))?\b/gi;
+    const complexMatches = normalizedStr.match(complexModelPattern);
     
     if (complexMatches && complexMatches.length > 0) {
       // 返回最长的匹配（通常是最完整的型号）
@@ -102,6 +126,8 @@ class SimpleMatcher {
       
       if (filtered.length > 0) {
         // 统一去除空格，使 Y500Pro 和 Y500 Pro 都变成 y500pro
+        // S30 Pro mini -> s30promini
+        // iPhone 15 Pro Max -> iphone15promax
         return filtered.sort((a, b) => b.length - a.length)[0]
           .toLowerCase()
           .replace(/\s+/g, '');
@@ -160,13 +186,13 @@ class SimpleMatcher {
       }
     }
     
-    // 3. 匹配 "字母 字母" 格式（如 X Note, X Fold）
-    const wordModelPattern = /\b([a-z]+)\s+([a-z]+)\b/gi;
-    const wordMatches = lowerStr.match(wordModelPattern);
+    // 4. 匹配通用 "字母 字母" 格式（如 X Note, X Fold）- 作为后备方案
+    const generalWordPattern = /\b([a-z]+)\s+([a-z]+)\b/gi;
+    const generalWordMatches = normalizedStr.match(generalWordPattern);
     
-    if (wordMatches && wordMatches.length > 0) {
+    if (generalWordMatches && generalWordMatches.length > 0) {
       // 过滤掉常见的非型号词组
-      const filtered = wordMatches.filter(m => {
+      const filtered = generalWordMatches.filter(m => {
         const lower = m.toLowerCase();
         return !lower.includes('全网通') && 
                !lower.includes('版本') &&
@@ -550,6 +576,8 @@ export function SmartMatchComponent() {
     'matchedGtins',
     'statusAndSimilarity',
   ]);
+  const [columnDropdownVisible, setColumnDropdownVisible] = useState(false);
+  const [tempVisibleColumns, setTempVisibleColumns] = useState<string[]>(visibleColumns);
   const matcher = new SimpleMatcher();
 
   // 加载所有SPU数据并从SPU的颜色规格中提取颜色
@@ -953,12 +981,12 @@ export function SmartMatchComponent() {
   }
 
   return (
-    <div className="flex gap-4 h-[calc(100vh-200px)]">
+    <div className="flex gap-4 h-[calc(100vh-140px)]">
       {/* 左侧：输入区域 */}
       <div className="w-1/3 flex flex-col">
-        <Card className="flex-1 flex flex-col">
+        <Card className="flex-1 flex flex-col" bodyStyle={{ padding: '16px', display: 'flex', flexDirection: 'column', height: '100%' }}>
           <div className="flex flex-col h-full">
-            <div className="mb-4">
+            <div className="mb-4 flex-1 flex flex-col">
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-slate-700">
                   输入商品名称（每行一个）
@@ -972,7 +1000,7 @@ export function SmartMatchComponent() {
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="请输入商品名称，每行一个&#10;例如：&#10;华为 Mate 60 Pro 12+256 雅川青&#10;苹果 iPhone 15 Pro Max 256GB 钛金色&#10;小米14 Ultra 16GB+512GB 黑色"
                 className="flex-1"
-                style={{ height: 'calc(100vh - 400px)', minHeight: '300px' }}
+                style={{ height: '100%', minHeight: '400px', resize: 'none' }}
                 disabled={loading}
               />
             </div>
@@ -1013,6 +1041,7 @@ export function SmartMatchComponent() {
         {results.length > 0 ? (
           <Card 
             className="flex-1 flex flex-col"
+            bodyStyle={{ padding: '16px', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
             title={
               <div className="flex justify-between items-center">
                 <div className="flex gap-4">
@@ -1031,129 +1060,130 @@ export function SmartMatchComponent() {
                 </div>
                 <Space>
                   <Dropdown
-                    menu={{
-                      items: [
-                        {
-                          key: 'inputName',
-                          label: (
-                            <Checkbox
-                              checked={visibleColumns.includes('inputName')}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setVisibleColumns([...visibleColumns, 'inputName']);
-                                } else {
-                                  setVisibleColumns(visibleColumns.filter(c => c !== 'inputName'));
-                                }
-                              }}
-                            >
-                              输入商品名称
-                            </Checkbox>
-                          ),
-                        },
-                        {
-                          key: 'matchedSPU',
-                          label: (
-                            <Checkbox
-                              checked={visibleColumns.includes('matchedSPU')}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setVisibleColumns([...visibleColumns, 'matchedSPU']);
-                                } else {
-                                  setVisibleColumns(visibleColumns.filter(c => c !== 'matchedSPU'));
-                                }
-                              }}
-                            >
-                              匹配的SPU
-                            </Checkbox>
-                          ),
-                        },
-                        {
-                          key: 'specs',
-                          label: (
-                            <Checkbox
-                              checked={visibleColumns.includes('specs')}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setVisibleColumns([...visibleColumns, 'specs']);
-                                } else {
-                                  setVisibleColumns(visibleColumns.filter(c => c !== 'specs'));
-                                }
-                              }}
-                            >
-                              规格标签
-                            </Checkbox>
-                          ),
-                        },
-                        {
-                          key: 'matchedSKU',
-                          label: (
-                            <Checkbox
-                              checked={visibleColumns.includes('matchedSKU')}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setVisibleColumns([...visibleColumns, 'matchedSKU']);
-                                } else {
-                                  setVisibleColumns(visibleColumns.filter(c => c !== 'matchedSKU'));
-                                }
-                              }}
-                            >
-                              匹配的SKU
-                            </Checkbox>
-                          ),
-                        },
-                        {
-                          key: 'matchedBrand',
-                          label: (
-                            <Checkbox
-                              checked={visibleColumns.includes('matchedBrand')}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setVisibleColumns([...visibleColumns, 'matchedBrand']);
-                                } else {
-                                  setVisibleColumns(visibleColumns.filter(c => c !== 'matchedBrand'));
-                                }
-                              }}
-                            >
-                              品牌
-                            </Checkbox>
-                          ),
-                        },
-                        {
-                          key: 'matchedGtins',
-                          label: (
-                            <Checkbox
-                              checked={visibleColumns.includes('matchedGtins')}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setVisibleColumns([...visibleColumns, 'matchedGtins']);
-                                } else {
-                                  setVisibleColumns(visibleColumns.filter(c => c !== 'matchedGtins'));
-                                }
-                              }}
-                            >
-                              69码
-                            </Checkbox>
-                          ),
-                        },
-                        {
-                          key: 'statusAndSimilarity',
-                          label: (
-                            <Checkbox
-                              checked={visibleColumns.includes('statusAndSimilarity')}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setVisibleColumns([...visibleColumns, 'statusAndSimilarity']);
-                                } else {
-                                  setVisibleColumns(visibleColumns.filter(c => c !== 'statusAndSimilarity'));
-                                }
-                              }}
-                            >
-                              状态/相似度
-                            </Checkbox>
-                          ),
-                        },
-                      ],
+                    open={columnDropdownVisible}
+                    onOpenChange={(visible) => {
+                      if (visible) {
+                        setTempVisibleColumns(visibleColumns);
+                      }
+                      setColumnDropdownVisible(visible);
                     }}
+                    dropdownRender={() => (
+                      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3" style={{ minWidth: '200px' }}>
+                        <div className="mb-2 pb-2 border-b border-gray-200">
+                          <span className="text-sm font-medium text-gray-700">选择显示列</span>
+                        </div>
+                        <div className="space-y-2 mb-3">
+                          <Checkbox
+                            checked={tempVisibleColumns.includes('inputName')}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setTempVisibleColumns([...tempVisibleColumns, 'inputName']);
+                              } else {
+                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'inputName'));
+                              }
+                            }}
+                          >
+                            输入商品名称
+                          </Checkbox>
+                          <Checkbox
+                            checked={tempVisibleColumns.includes('matchedSPU')}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setTempVisibleColumns([...tempVisibleColumns, 'matchedSPU']);
+                              } else {
+                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'matchedSPU'));
+                              }
+                            }}
+                          >
+                            匹配的SPU
+                          </Checkbox>
+                          <Checkbox
+                            checked={tempVisibleColumns.includes('specs')}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setTempVisibleColumns([...tempVisibleColumns, 'specs']);
+                              } else {
+                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'specs'));
+                              }
+                            }}
+                          >
+                            规格标签
+                          </Checkbox>
+                          <Checkbox
+                            checked={tempVisibleColumns.includes('matchedSKU')}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setTempVisibleColumns([...tempVisibleColumns, 'matchedSKU']);
+                              } else {
+                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'matchedSKU'));
+                              }
+                            }}
+                          >
+                            匹配的SKU
+                          </Checkbox>
+                          <Checkbox
+                            checked={tempVisibleColumns.includes('matchedBrand')}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setTempVisibleColumns([...tempVisibleColumns, 'matchedBrand']);
+                              } else {
+                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'matchedBrand'));
+                              }
+                            }}
+                          >
+                            品牌
+                          </Checkbox>
+                          <Checkbox
+                            checked={tempVisibleColumns.includes('matchedGtins')}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setTempVisibleColumns([...tempVisibleColumns, 'matchedGtins']);
+                              } else {
+                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'matchedGtins'));
+                              }
+                            }}
+                          >
+                            69码
+                          </Checkbox>
+                          <Checkbox
+                            checked={tempVisibleColumns.includes('statusAndSimilarity')}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setTempVisibleColumns([...tempVisibleColumns, 'statusAndSimilarity']);
+                              } else {
+                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'statusAndSimilarity'));
+                              }
+                            }}
+                          >
+                            状态/相似度
+                          </Checkbox>
+                        </div>
+                        <div className="flex gap-2 pt-2 border-t border-gray-200">
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              setTempVisibleColumns(visibleColumns);
+                              setColumnDropdownVisible(false);
+                            }}
+                            block
+                          >
+                            取消
+                          </Button>
+                          <Button
+                            type="primary"
+                            size="small"
+                            onClick={() => {
+                              setVisibleColumns(tempVisibleColumns);
+                              setColumnDropdownVisible(false);
+                              message.success('已更新显示列');
+                            }}
+                            block
+                          >
+                            确定
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     trigger={['click']}
                   >
                     <Button icon={<Settings size={16} />} size="small">
@@ -1172,12 +1202,12 @@ export function SmartMatchComponent() {
             }
           >
             <div className="flex-1 overflow-hidden flex flex-col">
-              <div className="flex-1 overflow-x-auto">
+              <div className="flex-1 overflow-auto">
                 <Table
                   columns={columns}
                   dataSource={results}
                   rowKey={(record, index) => `${record.inputName}-${index}`}
-                  scroll={{ x: 'max-content', y: 'calc(100vh - 450px)' }}
+                  scroll={{ x: 'max-content', y: 'calc(100vh - 320px)' }}
                   pagination={{
                     current: currentPage,
                     pageSize: pageSize,
@@ -1200,7 +1230,7 @@ export function SmartMatchComponent() {
             </div>
           </Card>
         ) : (
-          <Card className="flex-1 flex items-center justify-center">
+          <Card className="flex-1 flex items-center justify-center" bodyStyle={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
             <div className="text-center text-slate-400">
               <Search size={48} className="mx-auto mb-4 opacity-50" />
               <p className="text-lg">请在左侧输入商品名称并点击"开始匹配"</p>
