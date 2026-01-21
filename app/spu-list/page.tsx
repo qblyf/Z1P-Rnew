@@ -702,7 +702,7 @@ export default function () {
                       pageSizeOptions: [20, 50, 100, 200],
                       onChange: handleTableChange,
                     }}
-                    scroll={{ x: 1000 }}
+                    scroll={{ x: 1000, y: 600 }}
                   />
                 </Card>
 
