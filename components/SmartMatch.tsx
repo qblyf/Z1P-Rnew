@@ -34,31 +34,170 @@ class SimpleMatcher {
       .replace(/苹果/g, 'apple')
       .replace(/华为/g, 'huawei')
       .replace(/荣耀/g, 'honor')
-      .replace(/小米/g, 'xiaomi');
+      .replace(/小米/g, 'xiaomi')
+      .replace(/vivo/g, 'vivo')
+      .replace(/oppo/g, 'oppo');
   }
 
-  // 计算相似度
+  // 提取品牌
+  extractBrand(str: string): string | null {
+    const lowerStr = str.toLowerCase();
+    const brands = ['apple', 'huawei', 'honor', 'xiaomi', 'vivo', 'oppo', 'samsung', 'oneplus', 'realme'];
+    
+    for (const brand of brands) {
+      if (lowerStr.includes(brand)) {
+        return brand;
+      }
+    }
+    
+    // 中文品牌
+    if (lowerStr.includes('苹果')) return 'apple';
+    if (lowerStr.includes('华为')) return 'huawei';
+    if (lowerStr.includes('荣耀')) return 'honor';
+    if (lowerStr.includes('小米')) return 'xiaomi';
+    
+    return null;
+  }
+
+  // 提取型号（包括字母和数字）
+  extractModel(str: string): string | null {
+    // 匹配常见型号格式：Y300i, Y3, Mate60, iPhone15等
+    const modelPattern = /([a-z]+\s*)(\d+[a-z]*)/gi;
+    const matches = str.match(modelPattern);
+    
+    if (matches && matches.length > 0) {
+      // 返回最长的匹配（通常是最完整的型号）
+      return matches.sort((a, b) => b.length - a.length)[0].toLowerCase().replace(/\s+/g, '');
+    }
+    
+    return null;
+  }
+
+  // 提取容量
+  extractCapacity(str: string): string | null {
+    // 匹配 12+512, 12GB+512GB, 4+128 等格式
+    const capacityPattern = /(\d+)\s*(?:gb)?\s*\+\s*(\d+)\s*(?:gb)?/gi;
+    const match = str.match(capacityPattern);
+    
+    if (match && match.length > 0) {
+      const nums = match[0].match(/\d+/g);
+      if (nums && nums.length === 2) {
+        return `${nums[0]}+${nums[1]}`;
+      }
+    }
+    
+    // 匹配单个容量 128GB, 256GB等
+    const singlePattern = /(\d+)\s*gb/gi;
+    const singleMatch = str.match(singlePattern);
+    if (singleMatch && singleMatch.length > 0) {
+      const num = singleMatch[0].match(/\d+/);
+      if (num) {
+        return num[0];
+      }
+    }
+    
+    return null;
+  }
+
+  // 提取颜色
+  extractColor(str: string): string | null {
+    const colors = [
+      '黑', '白', '蓝', '红', '绿', '紫', '粉', '金', '银', '灰',
+      '墨黛', '雾凇', '雾松', '星空', '极光', '钛', '午夜', '星光'
+    ];
+    
+    const lowerStr = str.toLowerCase();
+    for (const color of colors) {
+      if (lowerStr.includes(color)) {
+        return color;
+      }
+    }
+    
+    return null;
+  }
+
+  // 计算相似度（改进版）
   calculateSimilarity(str1: string, str2: string): number {
     const normalized1 = this.normalize(str1);
     const normalized2 = this.normalize(str2);
 
     if (normalized1 === normalized2) return 1.0;
-    if (normalized2.includes(normalized1) || normalized1.includes(normalized2)) {
-      return 0.8;
-    }
-
-    // 简单的关键词匹配
-    const words1 = normalized1.match(/[\u4e00-\u9fa5]+|[a-z0-9]+/gi) || [];
-    const words2 = normalized2.match(/[\u4e00-\u9fa5]+|[a-z0-9]+/gi) || [];
     
-    let matchCount = 0;
-    for (const word of words1) {
-      if (words2.some(w => w.includes(word) || word.includes(w))) {
-        matchCount++;
+    // 提取关键信息
+    const brand1 = this.extractBrand(str1);
+    const brand2 = this.extractBrand(str2);
+    const model1 = this.extractModel(str1);
+    const model2 = this.extractModel(str2);
+    const capacity1 = this.extractCapacity(str1);
+    const capacity2 = this.extractCapacity(str2);
+    const color1 = this.extractColor(str1);
+    const color2 = this.extractColor(str2);
+    
+    let score = 0;
+    let totalWeight = 0;
+    
+    // 品牌匹配（权重40%）
+    if (brand1 && brand2) {
+      totalWeight += 0.4;
+      if (brand1 === brand2) {
+        score += 0.4;
+      } else {
+        // 品牌不匹配，直接返回低分
+        return 0.2;
       }
     }
-
-    return words1.length > 0 ? matchCount / words1.length : 0;
+    
+    // 型号匹配（权重40%）- 最关键
+    if (model1 && model2) {
+      totalWeight += 0.4;
+      if (model1 === model2) {
+        score += 0.4;
+      } else {
+        // 型号不匹配，大幅降低分数
+        // 例如：Y300i vs Y3 应该被拒绝
+        return 0.3;
+      }
+    }
+    
+    // 容量匹配（权重15%）
+    if (capacity1 && capacity2) {
+      totalWeight += 0.15;
+      if (capacity1 === capacity2) {
+        score += 0.15;
+      }
+    }
+    
+    // 颜色匹配（权重5%）
+    if (color1 && color2) {
+      totalWeight += 0.05;
+      if (color1 === color2 || 
+          (color1.includes('雾凇') && color2.includes('雾松')) ||
+          (color1.includes('雾松') && color2.includes('雾凇'))) {
+        score += 0.05;
+      }
+    }
+    
+    // 如果没有足够的信息进行匹配，使用基础字符串相似度
+    if (totalWeight < 0.5) {
+      if (normalized2.includes(normalized1) || normalized1.includes(normalized2)) {
+        return 0.6;
+      }
+      
+      // 简单的关键词匹配
+      const words1 = normalized1.match(/[\u4e00-\u9fa5]+|[a-z0-9]+/gi) || [];
+      const words2 = normalized2.match(/[\u4e00-\u9fa5]+|[a-z0-9]+/gi) || [];
+      
+      let matchCount = 0;
+      for (const word of words1) {
+        if (words2.some(w => w.includes(word) || word.includes(w))) {
+          matchCount++;
+        }
+      }
+      
+      return words1.length > 0 ? matchCount / words1.length * 0.7 : 0;
+    }
+    
+    return totalWeight > 0 ? score / totalWeight : 0;
   }
 
   // 查找最佳匹配
