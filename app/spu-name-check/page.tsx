@@ -67,7 +67,7 @@ function checkSPUNaming(spu: Pick<SPU, 'name' | 'brand'>, brandList: string[]): 
 
   // 特殊品牌处理：Apple 品牌的产品使用 iPhone/iPad/MacBook 等开头
   const appleProductPrefixes = ['iPhone', 'iPad', 'MacBook', 'iMac', 'Mac', 'AirPods', 'Apple Watch', 'Apple TV'];
-  const isAppleBrand = brand.toLowerCase() === 'apple';
+  const isAppleBrand = brand.toLowerCase() === 'apple' || brand === '苹果';
   
   if (isAppleBrand) {
     // Apple 品牌：检查是否以 Apple 产品系列名开头
@@ -759,11 +759,11 @@ export default function () {
   };
 
   // 批量选择具有相同问题的 SPU
-  const handleSelectByIssueType = (issueType: NamingIssue['type']) => {
+  const handleSelectByIssueType = (issueType: NamingIssue['type'], issueMessage: string) => {
     if (!list) return;
     
     const spusWithIssue = list
-      .filter(spu => spu.issues.some(issue => issue.type === issueType))
+      .filter(spu => spu.issues.some(issue => issue.type === issueType && issue.message === issueMessage))
       .map(spu => spu.id);
     
     setSelectedRowKeys(spusWithIssue);
@@ -991,7 +991,7 @@ export default function () {
                                 style={{ marginRight: 0, cursor: 'pointer' }}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleSelectByIssueType(issue.type);
+                                  handleSelectByIssueType(issue.type, issue.message);
                                 }}
                                 title="点击选择所有具有此问题的 SPU"
                               >
