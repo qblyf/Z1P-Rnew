@@ -64,7 +64,7 @@ class SimpleMatcher {
     const lowerStr = str.toLowerCase();
     
     // 先尝试匹配常见的完整型号格式
-    // Y300Pro+, Y300i, Y300, Y3, X Note, Mate60, iPhone15等
+    // Y300Pro+, Y300i, Y300, Y50, Y3, X Note, Mate60, iPhone15等
     
     // 1. 匹配复杂型号：字母+数字+Pro/Max/Plus/Ultra等+可选的+号
     // 例如：Y300Pro+, Y300Pro, Mate60Pro, iPhone15ProMax
@@ -85,18 +85,33 @@ class SimpleMatcher {
       }
     }
     
-    // 2. 匹配简单型号：字母+数字+可选字母（如 Y300i, Y3, Mate60）
+    // 2. 匹配简单型号：字母+数字+可选字母（如 Y300i, Y50, Y3, Mate60）
     const simpleModelPattern = /\b([a-z])(\d+)([a-z]*)\b/gi;
     const simpleMatches = lowerStr.match(simpleModelPattern);
     
     if (simpleMatches && simpleMatches.length > 0) {
-      // 过滤掉容量相关的匹配（如 5g, 4gb）
+      // 过滤掉容量和网络制式相关的匹配
       const filtered = simpleMatches.filter(m => {
         const lower = m.toLowerCase();
-        return !lower.includes('gb') && 
-               !lower.includes('g') && 
-               !lower.endsWith('g') &&
-               !/^\d+g$/.test(lower);
+        // 排除：5g, 4g, 8gb, 256gb 等
+        // 但保留：y50, y3, mate60 等
+        
+        // 如果是纯数字+g的格式（如5g, 4g），排除
+        if (/^\d+g$/.test(lower)) {
+          return false;
+        }
+        
+        // 如果包含gb，排除
+        if (lower.includes('gb')) {
+          return false;
+        }
+        
+        // 如果是单个字母+g（如g5），排除
+        if (/^[a-z]g$/.test(lower)) {
+          return false;
+        }
+        
+        return true;
       });
       
       if (filtered.length > 0) {
