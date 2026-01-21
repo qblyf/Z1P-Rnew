@@ -5,6 +5,7 @@ import { Search, Loader2, CheckCircle, XCircle, Download, Settings } from 'lucid
 import { Card, Input, Button, Table, Tag, Space, message, Spin, Checkbox, Dropdown } from 'antd';
 import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { SKUState, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
+import { getBrandBaseList } from '@zsqk/z1-sdk/es/z1p/brand';
 
 interface MatchResult {
   inputName: string;
@@ -35,6 +36,13 @@ interface SKUData {
   memory?: string;
   color?: string;
   gtins?: string[];
+}
+
+interface BrandData {
+  name: string;
+  color: string;
+  spell?: string;
+  order?: number;
 }
 
 // 简化的匹配算法
@@ -602,6 +610,7 @@ export function SmartMatchComponent() {
   const [loadingSPU, setLoadingSPU] = useState(true);
   const [results, setResults] = useState<MatchResult[]>([]);
   const [spuList, setSPUList] = useState<SPUData[]>([]);
+  const [brandList, setBrandList] = useState<BrandData[]>([]); // 品牌列表
   const [colorList, setColorList] = useState<string[]>([]); // 动态颜色列表
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -617,6 +626,20 @@ export function SmartMatchComponent() {
   const [columnDropdownVisible, setColumnDropdownVisible] = useState(false);
   const [tempVisibleColumns, setTempVisibleColumns] = useState<string[]>(visibleColumns);
   const matcher = new SimpleMatcher();
+
+  // 加载品牌数据
+  useEffect(() => {
+    const loadBrandData = async () => {
+      try {
+        const brands = await getBrandBaseList();
+        setBrandList(brands);
+        console.log('已加载品牌数据:', brands.length, '个品牌');
+      } catch (error) {
+        console.error('加载品牌数据失败:', error);
+      }
+    };
+    loadBrandData();
+  }, []);
 
   // 加载所有SPU数据并从SPU的颜色规格中提取颜色
   useEffect(() => {
@@ -955,7 +978,11 @@ export function SmartMatchComponent() {
       dataIndex: 'matchedBrand',
       key: 'matchedBrand',
       width: 120,
-      render: (text: string | null) => text ? <Tag color="orange">{text}</Tag> : '-',
+      render: (text: string | null) => {
+        if (!text) return '-';
+        const brand = brandList.find(b => b.name === text);
+        return brand ? <Tag color={brand.color}>{brand.name}</Tag> : <Tag color="orange">{text}</Tag>;
+      },
     },
     {
       title: '69码',
