@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Loader2, CheckCircle, XCircle, Download } from 'lucide-react';
-import { Card, Input, Button, Table, Tag, Space, message, Spin } from 'antd';
+import { Search, Loader2, CheckCircle, XCircle, Download, Settings } from 'lucide-react';
+import { Card, Input, Button, Table, Tag, Space, message, Spin, Checkbox, Dropdown } from 'antd';
 import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { SKUState, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 
@@ -11,6 +11,10 @@ interface MatchResult {
   matchedSKU: string | null;
   matchedSPU: string | null;
   matchedBrand: string | null;
+  matchedVersion: string | null; // 版本
+  matchedMemory: string | null; // 内存
+  matchedColor: string | null; // 颜色
+  matchedGtins: string[]; // 69码数组
   similarity: number;
   status: 'matched' | 'unmatched' | 'spu-matched'; // 添加 SPU 已匹配但 SKU 未匹配的状态
 }
@@ -27,6 +31,10 @@ interface SKUData {
   spuID?: number;
   spuName?: string;
   brand?: string;
+  version?: string;
+  memory?: string;
+  color?: string;
+  gtins?: string[];
 }
 
 // 简化的匹配算法
@@ -497,6 +505,15 @@ export function SmartMatchComponent() {
   const [spuList, setSPUList] = useState<SPUData[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([
+    'inputName',
+    'matchedSPU',
+    'specs',
+    'matchedSKU',
+    'matchedBrand',
+    'matchedGtins',
+    'statusAndSimilarity',
+  ]);
   const matcher = new SimpleMatcher();
 
   // 加载所有SPU数据
@@ -562,6 +579,10 @@ export function SmartMatchComponent() {
             matchedSKU: null,
             matchedSPU: null,
             matchedBrand: null,
+            matchedVersion: null,
+            matchedMemory: null,
+            matchedColor: null,
+            matchedGtins: [],
             similarity: 0,
             status: 'unmatched' as const,
           }]);
@@ -574,6 +595,10 @@ export function SmartMatchComponent() {
           matchedSKU: null,
           matchedSPU: matchedSPU.name,
           matchedBrand: matchedSPU.brand || null,
+          matchedVersion: null,
+          matchedMemory: null,
+          matchedColor: null,
+          matchedGtins: [],
           similarity: spuSimilarity,
           status: 'spu-matched' as const,
         };
@@ -590,7 +615,11 @@ export function SmartMatchComponent() {
           if (skuIDs.length === 0) {
             // 该SPU没有SKU，更新为未匹配
             setResults(prev => prev.map((r, idx) => 
-              idx === prev.length - 1 ? { ...r, status: 'unmatched' as const } : r
+              idx === prev.length - 1 ? { 
+                ...r, 
+                status: 'unmatched' as const,
+                matchedGtins: [],
+              } : r
             ));
             continue;
           }
@@ -601,20 +630,34 @@ export function SmartMatchComponent() {
           // 转换为 SKUData 格式
           const skuData: SKUData[] = skuDetails
             .filter(sku => !('errInfo' in sku) && sku.state === SKUState.在用)
-            .map(sku => ({
-              id: sku.id,
-              name: sku.name,
-              spuID: matchedSPU.id,
-              spuName: matchedSPU.name,
-              brand: matchedSPU.brand,
-            }));
+            .map(sku => {
+              // 从 SKU 名称中提取规格信息
+              const capacity = matcher.extractCapacity(sku.name);
+              const color = matcher.extractColor(sku.name);
+              
+              return {
+                id: sku.id,
+                name: sku.name,
+                spuID: matchedSPU.id,
+                spuName: matchedSPU.name,
+                brand: matchedSPU.brand,
+                version: undefined, // SKU 中没有版本字段，可以从名称提取
+                memory: capacity || undefined, // 使用容量作为内存
+                color: color || undefined,
+                gtins: sku.gtins || [],
+              };
+            });
           
           console.log(`SPU ${matchedSPU.name} 的在用SKU数量:`, skuData.length);
           
           if (skuData.length === 0) {
             // 该SPU没有在用的SKU，更新为未匹配
             setResults(prev => prev.map((r, idx) => 
-              idx === prev.length - 1 ? { ...r, status: 'unmatched' as const } : r
+              idx === prev.length - 1 ? { 
+                ...r, 
+                status: 'unmatched' as const,
+                matchedGtins: [],
+              } : r
             ));
             continue;
           }
@@ -634,6 +677,10 @@ export function SmartMatchComponent() {
               idx === prev.length - 1 ? {
                 ...r,
                 matchedSKU: matchedSKU.name || null,
+                matchedVersion: matchedSKU.version || null,
+                matchedMemory: matchedSKU.memory || null,
+                matchedColor: matchedSKU.color || null,
+                matchedGtins: matchedSKU.gtins || [],
                 similarity: finalSimilarity,
                 status: 'matched' as const,
               } : r
@@ -641,14 +688,22 @@ export function SmartMatchComponent() {
           } else {
             // SKU参数未匹配，保持 SPU 已匹配状态
             setResults(prev => prev.map((r, idx) => 
-              idx === prev.length - 1 ? { ...r, status: 'unmatched' as const } : r
+              idx === prev.length - 1 ? { 
+                ...r, 
+                status: 'unmatched' as const,
+                matchedGtins: [],
+              } : r
             ));
           }
         } catch (error) {
           console.error('加载SKU失败:', error);
           // 更新为未匹配
           setResults(prev => prev.map((r, idx) => 
-            idx === prev.length - 1 ? { ...r, status: 'unmatched' as const } : r
+            idx === prev.length - 1 ? { 
+              ...r, 
+              status: 'unmatched' as const,
+              matchedGtins: [],
+            } : r
           ));
         }
       }
@@ -679,13 +734,17 @@ export function SmartMatchComponent() {
     }
 
     const csvContent = [
-      ['输入商品名称', '匹配状态', '匹配的SKU', '匹配的SPU', '品牌', '相似度'],
+      ['输入商品名称', '匹配状态', '匹配的SPU', '版本', '内存', '颜色', '匹配的SKU', '品牌', '69码', '相似度'],
       ...results.map(r => [
         r.inputName,
         r.status === 'matched' ? '已匹配' : '未匹配',
-        r.matchedSKU || '-',
         r.matchedSPU || '-',
+        r.matchedVersion || '-',
+        r.matchedMemory || '-',
+        r.matchedColor || '-',
+        r.matchedSKU || '-',
         r.matchedBrand || '-',
+        r.matchedGtins.join('; ') || '-',
         r.status === 'matched' ? `${(r.similarity * 100).toFixed(0)}%` : '-',
       ])
     ].map(row => row.join(',')).join('\n');
@@ -698,27 +757,90 @@ export function SmartMatchComponent() {
     message.success('导出成功');
   };
 
-  const columns = [
+  // 定义所有可用的列
+  const allColumns = [
     {
       title: '输入商品名称',
       dataIndex: 'inputName',
       key: 'inputName',
-      width: 300,
+      width: 250,
       fixed: 'left' as const,
     },
     {
-      title: '匹配状态',
-      dataIndex: 'status',
-      key: 'status',
+      title: '匹配的SPU',
+      dataIndex: 'matchedSPU',
+      key: 'matchedSPU',
+      width: 200,
+      render: (text: string | null) => text || '-',
+    },
+    {
+      title: '规格标签',
+      key: 'specs',
+      width: 250,
+      render: (_: unknown, record: MatchResult) => {
+        if (record.status === 'spu-matched') {
+          return <span className="text-gray-400">正在匹配...</span>;
+        }
+        const specs = [];
+        if (record.matchedVersion) specs.push(<Tag key="version" color="blue">{record.matchedVersion}</Tag>);
+        if (record.matchedMemory) specs.push(<Tag key="memory" color="green">{record.matchedMemory}</Tag>);
+        if (record.matchedColor) specs.push(<Tag key="color" color="purple">{record.matchedColor}</Tag>);
+        return specs.length > 0 ? <Space size={4}>{specs}</Space> : '-';
+      },
+    },
+    {
+      title: '匹配的SKU',
+      dataIndex: 'matchedSKU',
+      key: 'matchedSKU',
+      width: 250,
+      render: (text: string | null, record: MatchResult) => {
+        if (record.status === 'spu-matched') {
+          return <span className="text-gray-400">正在匹配SKU...</span>;
+        }
+        return text || '-';
+      },
+    },
+    {
+      title: '品牌',
+      dataIndex: 'matchedBrand',
+      key: 'matchedBrand',
       width: 120,
-      render: (status: string) => {
-        if (status === 'matched') {
+      render: (text: string | null) => text ? <Tag color="orange">{text}</Tag> : '-',
+    },
+    {
+      title: '69码',
+      dataIndex: 'matchedGtins',
+      key: 'matchedGtins',
+      width: 200,
+      render: (gtins: string[]) => {
+        if (!gtins || gtins.length === 0) return '-';
+        return (
+          <div className="flex flex-col gap-1">
+            {gtins.map((gtin, idx) => (
+              <span key={idx} className="text-xs font-mono">{gtin}</span>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
+      title: '状态/相似度',
+      key: 'statusAndSimilarity',
+      width: 140,
+      fixed: 'right' as const,
+      render: (_: unknown, record: MatchResult) => {
+        if (record.status === 'matched') {
           return (
-            <Tag icon={<CheckCircle size={14} />} color="success">
-              已匹配
-            </Tag>
+            <Space direction="vertical" size={4}>
+              <Tag icon={<CheckCircle size={14} />} color="success">
+                已匹配
+              </Tag>
+              <Tag color={record.similarity >= 0.8 ? 'green' : record.similarity >= 0.6 ? 'orange' : 'red'}>
+                {(record.similarity * 100).toFixed(0)}%
+              </Tag>
+            </Space>
           );
-        } else if (status === 'spu-matched') {
+        } else if (record.status === 'spu-matched') {
           return (
             <Tag icon={<Loader2 size={14} className="animate-spin" />} color="processing">
               匹配中...
@@ -733,53 +855,10 @@ export function SmartMatchComponent() {
         }
       },
     },
-    {
-      title: '匹配的SKU',
-      dataIndex: 'matchedSKU',
-      key: 'matchedSKU',
-      width: 300,
-      render: (text: string | null, record: MatchResult) => {
-        if (record.status === 'spu-matched') {
-          return <span className="text-gray-400">正在匹配SKU...</span>;
-        }
-        return text || '-';
-      },
-    },
-    {
-      title: '匹配的SPU',
-      dataIndex: 'matchedSPU',
-      key: 'matchedSPU',
-      width: 200,
-      render: (text: string | null) => text || '-',
-    },
-    {
-      title: '品牌',
-      dataIndex: 'matchedBrand',
-      key: 'matchedBrand',
-      width: 120,
-      render: (text: string | null) => text || '-',
-    },
-    {
-      title: '相似度',
-      dataIndex: 'similarity',
-      key: 'similarity',
-      width: 100,
-      fixed: 'right' as const,
-      render: (similarity: number, record: MatchResult) => {
-        if (record.status === 'spu-matched') {
-          return <span className="text-gray-400">-</span>;
-        }
-        if (record.status === 'matched') {
-          return (
-            <Tag color={similarity >= 0.8 ? 'green' : similarity >= 0.6 ? 'orange' : 'red'}>
-              {(similarity * 100).toFixed(0)}%
-            </Tag>
-          );
-        }
-        return '-';
-      },
-    },
   ];
+
+  // 根据 visibleColumns 过滤列
+  const columns = allColumns.filter(col => visibleColumns.includes(col.key));
 
   if (loadingSPU) {
     return (
@@ -866,13 +945,145 @@ export function SmartMatchComponent() {
                     </Tag>
                   </div>
                 </div>
-                <Button
-                  icon={<Download size={16} />}
-                  onClick={exportResults}
-                  size="small"
-                >
-                  导出CSV
-                </Button>
+                <Space>
+                  <Dropdown
+                    menu={{
+                      items: [
+                        {
+                          key: 'inputName',
+                          label: (
+                            <Checkbox
+                              checked={visibleColumns.includes('inputName')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setVisibleColumns([...visibleColumns, 'inputName']);
+                                } else {
+                                  setVisibleColumns(visibleColumns.filter(c => c !== 'inputName'));
+                                }
+                              }}
+                            >
+                              输入商品名称
+                            </Checkbox>
+                          ),
+                        },
+                        {
+                          key: 'matchedSPU',
+                          label: (
+                            <Checkbox
+                              checked={visibleColumns.includes('matchedSPU')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setVisibleColumns([...visibleColumns, 'matchedSPU']);
+                                } else {
+                                  setVisibleColumns(visibleColumns.filter(c => c !== 'matchedSPU'));
+                                }
+                              }}
+                            >
+                              匹配的SPU
+                            </Checkbox>
+                          ),
+                        },
+                        {
+                          key: 'specs',
+                          label: (
+                            <Checkbox
+                              checked={visibleColumns.includes('specs')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setVisibleColumns([...visibleColumns, 'specs']);
+                                } else {
+                                  setVisibleColumns(visibleColumns.filter(c => c !== 'specs'));
+                                }
+                              }}
+                            >
+                              规格标签
+                            </Checkbox>
+                          ),
+                        },
+                        {
+                          key: 'matchedSKU',
+                          label: (
+                            <Checkbox
+                              checked={visibleColumns.includes('matchedSKU')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setVisibleColumns([...visibleColumns, 'matchedSKU']);
+                                } else {
+                                  setVisibleColumns(visibleColumns.filter(c => c !== 'matchedSKU'));
+                                }
+                              }}
+                            >
+                              匹配的SKU
+                            </Checkbox>
+                          ),
+                        },
+                        {
+                          key: 'matchedBrand',
+                          label: (
+                            <Checkbox
+                              checked={visibleColumns.includes('matchedBrand')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setVisibleColumns([...visibleColumns, 'matchedBrand']);
+                                } else {
+                                  setVisibleColumns(visibleColumns.filter(c => c !== 'matchedBrand'));
+                                }
+                              }}
+                            >
+                              品牌
+                            </Checkbox>
+                          ),
+                        },
+                        {
+                          key: 'matchedGtins',
+                          label: (
+                            <Checkbox
+                              checked={visibleColumns.includes('matchedGtins')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setVisibleColumns([...visibleColumns, 'matchedGtins']);
+                                } else {
+                                  setVisibleColumns(visibleColumns.filter(c => c !== 'matchedGtins'));
+                                }
+                              }}
+                            >
+                              69码
+                            </Checkbox>
+                          ),
+                        },
+                        {
+                          key: 'statusAndSimilarity',
+                          label: (
+                            <Checkbox
+                              checked={visibleColumns.includes('statusAndSimilarity')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setVisibleColumns([...visibleColumns, 'statusAndSimilarity']);
+                                } else {
+                                  setVisibleColumns(visibleColumns.filter(c => c !== 'statusAndSimilarity'));
+                                }
+                              }}
+                            >
+                              状态/相似度
+                            </Checkbox>
+                          ),
+                        },
+                      ],
+                    }}
+                    trigger={['click']}
+                  >
+                    <Button icon={<Settings size={16} />} size="small">
+                      显示列
+                    </Button>
+                  </Dropdown>
+                  <Button
+                    icon={<Download size={16} />}
+                    onClick={exportResults}
+                    size="small"
+                  >
+                    导出CSV
+                  </Button>
+                </Space>
               </div>
             }
           >

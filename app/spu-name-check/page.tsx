@@ -395,12 +395,20 @@ function QueryForm(props: {
               value={selectedCatePath}
               onChange={(value) => {
                 setSelectedCatePath(value as number[]);
-                if (!value || value.length === 0 || value[0] === 0) {
+                if (!value || value.length === 0) {
+                  // 没有选择任何分类
+                  setSpuCateIDs(undefined);
+                } else if (value.length === 1 && value[0] === 0) {
+                  // 只选择了"全部分类"
                   setSpuCateIDs(undefined);
                 } else {
-                  // 使用最后一级的分类 ID
+                  // 使用最后一级的分类 ID（跳过"全部分类"这一级）
                   const lastId = value[value.length - 1] as number;
-                  setSpuCateIDs([lastId]);
+                  if (lastId === 0) {
+                    setSpuCateIDs(undefined);
+                  } else {
+                    setSpuCateIDs([lastId]);
+                  }
                 }
               }}
               placeholder="请选择 SPU 分类"
