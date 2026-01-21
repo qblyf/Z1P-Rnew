@@ -388,6 +388,7 @@ function BrandEdit(props: { name: string; onSuccess?: () => void }) {
   const { name, onSuccess } = props;
 
   const [input, setInput] = useState<{
+    name?: string;
     spell?: string;
     order?: number;
     color?: string;
@@ -422,12 +423,17 @@ function BrandEdit(props: { name: string; onSuccess?: () => void }) {
 
   return (
     <Form layout="vertical" style={{ marginTop: 8 }}>
-      <Form.Item label="品牌名称">
+      <Form.Item 
+        label="品牌名称" 
+        tooltip="修改品牌名称后，系统中所有引用该品牌的地方都会更新"
+      >
         <Input 
-          value={name} 
-          disabled 
+          value={input.name ?? preData.name} 
+          onChange={e => {
+            setInput(update(input, { name: { $set: e.target.value } }));
+          }}
+          placeholder="输入品牌名称"
           style={{ 
-            backgroundColor: '#fafafa',
             borderRadius: 8,
           }} 
         />
@@ -504,8 +510,13 @@ function BrandEdit(props: { name: string; onSuccess?: () => void }) {
           loading={loading}
           block
           size="large"
+          disabled={input.name !== undefined && !input.name.trim()}
           style={{ borderRadius: 8 }}
           onClick={postAwait(async () => {
+            if (input.name !== undefined && !input.name.trim()) {
+              message.warning('品牌名称不能为空');
+              return;
+            }
             setLoading(true);
             try {
               await editBrandInfo(name, { ...input }, { auth: token });
