@@ -1,13 +1,12 @@
 'use client';
 import { SPU, SPUCateID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { getSPUListNew } from '@zsqk/z1-sdk/es/z1p/product';
-import { Button, Col, Form, Input, Row, Select, Table } from 'antd';
-import { useState } from 'react';
+import { getSPUListNew, getSPUCateBaseList } from '@zsqk/z1-sdk/es/z1p/product';
+import { Button, Col, Form, Input, Row, Select, Table, Cascader } from 'antd';
+import { useState, useEffect, useMemo } from 'react';
 import update from 'immutability-helper';
 import Head from 'next/head';
 import { PageHeader } from '@ant-design/pro-components';
 
-import { SelectSPUCate } from '../../components/SelectSPUCate';
 import { SelectBrands } from '../../components/SelectBrands';
 import { Content } from '../../components/style/Content';
 import { formColProps, formItemCol } from '../../constant/formProps';
@@ -17,6 +16,46 @@ import { SPUCateListProvider } from '../../datahooks/product';
 import { RenderSPUState } from '../../components/render/RenderSPU';
 import { usePermission } from '../../datahooks/permission';
 import PageWrap from '../../components/PageWrap';
+
+type SPUCateData = Awaited<ReturnType<typeof getSPUCateBaseList>>[0];
+
+interface CascaderOption {
+  value: number;
+  label: string;
+  children?: CascaderOption[];
+}
+
+/**
+ * 将 SPU 分类数据转换为级联选择器的树形结构
+ */
+function buildCascaderOptions(cates: SPUCateData[]): CascaderOption[] {
+  if (!cates.length) {
+    return [];
+  }
+
+  const cateMap = cates.map((cate) => ({
+    value: cate.id,
+    label: `${cate.name} (${cate.id})`,
+    pid: cate.pid,
+    children: [] as CascaderOption[],
+  }));
+
+  function buildTree(pid: number, data: typeof cateMap): CascaderOption[] {
+    return data.reduce((acc, item) => {
+      if (item.pid === pid) {
+        const children = buildTree(item.value, data);
+        acc.push({
+          value: item.value,
+          label: item.label,
+          ...(children.length > 0 ? { children } : {}),
+        });
+      }
+      return acc;
+    }, [] as CascaderOption[]);
+  }
+
+  return buildTree(0, cateMap);
+}
 
 /**
  * [页面组件] SPU 列表 的搜索过滤框
@@ -40,6 +79,29 @@ function QueryForm(props: {
   const [isLonely, setIsLonely] = useState<'nofilter' | 'lonely' | 'linked'>(
     'nofilter'
   );
+  const [cates, setCates] = useState<SPUCateData[]>([]);
+  const [selectedCatePath, setSelectedCatePath] = useState<number[]>();
+
+  // 加载 SPU 分类数据
+  useEffect(() => {
+    const loadCates = async () => {
+      const res = await getSPUCateBaseList();
+      setCates(res);
+    };
+    loadCates();
+  }, []);
+
+  // 构建级联选择器选项
+  const cascaderOptions = useMemo(() => {
+    const options = buildCascaderOptions(cates);
+    return [
+      {
+        value: 0,
+        label: '全部分类',
+        children: options,
+      },
+    ];
+  }, [cates]);
 
   return (
     <Form {...formColProps}>
@@ -59,14 +121,32 @@ function QueryForm(props: {
 
         <Col {...formItemCol}>
           <Form.Item label="SPU 分类" tooltip="选择 SPU 分类">
-            <SelectSPUCate
-              onSelect={v => {
-                if (v === 0) {
+            <Cascader
+              options={cascaderOptions}
+              value={selectedCatePath}
+              onChange={(value) => {
+                setSelectedCatePath(value as number[]);
+                if (!value || value.length === 0 || value[0] === 0) {
                   setSpuCateIDs(undefined);
-                  return;
+                } else {
+                  // 使用最后一级的分类 ID
+                  const lastId = value[value.length - 1] as number;
+                  setSpuCateIDs([lastId]);
                 }
-                setSpuCateIDs([v]);
               }}
+              placeholder="请选择 SPU 分类"
+              showSearch={{
+                filter: (inputValue, path) =>
+                  path.some(
+                    (option) =>
+                      option.label
+                        ?.toString()
+                        .toLowerCase()
+                        .indexOf(inputValue.toLowerCase()) > -1
+                  ),
+              }}
+              changeOnSelect
+              style={{ width: '100%' }}
             />
           </Form.Item>
         </Col>
