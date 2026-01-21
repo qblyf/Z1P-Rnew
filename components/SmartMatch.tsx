@@ -221,9 +221,9 @@ class SimpleMatcher {
     return null;
   }
 
-  // 提取颜色
+  // 提取颜色（改进版：使用多种方法）
   extractColor(str: string): string | null {
-    // 优先使用动态颜色列表
+    // 方法1：优先使用动态颜色列表（从实际数据中提取的）
     if (this.dynamicColors.length > 0) {
       for (const color of this.dynamicColors) {
         if (str.includes(color)) {
@@ -232,9 +232,27 @@ class SimpleMatcher {
       }
     }
     
-    // 如果动态列表没有匹配，使用基础颜色作为后备
-    const basicColors = ['黑', '白', '蓝', '红', '绿', '紫', '粉', '金', '银', '灰'];
+    // 方法2：从字符串末尾提取颜色（通常颜色在最后）
+    // 例如：vivo Y500 全网通5G 12GB+512GB 龙晶紫 → 龙晶紫
+    const lastWords = str.match(/[\u4e00-\u9fa5]{2,5}$/);
+    if (lastWords) {
+      const word = lastWords[0];
+      // 排除常见的非颜色词
+      const excludeWords = ['全网通', '网通', '版本', '标准', '套餐'];
+      if (!excludeWords.includes(word)) {
+        return word;
+      }
+    }
     
+    // 方法3：从容量后提取颜色
+    // 例如：12GB+512GB 龙晶紫 → 龙晶紫
+    const afterCapacity = str.match(/\d+GB[+]\d+GB\s*([\u4e00-\u9fa5]{2,5})/);
+    if (afterCapacity && afterCapacity[1]) {
+      return afterCapacity[1];
+    }
+    
+    // 方法4：使用基础颜色作为后备
+    const basicColors = ['黑', '白', '蓝', '红', '绿', '紫', '粉', '金', '银', '灰'];
     for (const color of basicColors) {
       if (str.includes(color)) {
         return color;
@@ -569,14 +587,17 @@ export function SmartMatchComponent() {
               for (const sku of skuDetails) {
                 if ('errInfo' in sku) continue;
                 
-                // 从 SKU 名称中提取最后一个词（通常是颜色）
-                // 例如：vivo Y500 全网通5G 12GB+512GB 龙晶紫 → 龙晶紫
                 const name = sku.name;
                 
                 // 方法1：提取最后2-5个字符（通常是颜色）
                 const lastWords = name.match(/[\u4e00-\u9fa5]{2,5}$/);
                 if (lastWords) {
-                  extractedColors.add(lastWords[0]);
+                  const word = lastWords[0];
+                  // 排除常见的非颜色词
+                  const excludeWords = ['全网通', '网通', '版本', '标准', '套餐'];
+                  if (!excludeWords.includes(word)) {
+                    extractedColors.add(word);
+                  }
                 }
                 
                 // 方法2：提取容量后面的词（通常是颜色）
@@ -584,6 +605,17 @@ export function SmartMatchComponent() {
                 const afterCapacity = name.match(/\d+GB[+]\d+GB\s*([\u4e00-\u9fa5]{2,5})/);
                 if (afterCapacity && afterCapacity[1]) {
                   extractedColors.add(afterCapacity[1]);
+                }
+                
+                // 方法3：提取所有2-5个字符的词，包含基础颜色的
+                const allWords = name.match(/[\u4e00-\u9fa5]{2,5}/g);
+                if (allWords) {
+                  const basicColors = ['黑', '白', '蓝', '红', '绿', '紫', '粉', '金', '银', '灰'];
+                  for (const word of allWords) {
+                    if (basicColors.some(c => word.includes(c))) {
+                      extractedColors.add(word);
+                    }
+                  }
                 }
               }
             }
