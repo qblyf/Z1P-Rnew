@@ -513,13 +513,14 @@ export function SmartMatchComponent() {
       title: '输入商品名称',
       dataIndex: 'inputName',
       key: 'inputName',
-      width: '25%',
+      width: 300,
+      fixed: 'left' as const,
     },
     {
       title: '匹配状态',
       dataIndex: 'status',
       key: 'status',
-      width: '10%',
+      width: 120,
       render: (status: string) => (
         status === 'matched' ? (
           <Tag icon={<CheckCircle size={14} />} color="success">
@@ -536,28 +537,29 @@ export function SmartMatchComponent() {
       title: '匹配的SKU',
       dataIndex: 'matchedSKU',
       key: 'matchedSKU',
-      width: '25%',
+      width: 300,
       render: (text: string | null) => text || '-',
     },
     {
       title: '匹配的SPU',
       dataIndex: 'matchedSPU',
       key: 'matchedSPU',
-      width: '15%',
+      width: 200,
       render: (text: string | null) => text || '-',
     },
     {
       title: '品牌',
       dataIndex: 'matchedBrand',
       key: 'matchedBrand',
-      width: '10%',
+      width: 120,
       render: (text: string | null) => text || '-',
     },
     {
       title: '相似度',
       dataIndex: 'similarity',
       key: 'similarity',
-      width: '10%',
+      width: 100,
+      fixed: 'right' as const,
       render: (similarity: number, record: MatchResult) => (
         record.status === 'matched' ? (
           <Tag color={similarity >= 0.8 ? 'green' : similarity >= 0.6 ? 'orange' : 'red'}>
@@ -651,16 +653,19 @@ export function SmartMatchComponent() {
               未匹配：{results.filter(r => r.status === 'unmatched').length} 条
             </Tag>
           </div>
-          <Table
-            columns={columns}
-            dataSource={results}
-            rowKey={(record, index) => `${record.inputName}-${index}`}
-            pagination={{
-              pageSize: 20,
-              showSizeChanger: true,
-              showTotal: (total) => `共 ${total} 条记录`,
-            }}
-          />
+          <div className="overflow-x-auto">
+            <Table
+              columns={columns}
+              dataSource={results}
+              rowKey={(record, index) => `${record.inputName}-${index}`}
+              scroll={{ x: 'max-content' }}
+              pagination={{
+                pageSize: 20,
+                showSizeChanger: true,
+                showTotal: (total) => `共 ${total} 条记录`,
+              }}
+            />
+          </div>
         </Card>
       )}
     </div>
