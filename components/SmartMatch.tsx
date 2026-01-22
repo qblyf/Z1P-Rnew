@@ -2298,3 +2298,6 @@ export function SmartMatchComponent() {
     </div>
   );
 }
+
+// 导出 SimpleMatcher 类供其他组件使用
+export { SimpleMatcher };

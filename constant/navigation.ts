@@ -56,6 +56,11 @@ export const MENU_CONFIG: MenuItem[] = [
         label: '在线匹配',
         href: '/smart-match',
       },
+      {
+        id: 'table-match',
+        label: '表格匹配',
+        href: '/table-match',
+      },
     ],
   },
   {
