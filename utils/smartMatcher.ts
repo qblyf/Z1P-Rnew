@@ -371,7 +371,7 @@ export class SimpleMatcher {
     };
     
     for (const [chinese, english] of Object.entries(chineseBrandMap)) {
-      lowerStr = lowerStr.replace(new RegExp(chinese, 'g'), english);
+      lowerStr = lowerStr.replace(new RegExp(chinese, 'g'), ' ' + english + ' ');
     }
     
     // 移除括号内容
@@ -392,7 +392,39 @@ export class SimpleMatcher {
       normalizedStr = normalizedStr.replace(regex, to);
     });
     
-    // 优先级1: 字母+字母格式
+    // 优先级1: 平板特殊处理 - 提取 MatePad/iPad 等平板型号
+    // 对于平板，型号通常是 "MatePad" + 可选的版本/尺寸信息
+    // 改进：支持中文字符混合的情况（如 "MatePad鸿蒙"）和年份信息（如 "MatePad 2026"）
+    const tabletModelPattern = /\b(matepad|ipad|pad)(?:[a-z]*)?(?:[\u4e00-\u9fa5]*)?(?:\s*(?:(pro|air|mini|plus|ultra|lite|se|x|m|t|s)?(?:\s+(\d+))?)?)?/gi;
+    const tabletMatches = normalizedStr.match(tabletModelPattern);
+    if (tabletMatches && tabletMatches.length > 0) {
+      // 对于平板，返回完整的型号（包括 Pro/Air 等后缀）
+      let tabletModel = tabletMatches[0].toLowerCase().trim();
+      // 移除中文字符
+      tabletModel = tabletModel.replace(/[\u4e00-\u9fa5]/g, '').trim();
+      tabletModel = tabletModel.replace(/\s+/g, '');
+      
+      // 检查是否有年份信息（4位数字）
+      const yearPattern = /\b(\d{4})\b/g;
+      const yearMatches = normalizedStr.match(yearPattern);
+      if (yearMatches && yearMatches.length > 0) {
+        // 过滤掉容量相关的数字（如 8+128）
+        const validYears = yearMatches.filter(year => {
+          const num = parseInt(year);
+          return num >= 2000 && num <= 2100; // 合理的年份范围
+        });
+        if (validYears.length > 0) {
+          tabletModel += validYears[0]; // 添加年份信息
+        }
+      }
+      
+      // 只有当不是纯数字时才返回
+      if (!/^\d+$/.test(tabletModel) && tabletModel.length > 0) {
+        return tabletModel;
+      }
+    }
+    
+    // 优先级2: 字母+字母格式
     const wordModelPattern2 = /\b([a-z])\s+(note|fold|flip|pad)\b/gi;
     const wordModelPattern1 = /\b(watch|band|buds|pad|fold|flip)\s+(gt|se|pro|max|plus|ultra|air|lite|x2|x3|x4|x5|s|\d+|[a-z]+\d*)(?:\s+(?:mini|pro|plus|ultra|air|lite|\d+))?\b/gi;
     
@@ -789,10 +821,23 @@ export class SimpleMatcher {
         
         const priority = this.getSPUPriority(input, spu.name);
         
-        if (score > bestScore || 
-            (score === bestScore && priority > bestPriority) ||
-            (score === bestScore && priority === bestPriority && spu.name.length < (bestMatch?.name.length || Infinity))) {
-          bestScore = score;
+        // 改进：计算关键词匹配数，作为额外的评分因素
+        let keywordMatchCount = 0;
+        const inputTokens = this.tokenize(input);
+        for (const token of inputTokens) {
+          if (token.length > 2 && spu.name.toLowerCase().includes(token)) {
+            keywordMatchCount++;
+          }
+        }
+        
+        // 关键词匹配数越多，分数越高（最多加 0.2 分）
+        const keywordBonus = Math.min(keywordMatchCount * 0.05, 0.2);
+        const finalScore = score + keywordBonus;
+        
+        if (finalScore > bestScore || 
+            (finalScore === bestScore && priority > bestPriority) ||
+            (finalScore === bestScore && priority === bestPriority && keywordMatchCount > (bestMatch ? this.tokenize(bestMatch.name).filter(t => t.length > 2 && input.toLowerCase().includes(t)).length : 0))) {
+          bestScore = finalScore;
           bestMatch = spu;
           bestPriority = priority;
         }
@@ -800,7 +845,9 @@ export class SimpleMatcher {
     }
     
     if (bestMatch && bestScore >= threshold) {
-      return { spu: bestMatch, similarity: bestScore };
+      // 改进：不要立即返回，继续检查第二阶段，看是否有更好的匹配
+      // 只有当分数非常高（>= 0.99）且没有其他候选项时，才立即返回
+      // 否则继续执行第二阶段，看是否有更好的匹配
     }
     
     // 第二阶段：无顺序的分词匹配
@@ -835,8 +882,22 @@ export class SimpleMatcher {
           if (score >= threshold) {
             const priority = this.getSPUPriority(input, spu.name);
             
-            if (score > bestScore || (score === bestScore && priority > bestPriority)) {
-              bestScore = score;
+            // 改进：计算关键词匹配数，作为额外的评分因素
+            let keywordMatchCount = 0;
+            const inputTokens = this.tokenize(input);
+            for (const token of inputTokens) {
+              if (token.length > 2 && spu.name.toLowerCase().includes(token)) {
+                keywordMatchCount++;
+              }
+            }
+            
+            // 关键词匹配数越多，分数越高（最多加 0.2 分）
+            const keywordBonus = Math.min(keywordMatchCount * 0.05, 0.2);
+            const finalScore = score + keywordBonus;
+            
+            if (finalScore > bestScore || 
+                (finalScore === bestScore && priority > bestPriority)) {
+              bestScore = finalScore;
               bestMatch = spu;
               bestPriority = priority;
             }
