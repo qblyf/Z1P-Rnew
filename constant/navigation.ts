@@ -48,12 +48,12 @@ export const MENU_CONFIG: MenuItem[] = [
   },
   {
     id: 'data-match',
-    label: '数据匹配',
+    label: '商品智能匹配',
     icon: 'Search',
     children: [
       {
         id: 'smart-match',
-        label: '智能匹配',
+        label: '在线匹配',
         href: '/smart-match',
       },
     ],
