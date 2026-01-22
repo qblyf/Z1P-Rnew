@@ -395,29 +395,40 @@ class SimpleMatcher {
   preprocessInputAdvanced(input: string): string {
     let processed = input;
     
-    // 1. 处理空格变体
-    // "Reno15" → "Reno 15"
-    processed = processed.replace(/(\D)(\d)/g, '$1 $2');
-    processed = processed.replace(/(\d)([A-Za-z])/g, '$1 $2');
+    // 1. 先移除括号内的容量信息（避免干扰后续处理）
+    // "K13Turbo 5G(12+512)骑士白" → "K13Turbo 5G骑士白"
+    processed = processed.replace(/\s*[\(\(][^\)\)]*[\)\)]/g, '');
     
-    // 2. 处理大小写
-    // 保持首字母大写，其余小写
-    processed = processed.replace(/\b(\w)/g, (match) => match.toUpperCase());
-    
-    // 3. 清理多余空格
-    processed = processed.replace(/\s+/g, ' ').trim();
-    
-    // 4. 处理特殊字符
+    // 2. 处理特殊字符
     // "（" → "(", "）" → ")"
     processed = processed.replace(/[（）]/g, (match) => {
       return match === '（' ? '(' : ')';
     });
     
-    // 5. 移除型号代码（括号内的内容）
-    // "WatchGT6 (WA2456C)" → "WatchGT6"
-    processed = processed.replace(/\s*[\(\(][^\)\)]*[\)\)]/g, '');
+    // 3. 处理空格变体（改进版）
+    // 只在特定情况下添加空格，避免破坏型号和网络制式
     
-    // 6. 清理最终空格
+    // 3.1 处理连写的型号+修饰词（如 K13Turbo → K13 Turbo, Reno15Pro → Reno15 Pro）
+    // 匹配：字母+数字+大写字母开头的单词（至少2个字母）
+    // 注意：不匹配单个大写字母（如 5G 中的 G）
+    processed = processed.replace(/([A-Z])(\d+)([A-Z][a-z]{2,})/g, '$1$2 $3');
+    
+    // 3.2 处理数字+连续大写字母+小写字母（如 Reno15Pro → Reno15 Pro, iPhone15ProMax → iPhone15 Pro Max）
+    // 匹配：数字+大写字母+小写字母
+    processed = processed.replace(/(\d)([A-Z][a-z]+)/g, '$1 $2');
+    
+    // 3.3 处理连写的品牌+型号（如 OppoK13 → Oppo K13）
+    // 匹配：小写字母+大写字母
+    processed = processed.replace(/([a-z])([A-Z])/g, '$1 $2');
+    
+    // 3.4 保护网络制式（5G, 4G, 3G）不被拆分
+    // 不处理 \d+G 的情况
+    
+    // 4. 处理大小写
+    // 保持首字母大写，其余小写
+    processed = processed.replace(/\b(\w)/g, (match) => match.toUpperCase());
+    
+    // 5. 清理多余空格
     processed = processed.replace(/\s+/g, ' ').trim();
     
     return processed;
