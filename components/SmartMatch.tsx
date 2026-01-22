@@ -71,6 +71,33 @@ const MODEL_NORMALIZATIONS: Record<string, string> = {
   'xnote': 'x note',
   'xfold': 'x fold',
   'xflip': 'x flip',
+  // 新增手表型号
+  'watchd': 'watch d',
+  'watchd2': 'watch d2',
+  'watchfit': 'watch fit',
+  'watchx2mini': 'watch x2 mini',
+  'watchs': 'watch s',
+  // 新增手机型号
+  'reno15': 'reno 15',
+  'reno15pro': 'reno 15 pro',
+  'reno15c': 'reno 15c',
+  'findx9': 'find x9',
+  'findx9pro': 'find x9 pro',
+  'findn5': 'find n5',
+  'a5pro': 'a5 pro',
+  'a6pro': 'a6 pro',
+  // 新增 vivo 型号
+  'y300i': 'y300i',
+  'y300pro': 'y300 pro',
+  'y300proplus': 'y300 pro plus',
+  'y50i': 'y50i',
+  's30promini': 's30 pro mini',
+  's50promini': 's50 pro mini',
+  'xfold5': 'x fold5',
+  'x200pro': 'x200 pro',
+  'x200s': 'x200s',
+  'x200ultra': 'x200 ultra',
+  'x300pro': 'x300 pro',
 };
 
 // 礼盒版过滤关键词：当输入不包含这些词时，应该过滤掉包含这些词的SPU
@@ -88,7 +115,33 @@ const MATERIAL_KEYWORDS = ['软胶', '硅胶', '皮革', '陶瓷', '玻璃', '�
 const COLOR_VARIANTS: Record<string, string[]> = {
   '雾凇蓝': ['雾松蓝'],
   '雾松蓝': ['雾凇蓝'],
-  // 可以在此扩展更多颜色变体对
+  // 新增颜色变体
+  '玉石绿': ['玉龙雪', '锆石黑'],
+  '玛瑙粉': ['晶钻粉', '粉梦生花'],
+  '琥珀黑': ['锆石黑', '曜石黑'],
+  '玄武黑': ['曜石黑', '深空黑'],
+  '龙晶紫': ['极光紫', '流光紫'],
+  '冰川蓝': ['天青蓝', '星河蓝'],
+  '柔粉': ['粉梦生花', '玛瑙粉'],
+  '浅绿': ['玉石绿', '原野绿'],
+  '祥云金': ['流沙金', '晨曦金'],
+  '可可黑': ['曜石黑', '玄武黑'],
+  '薄荷青': ['天青蓝', '冰川蓝'],
+  '桃桃粉': ['玛瑙粉', '粉梦生花'],
+  '柠檬黄': ['流沙金', '祥云金'],
+  '酷莓粉': ['玛瑙粉', '粉梦生花'],
+  '告白': ['深空黑', '灵感紫'],
+  '深空黑': ['曜石黑', '玄武黑'],
+  '灵感紫': ['流光紫', '龙晶紫'],
+  '悠悠蓝': ['冰川蓝', '天青蓝'],
+  '自在蓝': ['冰川蓝', '星河蓝'],
+  '纯粹黑': ['曜石黑', '深空黑'],
+  '惬意紫': ['流光紫', '龙晶紫'],
+  '旷野棕': ['琥珀棕', '马鞍棕'],
+  '白月光': ['零度白', '雪域白'],
+  '辰夜黑': ['曜石黑', '深空黑'],
+  '简黑': ['曜石黑', '深空黑'],
+  '黑ka': ['曜石黑', '深空黑'],
 };
 
 /**
@@ -130,6 +183,45 @@ class SimpleMatcher {
   // 设置动态颜色列表
   setColorList(colors: string[]) {
     this.dynamicColors = colors;
+  }
+
+  /**
+   * 清理演示机/样机标记和配件品牌前缀
+   * 
+   * @param input - 输入字符串
+   * @returns 清理后的字符串
+   */
+  cleanDemoMarkers(input: string): string {
+    const demoKeywords = [
+      '演示机',
+      '样机',
+      '展示机',
+      '体验机',
+      '试用机',
+      '测试机',
+    ];
+    
+    let cleaned = input;
+    
+    // 移除演示机标记
+    for (const keyword of demoKeywords) {
+      cleaned = cleaned.replace(new RegExp(keyword, 'g'), '');
+    }
+    
+    // 移除配件品牌前缀
+    const accessoryBrands = [
+      '优诺严选',
+      '品牌',
+      '赠品',
+      '严选',
+      '檀木',
+    ];
+    
+    for (const brand of accessoryBrands) {
+      cleaned = cleaned.replace(new RegExp(`^${brand}\\s*`, 'g'), '');
+    }
+    
+    return cleaned.replace(/\s+/g, ' ').trim();
   }
 
   /**
@@ -248,7 +340,13 @@ class SimpleMatcher {
   // 提取品牌
   extractBrand(str: string): string | null {
     const lowerStr = str.toLowerCase();
-    const brands = ['apple', 'huawei', 'honor', 'xiaomi', 'vivo', 'oppo', 'samsung', 'oneplus', 'realme'];
+    // 英文品牌 - 扩展了子品牌识别
+    const brands = [
+      'apple', 'huawei', 'honor', 'xiaomi', 'vivo', 'oppo', 
+      'samsung', 'oneplus', 'realme', 'iqoo', 'redmi', 'nova', 
+      'mate', 'pura', 'pocket', 'matex', 'matepad', 'matebook',
+      'reno', 'find', 'pad'
+    ];
     
     for (const brand of brands) {
       if (lowerStr.includes(brand)) {
@@ -261,6 +359,9 @@ class SimpleMatcher {
     if (lowerStr.includes('华为')) return 'huawei';
     if (lowerStr.includes('荣耀')) return 'honor';
     if (lowerStr.includes('小米')) return 'xiaomi';
+    if (lowerStr.includes('红米')) return 'xiaomi';  // 新增
+    if (lowerStr.includes('欧珀')) return 'oppo';    // 新增
+    if (lowerStr.includes('一加')) return 'oneplus'; // 新增
     
     return null;
   }
@@ -1081,7 +1182,10 @@ export function SmartMatchComponent() {
       
       // 对每一行进行匹配
       for (let i = 0; i < lines.length; i++) {
-        const trimmedLine = lines[i].trim();
+        let trimmedLine = lines[i].trim();
+        
+        // 添加：清理演示机标记
+        trimmedLine = matcher.cleanDemoMarkers(trimmedLine);
         
         // 第一阶段：匹配SPU
         const { spu: matchedSPU, similarity: spuSimilarity } = matcher.findBestSPUMatch(
