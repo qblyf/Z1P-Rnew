@@ -944,89 +944,108 @@ export function SmartMatchComponent() {
     loadBrandData();
   }, []);
 
-  // 加载所有SPU数据并从SPU的颜色规格中提取颜色
+  // 加载所有SPU数据并从SKU规格中提取颜色、规格、组合
   useEffect(() => {
     const loadSPUData = async () => {
       try {
         setLoadingSPU(true);
-        const data = await getSPUListNew(
-          {
-            states: [SPUState.在用],
-            limit: 100000, // 加载所有SPU
-            offset: 0,
-            orderBy: [{ key: 'p."id"', sort: 'DESC' }],
-          },
-          ['id', 'name', 'brand']
-        );
-        setSPUList(data);
         
-        // 从实际 SKU 数据中提取颜色词
-        // 采样部分 SPU 来提取颜色（避免加载太多数据）
-        // Requirements: 2.4.1, 3.2.1, 3.2.2
-        const extractedColors = new Set<string>();
-        const sampleSize = Math.min(200, data.length); // 采样前200个SPU
-        
-        console.log('=== 开始提取动态颜色列表 ===');
-        console.log(`总SPU数量: ${data.length}`);
-        console.log(`采样数量: ${sampleSize}`);
-        console.log('提取策略: 从SKU的color字段提取颜色');
-        
+        console.log('=== 开始加载SPU和SKU规格数据 ===');
         const startTime = Date.now();
-        let processedSPUs = 0;
-        let processedSKUs = 0;
-        let failedSPUs = 0;
         
-        for (let i = 0; i < sampleSize; i++) {
-          const spu = data[i];
-          try {
-            const spuInfo = await getSPUInfo(spu.id);
-            const skuIDs = spuInfo.skuIDs || [];
-            
-            // 从 SKU 的 color 字段提取颜色
-            for (const sku of skuIDs) {
-              if ('color' in sku && sku.color) {
-                extractedColors.add(sku.color);
-                processedSKUs++;
-              }
-            }
-            
-            processedSPUs++;
-          } catch (error) {
-            console.error(`提取 SPU ${spu.id} (${spu.name}) 的颜色失败:`, error);
-            failedSPUs++;
+        // 分批加载所有SPU数据（包含skuIDs）
+        const allSpuList = [];
+        const batchSize = 10000;
+        let offset = 0;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const spuList = await getSPUListNew(
+            {
+              states: [SPUState.在用],
+              limit: batchSize,
+              offset,
+              orderBy: [{ key: 'p."id"', sort: 'DESC' }],
+            },
+            ['id', 'name', 'brand', 'skuIDs']
+          );
+          
+          allSpuList.push(...spuList);
+          console.log(`已加载 ${spuList.length} 个SPU，总计: ${allSpuList.length}`);
+          
+          if (spuList.length < batchSize) {
+            hasMore = false;
+          } else {
+            offset += batchSize;
+          }
+        }
+        
+        setSPUList(allSpuList);
+        
+        // 统计颜色、规格和组合数据
+        // Requirements: 2.4.1, 3.2.1, 3.2.2
+        const colorMap = new Map<string, Set<number>>();
+        const specMap = new Map<string, Set<number>>();
+        const comboMap = new Map<string, Set<number>>();
+        
+        let processedSKUs = 0;
+        
+        for (const spu of allSpuList) {
+          const { id, skuIDs } = spu;
+          
+          if (!skuIDs || skuIDs.length === 0) {
+            continue;
           }
           
-          // 每10个显示详细进度
-          if ((i + 1) % 10 === 0) {
-            const progress = ((i + 1) / sampleSize * 100).toFixed(1);
-            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-            console.log(`[进度 ${progress}%] 已处理 ${i + 1}/${sampleSize} 个SPU，提取 ${extractedColors.size} 个颜色，耗时 ${elapsed}秒`);
+          // 从 skuIDs 中提取颜色、规格和组合信息
+          for (const skuInfo of skuIDs) {
+            // 提取颜色
+            if ('color' in skuInfo && skuInfo.color) {
+              const color = skuInfo.color;
+              if (!colorMap.has(color)) {
+                colorMap.set(color, new Set());
+              }
+              colorMap.get(color)!.add(id);
+            }
+            
+            // 提取规格
+            if ('spec' in skuInfo && skuInfo.spec) {
+              const spec = skuInfo.spec;
+              if (!specMap.has(spec)) {
+                specMap.set(spec, new Set());
+              }
+              specMap.get(spec)!.add(id);
+            }
+            
+            // 提取组合
+            if ('combo' in skuInfo && skuInfo.combo) {
+              const combo = skuInfo.combo;
+              if (!comboMap.has(combo)) {
+                comboMap.set(combo, new Set());
+              }
+              comboMap.get(combo)!.add(id);
+            }
+            
+            processedSKUs++;
           }
         }
         
         // 转换为数组并按长度降序排序（优先匹配更长的颜色词）
-        // 长度排序确保"夏夜黑"优先于"黑"被匹配
-        // Requirements: 2.4.1, 3.2.1, 3.2.2
-        const colors = Array.from(extractedColors).sort((a, b) => b.length - a.length);
+        const colors = Array.from(colorMap.keys()).sort((a, b) => b.length - a.length);
         setColorList(colors);
         
         const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
         
-        console.log('=== 颜色列表提取完成 ===');
-        console.log(`成功处理: ${processedSPUs} 个SPU`);
-        console.log(`失败处理: ${failedSPUs} 个SPU`);
+        console.log('=== 规格数据加载完成 ===');
+        console.log(`总SPU数量: ${allSpuList.length}`);
         console.log(`处理SKU: ${processedSKUs} 个`);
         console.log(`提取颜色: ${colors.length} 个`);
+        console.log(`提取规格: ${specMap.size} 个`);
+        console.log(`提取组合: ${comboMap.size} 个`);
         console.log(`总耗时: ${totalTime}秒`);
         console.log('颜色列表（按长度降序）:', colors.slice(0, 20), colors.length > 20 ? `... 还有 ${colors.length - 20} 个` : '');
         
-        // 显示一些特殊颜色示例（如果存在）
-        const specialColors = colors.filter(c => c.length >= 3);
-        if (specialColors.length > 0) {
-          console.log('特殊颜色示例（3字及以上）:', specialColors.slice(0, 10));
-        }
-        
-        message.success(`已加载 ${data.length} 个SPU，从 ${sampleSize} 个SPU中提取 ${colors.length} 个颜色词（耗时${totalTime}秒）`);
+        message.success(`已加载 ${allSpuList.length} 个SPU，提取 ${colors.length} 个颜色词（耗时${totalTime}秒）`);
       } catch (error) {
         message.error('加载SPU数据失败');
         console.error(error);
