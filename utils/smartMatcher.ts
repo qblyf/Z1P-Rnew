@@ -148,6 +148,14 @@ const MODEL_NORMALIZATIONS: Record<string, string> = {
   'x200pro': 'x200 pro',
   'x200s': 'x200s',
   'x200ultra': 'x200 ultra',
+  // Redmi 系列
+  'redmi15r': '15r',
+  'redmi15': '15',
+  'redmi14': '14',
+  'redmi13': '13',
+  'redminote15': 'note 15',
+  'redminote14': 'note 14',
+  'redminote13': 'note 13',
 };
 
 // 礼盒版过滤关键词
@@ -308,23 +316,41 @@ export class SimpleMatcher {
    */
   extractBrand(str: string): string | null {
     const lowerStr = str.toLowerCase();
-    const brands = [
-      'apple', 'huawei', 'honor', 'xiaomi', 'vivo', 'oppo', 
-      'samsung', 'oneplus', 'realme', 'iqoo', 'redmi', 'nova', 
-      'mate', 'pura', 'pocket', 'reno', 'find'
-    ];
     
-    for (const brand of brands) {
+    // 品牌映射：将所有变体统一到主品牌
+    const brandMap: Record<string, string> = {
+      'apple': 'apple',
+      '苹果': 'apple',
+      'huawei': 'huawei',
+      '华为': 'huawei',
+      'honor': 'honor',
+      '荣耀': 'honor',
+      'xiaomi': 'xiaomi',
+      '小米': 'xiaomi',
+      'redmi': 'xiaomi',  // Redmi 统一到 xiaomi
+      '红米': 'xiaomi',
+      'vivo': 'vivo',
+      'oppo': 'oppo',
+      'samsung': 'samsung',
+      'oneplus': 'oneplus',
+      'realme': 'realme',
+      'iqoo': 'iqoo',
+      'nova': 'huawei',  // Nova 是华为子品牌
+      'mate': 'huawei',  // Mate 是华为系列
+      'pura': 'huawei',  // Pura 是华为系列
+      'pocket': 'huawei', // Pocket 是华为系列
+      'reno': 'oppo',    // Reno 是 OPPO 系列
+      'find': 'oppo',    // Find 是 OPPO 系列
+    };
+    
+    // 按长度降序排序，优先匹配更长的品牌名
+    const sortedBrands = Object.keys(brandMap).sort((a, b) => b.length - a.length);
+    
+    for (const brand of sortedBrands) {
       if (lowerStr.includes(brand)) {
-        return brand;
+        return brandMap[brand];
       }
     }
-    
-    if (lowerStr.includes('苹果')) return 'apple';
-    if (lowerStr.includes('华为')) return 'huawei';
-    if (lowerStr.includes('荣耀')) return 'honor';
-    if (lowerStr.includes('小米')) return 'xiaomi';
-    if (lowerStr.includes('红米')) return 'xiaomi';
     
     return null;
   }
@@ -333,13 +359,26 @@ export class SimpleMatcher {
    * 提取型号（多层次匹配）
    */
   extractModel(str: string): string | null {
-    const lowerStr = str.toLowerCase();
+    let lowerStr = str.toLowerCase();
+    
+    // 先将中文品牌转换为英文（在移除品牌前）
+    const chineseBrandMap: Record<string, string> = {
+      '红米': 'redmi',
+      '小米': 'xiaomi',
+      '华为': 'huawei',
+      '荣耀': 'honor',
+      '苹果': 'apple',
+    };
+    
+    for (const [chinese, english] of Object.entries(chineseBrandMap)) {
+      lowerStr = lowerStr.replace(new RegExp(chinese, 'g'), english);
+    }
     
     // 移除括号内容
     let normalizedStr = lowerStr.replace(/[（(][^)）]*[)）]/g, ' ');
     
-    // 移除品牌
-    const brands = ['apple', 'huawei', 'honor', 'xiaomi', 'vivo', 'oppo', 'samsung', 'oneplus'];
+    // 移除品牌（包括英文和可能的中文品牌）
+    const brands = ['apple', 'huawei', 'honor', 'xiaomi', 'vivo', 'oppo', 'samsung', 'oneplus', 'redmi'];
     for (const brand of brands) {
       const brandRegex = new RegExp(`\\b${brand}\\b`, 'gi');
       normalizedStr = normalizedStr.replace(brandRegex, ' ');
@@ -380,14 +419,19 @@ export class SimpleMatcher {
       }
     }
     
-    // 优先级3: 简单型号格式
-    const simpleModelPattern = /\b([a-z]+)(\d+)([a-z]*)\b/gi;
+    // 优先级3: 简单型号格式（改进：支持纯数字开头的型号和纯数字型号）
+    // 匹配模式：字母+数字+可选字母 或 数字+字母 或 纯数字（2-3位）
+    const simpleModelPattern = /(?:\b([a-z]+)(\d+)([a-z]*)\b|(?:^|\s)(\d+)([a-z]+)|(?:^|\s)(\d{2,3})(?:\s|$))/gi;
     const simpleMatches = normalizedStr.match(simpleModelPattern);
     
     if (simpleMatches && simpleMatches.length > 0) {
       const filtered = simpleMatches.filter(m => {
-        const lower = m.toLowerCase();
-        return !/^[345]g$/i.test(lower) && !lower.includes('gb') && !/^\d+g$/i.test(lower);
+        const lower = m.toLowerCase().trim();
+        // 过滤掉网络制式、容量等
+        return !/^[345]g$/i.test(lower) && 
+               !lower.includes('gb') && 
+               !/^\d+g$/i.test(lower) &&
+               !/^\d+\+\d+$/i.test(lower); // 过滤掉容量格式如 4+128
       });
       
       if (filtered.length > 0) {
@@ -399,7 +443,7 @@ export class SimpleMatcher {
           return b.length - a.length;
         });
         
-        return sorted[0].toLowerCase().replace(/\s+/g, '');
+        return sorted[0].toLowerCase().trim().replace(/\s+/g, '');
       }
     }
     
