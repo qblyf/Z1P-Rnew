@@ -1293,23 +1293,49 @@ class SimpleMatcher {
     // 这种情况下，需要移除颜色和其他SKU特征词
     let spuPart = str;
     
-    // 移除颜色部分（通常在末尾）
-    const color = this.extractColor(str);
-    if (color) {
-      // 从末尾移除颜色
-      const colorIndex = spuPart.lastIndexOf(color);
-      if (colorIndex !== -1) {
-        spuPart = spuPart.substring(0, colorIndex);
+    // 策略：先识别并保护版本关键词，再移除颜色
+    // 这样可以避免在移除颜色时误删版本信息
+    // 例如：OPPO A5活力版玛瑙粉 → OPPO A5活力版（保留版本，移除颜色）
+    
+    // 步骤1：检查是否包含版本关键词
+    let versionKeyword: string | null = null;
+    let versionIndex = -1;
+    
+    for (const versionKey of Object.values(VERSION_KEYWORDS_MAP)) {
+      for (const keyword of versionKey.keywords) {
+        const index = spuPart.indexOf(keyword);
+        if (index !== -1) {
+          versionKeyword = keyword;
+          versionIndex = index;
+          break;
+        }
       }
+      if (versionKeyword) break;
     }
     
-    // 移除其他常见的 SKU 特征词
-    spuPart = spuPart.replace(/软胶|硅胶|皮革|陶瓷|玻璃/gi, '');
-    
-    // 清理多余的空格和标点
-    spuPart = spuPart.trim().replace(/\s+/g, ' ');
-    
-    console.log('规则3匹配（品牌+型号）:', spuPart);
+    if (versionKeyword && versionIndex !== -1) {
+      // 有版本关键词，保留到版本关键词结束的位置
+      const versionEndIndex = versionIndex + versionKeyword.length;
+      spuPart = spuPart.substring(0, versionEndIndex).trim();
+      console.log('规则4匹配（品牌+型号+版本）:', spuPart);
+    } else {
+      // 没有版本关键词，尝试移除末尾的颜色
+      const color = this.extractColor(str);
+      if (color) {
+        const colorIndex = spuPart.lastIndexOf(color);
+        if (colorIndex !== -1) {
+          spuPart = spuPart.substring(0, colorIndex).trim();
+        }
+      }
+      
+      // 移除其他常见的 SKU 特征词
+      spuPart = spuPart.replace(/软胶|硅胶|皮革|陶瓷|玻璃/gi, '');
+      
+      // 清理多余的空格和标点
+      spuPart = spuPart.trim().replace(/\s+/g, ' ');
+      
+      console.log('规则4匹配（品牌+型号）:', spuPart);
+    }
     
     return spuPart;
   }
@@ -1422,12 +1448,14 @@ class SimpleMatcher {
     // 提取输入的关键信息
     const inputBrand = this.extractBrand(inputSPUPart);
     const inputModel = this.extractModel(inputSPUPart);
+    const inputVersion = this.extractVersion(inputSPUPart);
     
     console.log('=== SPU匹配开始 ===');
     console.log('原始输入:', input);
     console.log('SPU部分:', inputSPUPart);
     console.log('提取品牌:', inputBrand);
     console.log('提取型号:', inputModel);
+    console.log('提取版本:', inputVersion?.name || '无');
     console.log('匹配阈值:', threshold);
     
     let bestMatch: SPUData | null = null;
@@ -1450,6 +1478,7 @@ class SimpleMatcher {
       const spuSPUPart = this.extractSPUPart(spu.name);
       const spuBrand = this.extractBrand(spuSPUPart);
       const spuModel = this.extractModel(spuSPUPart);
+      const spuVersion = this.extractVersion(spuSPUPart);
       
       let score = 0;
       
@@ -1457,14 +1486,49 @@ class SimpleMatcher {
       if (inputBrand && spuBrand && inputBrand === spuBrand &&
           inputModel && spuModel && 
           inputModel.replace(/\s+/g, '') === spuModel.replace(/\s+/g, '')) {
-        // 完全匹配：品牌和型号都相同（忽略空格）
-        score = 1.0;
         
-        console.log('✅ 全字匹配:', {
-          input: `${inputBrand} ${inputModel}`,
-          spu: spu.name,
-          score: score.toFixed(3)
-        });
+        // 基础分数：品牌+型号匹配
+        score = 0.8;
+        
+        // 版本匹配加分
+        if (inputVersion && spuVersion) {
+          if (inputVersion.name === spuVersion.name) {
+            score = 1.0; // 版本完全匹配
+            console.log('✅ 全字匹配（含版本）:', {
+              input: `${inputBrand} ${inputModel} ${inputVersion.name}`,
+              spu: spu.name,
+              score: score.toFixed(3)
+            });
+          } else {
+            score = 0.6; // 版本不匹配，降低分数
+            console.log('⚠️ 型号匹配但版本不匹配:', {
+              input: `${inputBrand} ${inputModel} ${inputVersion.name}`,
+              spu: spu.name,
+              score: score.toFixed(3)
+            });
+          }
+        } else if (!inputVersion && !spuVersion) {
+          score = 1.0; // 都没有版本信息
+          console.log('✅ 全字匹配（无版本）:', {
+            input: `${inputBrand} ${inputModel}`,
+            spu: spu.name,
+            score: score.toFixed(3)
+          });
+        } else if (inputVersion && !spuVersion) {
+          score = 0.7; // 输入有版本，SPU没有版本
+          console.log('⚠️ 输入有版本，SPU无版本:', {
+            input: `${inputBrand} ${inputModel} ${inputVersion.name}`,
+            spu: spu.name,
+            score: score.toFixed(3)
+          });
+        } else if (!inputVersion && spuVersion) {
+          score = 0.9; // 输入没有版本，SPU有版本（可能是标准版）
+          console.log('⚠️ 输入无版本，SPU有版本:', {
+            input: `${inputBrand} ${inputModel}`,
+            spu: spu.name,
+            score: score.toFixed(3)
+          });
+        }
         
         // 计算优先级
         const priority = this.getSPUPriority(input, spu.name);
