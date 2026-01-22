@@ -157,6 +157,7 @@ const GIFT_BOX_KEYWORDS = ['礼盒', '套装', '系列', '礼品', '礼包'];
 const VERSION_KEYWORDS = ['蓝牙版', 'eSIM版', 'esim版', '5G版', '4G版', '3G版', '全网通版'];
 
 // 颜色变体映射
+// 定义已知的颜色变体对，这些颜色应该被视为等价（同一种颜色的不同写法）
 const COLOR_VARIANTS: Record<string, string[]> = {
   '雾凇蓝': ['雾松蓝'],
   '雾松蓝': ['雾凇蓝'],
@@ -170,6 +171,8 @@ const COLOR_VARIANTS: Record<string, string[]> = {
   '冰川蓝': ['天青蓝', '星河蓝'],
   '深空黑': ['曜石黑', '玄武黑'],
   '灵感紫': ['流光紫', '龙晶紫'],
+  // 注意：告白是独立的颜色，不是灵感紫的变体
+  // 告白属于白色系，灵感紫属于紫色系
 };
 
 /**
@@ -474,38 +477,23 @@ export class SimpleMatcher {
 
   /**
    * 改进的颜色匹配
+   * 
+   * 匹配优先级：
+   * 1. 完全匹配（精确匹配）
+   * 2. 颜色变体匹配（已知的颜色变体对）
+   * 3. 基础颜色匹配（模糊匹配，同一基础颜色族）
    */
   isColorMatch(color1: string, color2: string): boolean {
     if (!color1 || !color2) return false;
+    
+    // 优先级1: 完全匹配
     if (color1 === color2) return true;
+    
+    // 优先级2: 颜色变体匹配
     if (isColorVariant(color1, color2)) return true;
     
-    // 基础颜色匹配
-    const basicColorMap: Record<string, string[]> = {
-      '黑': ['黑', '深', '曜', '玄', '纯', '简', '辰'],
-      '白': ['白', '零', '雪', '空', '格'],
-      '蓝': ['蓝', '天', '星', '冰', '悠', '自', '薄'],
-      '红': ['红', '深'],
-      '绿': ['绿', '原', '玉'],
-      '紫': ['紫', '灵', '龙', '流', '极', '惬'],
-      '粉': ['粉', '玛', '晶', '梦', '桃', '酷', '告'],
-      '金': ['金', '流', '祥', '柠'],
-      '银': ['银'],
-      '灰': ['灰'],
-      '棕': ['棕', '琥', '马', '旷'],
-      '青': ['青', '薄'],
-    };
-    
-    for (const [basicColor, variants] of Object.entries(basicColorMap)) {
-      const color1HasBasic = variants.some(v => color1.includes(v));
-      const color2HasBasic = variants.some(v => color2.includes(v));
-      
-      if (color1HasBasic && color2HasBasic) {
-        return true;
-      }
-    }
-    
-    return false;
+    // 优先级3: 基础颜色匹配
+    return this.isBasicColorMatch(color1, color2);
   }
 
   /**
@@ -811,6 +799,11 @@ export class SimpleMatcher {
 
   /**
    * 改进的 SKU 匹配，考虑版本信息
+   * 
+   * 颜色匹配优先级：
+   * 1. 完全匹配（100%分数）
+   * 2. 颜色变体匹配（90%分数）
+   * 3. 基础颜色匹配（50%分数）
    */
   findBestSKUWithVersion(
     input: string,
@@ -853,11 +846,22 @@ export class SimpleMatcher {
         }
       }
       
-      // 颜色匹配（基础权重 30%）
+      // 颜色匹配（基础权重 30%）- 改进：区分完全匹配、变体匹配和基础匹配
       if (inputColor || skuColor) {
         totalWeight += 0.3;
-        if (inputColor && skuColor && this.isColorMatch(inputColor, skuColor)) {
-          score += 0.3;
+        if (inputColor && skuColor) {
+          // 优先级1: 完全匹配（100%分数）
+          if (inputColor === skuColor) {
+            score += 0.3;
+          }
+          // 优先级2: 颜色变体匹配（90%分数）
+          else if (isColorVariant(inputColor, skuColor)) {
+            score += 0.27;
+          }
+          // 优先级3: 基础颜色匹配（50%分数）
+          else if (this.isBasicColorMatch(inputColor, skuColor)) {
+            score += 0.15;
+          }
         }
       }
       
@@ -875,6 +879,39 @@ export class SimpleMatcher {
     }
     
     return { sku: bestMatch, similarity: bestScore };
+  }
+
+  /**
+   * 基础颜色匹配（仅用于模糊匹配）
+   */
+  private isBasicColorMatch(color1: string, color2: string): boolean {
+    if (!color1 || !color2) return false;
+    
+    const basicColorMap: Record<string, string[]> = {
+      '黑': ['黑', '深', '曜', '玄', '纯', '简', '辰'],
+      '白': ['白', '零', '雪', '空', '格', '告'],
+      '蓝': ['蓝', '天', '星', '冰', '悠', '自', '薄'],
+      '红': ['红', '深'],
+      '绿': ['绿', '原', '玉'],
+      '紫': ['紫', '灵', '龙', '流', '极', '惬'],
+      '粉': ['粉', '玛', '晶', '梦', '桃', '酷'],
+      '金': ['金', '流', '祥', '柠'],
+      '银': ['银'],
+      '灰': ['灰'],
+      '棕': ['棕', '琥', '马', '旷'],
+      '青': ['青', '薄'],
+    };
+    
+    for (const [basicColor, variants] of Object.entries(basicColorMap)) {
+      const color1HasBasic = variants.some(v => color1.includes(v));
+      const color2HasBasic = variants.some(v => color2.includes(v));
+      
+      if (color1HasBasic && color2HasBasic) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   /**

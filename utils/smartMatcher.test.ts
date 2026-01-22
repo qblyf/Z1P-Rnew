@@ -73,3 +73,91 @@ describe('SimpleMatcher - SPU 匹配', () => {
     expect(spu?.name).toBe('vivo Y300 Pro+ 全网通5G');
   });
 });
+
+describe('SimpleMatcher - 颜色匹配', () => {
+  const matcher = new SimpleMatcher();
+
+  test('应该优先完全匹配颜色', () => {
+    const color1 = '灵感紫';
+    const color2 = '灵感紫';
+    
+    const isMatch = matcher.isColorMatch(color1, color2);
+    
+    expect(isMatch).toBe(true);
+  });
+
+  test('灵感紫和告白不应该通过变体匹配', () => {
+    const color1 = '灵感紫';
+    const color2 = '告白';
+    
+    const isMatch = matcher.isColorMatch(color1, color2);
+    
+    // 灵感紫（紫色系）和告白（白色系）不应该匹配
+    expect(isMatch).toBe(false);
+  });
+
+  test('告白应该属于白色系', () => {
+    const color1 = '告白';
+    const color2 = '零度白';
+    
+    const isMatch = matcher.isColorMatch(color1, color2);
+    
+    // 告白和零度白都属于白色系，应该匹配
+    expect(isMatch).toBe(true);
+  });
+
+  test('应该正确匹配 S50 Pro mini 的颜色（优先完全匹配）', () => {
+    const input = 'Vivo S50 Promini 5G 16+512 灵感紫';
+    
+    const skuList = [
+      { 
+        id: 1, 
+        name: 'vivo S50 Pro mini 全网通5G 16GB+512GB 灵感紫',
+        memory: '16+512',
+        color: '灵感紫',
+        gtins: ['6901234567890']
+      },
+      { 
+        id: 2, 
+        name: 'vivo S50 Pro mini 全网通5G 16GB+512GB 告白',
+        memory: '16+512',
+        color: '告白',
+        gtins: ['6901234567891']
+      },
+    ];
+
+    const { sku } = matcher.findBestSKUWithVersion(input, skuList, null);
+    
+    // 应该匹配到灵感紫（完全匹配），而不是告白
+    expect(sku?.id).toBe(1);
+    expect(sku?.color).toBe('灵感紫');
+  });
+
+  test('如果没有完全匹配的颜色，应该返回最佳匹配', () => {
+    const input = 'Vivo S50 Promini 5G 16+512 灵感紫';
+    
+    const skuList = [
+      { 
+        id: 1, 
+        name: 'vivo S50 Pro mini 全网通5G 16GB+512GB 告白',
+        memory: '16+512',
+        color: '告白',
+        gtins: ['6901234567890']
+      },
+      { 
+        id: 2, 
+        name: 'vivo S50 Pro mini 全网通5G 16GB+512GB 钛色',
+        memory: '16+512',
+        color: '钛色',
+        gtins: ['6901234567891']
+      },
+    ];
+
+    const { sku, similarity } = matcher.findBestSKUWithVersion(input, skuList, null);
+    
+    // 没有灵感紫，应该匹配容量相同的任意一个
+    // 但相似度应该较低（因为颜色不匹配）
+    expect(sku).not.toBeNull();
+    expect(similarity).toBeLessThan(0.8); // 颜色不匹配，相似度应该低于80%
+  });
+});
