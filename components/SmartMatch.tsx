@@ -199,6 +199,8 @@ const MODEL_NORMALIZATIONS: Record<string, string> = {
   'x200s': 'x200s',
   'x200ultra': 'x200 ultra',
   'x300pro': 'x300 pro',
+  // 新增 OPPO K13 Turbo Pro 型号
+  'k13turbopro': 'k13 turbo pro',
 };
 
 // 礼盒版过滤关键词：当输入不包含这些词时，应该过滤掉包含这些词的SPU
@@ -915,9 +917,9 @@ class SimpleMatcher {
       return model;
     }
     
-    // 优先级2: 复杂型号格式（字母+数字+Pro/Max/Plus/Ultra等+可选的mini/max/plus/ultra）
-    // 支持有空格和无空格：Y500Pro, Y500 Pro, Mate60Pro, Mate60 Pro, S30 Pro mini, iPhone 15 Pro Max
-    const complexModelPattern = /\b([a-z]+)\s*(\d+)\s*(pro|max|plus|ultra|mini|se|air|lite|note)(\s+(mini|max|plus|ultra))?\b/gi;
+    // 优先级2: 复杂型号格式（字母+数字+Pro/Max/Plus/Ultra等+可选的mini/max/plus/ultra/pro）
+    // 支持有空格和无空格：Y500Pro, Y500 Pro, Mate60Pro, Mate60 Pro, S30 Pro mini, iPhone 15 Pro Max, K13 Turbo Pro
+    const complexModelPattern = /\b([a-z]+)\s*(\d+)\s*(pro|max|plus|ultra|mini|se|air|lite|note|turbo)(\s+(mini|max|plus|ultra|pro))?\b/gi;
     const complexMatches = normalizedStr.match(complexModelPattern);
     
     if (complexMatches && complexMatches.length > 0) {
@@ -1177,48 +1179,53 @@ class SimpleMatcher {
 
   // 提取 SPU 部分（改进版）
   // 新规则：
-  // 1. 如果找到 "5g全网通" 或 "5g" 字样 → 前面的内容为SPU
-  // 2. 否则，如果找到内存（如 12+512） → 前面的内容为SPU
-  // 3. 否则，按照品牌+型号方法确定SPU
+  // 1. 如果找到 "5g全网通" 或 "全网通" 字样 → 前面的内容为SPU（包含"全网通"）
+  // 2. 否则，如果找到 "5g" 字样 → 前面的内容为SPU（包含"5g"）
+  // 3. 否则，如果找到内存（如 12+512） → 前面的内容为SPU
+  // 4. 否则，按照品牌+型号方法确定SPU
   // 
   // 例如：
-  // - OPPO A5活力版(12+512)琥珀黑 → OPPO A5活力版
-  // - Vivo S30Promini 5G(12+512)可可黑 → Vivo S30Promini 5G
-  // - iPhone 15 Pro Max 256GB 黑色 → iPhone 15 Pro Max
+  // - OPPO K13Turbo 5G(12+512)初号紫 → OPPO K13Turbo 5G（规则2）
+  // - OPPO K13 Turbo 全网通5G版 12GB+512GB 初号紫 → OPPO K13 Turbo 全网通（规则1）
+  // - OPPO A5活力版(12+512)琥珀黑 → OPPO A5活力版（规则3）
+  // - Vivo S30Promini 5G(12+512)可可黑 → Vivo S30Promini 5G（规则2）
+  // - iPhone 15 Pro Max 256GB 黑色 → iPhone 15 Pro Max（规则4）
   extractSPUPart(str: string): string {
     console.log('=== 提取SPU部分 ===');
     console.log('原始输入:', str);
     
-    // 规则1：如果找到 "5g全网通" 或 "5g" 字样，前面的内容为SPU
-    const networkPattern = /(.+?)\s*5g全网通/i;
-    const networkMatch = str.match(networkPattern);
-    if (networkMatch) {
-      const spuPart = networkMatch[1].trim();
-      console.log('规则1匹配（5g全网通）:', spuPart);
+    // 规则1：优先检查 "全网通5G"，截取其左边的部分
+    // 例如："OPPO K13 Turbo 全网通5G版 12GB" → "OPPO K13 Turbo"
+    const fullNetworkFiveGPattern = /(.+?)\s*全网通\s*5g(?:版)?\b/i;
+    const fullNetworkFiveGMatch = str.match(fullNetworkFiveGPattern);
+    if (fullNetworkFiveGMatch) {
+      const spuPart = fullNetworkFiveGMatch[1].trim();
+      console.log('规则1匹配（全网通5G左边）:', spuPart);
       return spuPart;
     }
     
-    // 也检查单独的 "5g"
-    const fiveGPattern = /(.+?)\s*5g\b/i;
+    // 规则2：如果没找到"全网通5G"，再检查单独的 "5G"，截取其左边的部分
+    // 例如："OPPO K13Turbo 5G(12+512)" → "OPPO K13Turbo"
+    const fiveGPattern = /(.+?)\s*5g(?:版)?\b/i;
     const fiveGMatch = str.match(fiveGPattern);
     if (fiveGMatch) {
       const spuPart = fiveGMatch[1].trim();
-      console.log('规则1匹配（5g）:', spuPart);
+      console.log('规则2匹配（5G左边）:', spuPart);
       return spuPart;
     }
     
-    // 规则2：如果找到内存（如 12+512 或 12GB+512GB），前面的内容为SPU
+    // 规则3：如果找到内存（如 12+512 或 12GB+512GB），前面的内容为SPU
     // 匹配 (12+512), 12+512, 12GB+512GB, (12GB+512GB) 等格式
     // 注意：只匹配 GB 单位的内存，避免与 mm（尺寸）混淆
     const memoryPattern = /(.+?)\s*\(?\d+\s*gb\s*\+\s*\d+\s*(?:gb)?\)?/i;
     const memoryMatch = str.match(memoryPattern);
     if (memoryMatch) {
       const spuPart = memoryMatch[1].trim();
-      console.log('规则2匹配（内存）:', spuPart);
+      console.log('规则3匹配（内存）:', spuPart);
       return spuPart;
     }
     
-    // 规则3：如果找不到内存，按照品牌+型号方法确定SPU
+    // 规则4：如果找不到内存，按照品牌+型号方法确定SPU
     // 这种情况下，需要移除颜色和其他SKU特征词
     let spuPart = str;
     
@@ -1382,10 +1389,11 @@ class SimpleMatcher {
       
       let score = 0;
       
-      // 品牌和型号都必须匹配
+      // 品牌和型号都必须匹配（去掉空格进行比较）
       if (inputBrand && spuBrand && inputBrand === spuBrand &&
-          inputModel && spuModel && inputModel === spuModel) {
-        // 完全匹配：品牌和型号都相同
+          inputModel && spuModel && 
+          inputModel.replace(/\s+/g, '') === spuModel.replace(/\s+/g, '')) {
+        // 完全匹配：品牌和型号都相同（忽略空格）
         score = 1.0;
         
         console.log('✅ 全字匹配:', {
