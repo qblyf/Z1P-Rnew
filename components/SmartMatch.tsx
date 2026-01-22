@@ -1150,20 +1150,53 @@ class SimpleMatcher {
     return null;
   }
 
-  // 提取 SPU 部分（去掉容量和颜色）
-  // 例如：Vivo S30Promini 5G(12+512)可可黑 → Vivo S30Promini 5G
+  // 提取 SPU 部分（改进版）
+  // 新规则：
+  // 1. 如果找到 "5g全网通" 或 "5g" 字样 → 前面的内容为SPU
+  // 2. 否则，如果找到内存（如 12+512） → 前面的内容为SPU
+  // 3. 否则，按照品牌+型号方法确定SPU
+  // 
+  // 例如：
+  // - OPPO A5活力版(12+512)琥珀黑 → OPPO A5活力版
+  // - Vivo S30Promini 5G(12+512)可可黑 → Vivo S30Promini 5G
+  // - iPhone 15 Pro Max 256GB 黑色 → iPhone 15 Pro Max
   extractSPUPart(str: string): string {
+    console.log('=== 提取SPU部分 ===');
+    console.log('原始输入:', str);
+    
+    // 规则1：如果找到 "5g全网通" 或 "5g" 字样，前面的内容为SPU
+    const networkPattern = /(.+?)\s*5g全网通/i;
+    const networkMatch = str.match(networkPattern);
+    if (networkMatch) {
+      const spuPart = networkMatch[1].trim();
+      console.log('规则1匹配（5g全网通）:', spuPart);
+      return spuPart;
+    }
+    
+    // 也检查单独的 "5g"
+    const fiveGPattern = /(.+?)\s*5g\b/i;
+    const fiveGMatch = str.match(fiveGPattern);
+    if (fiveGMatch) {
+      const spuPart = fiveGMatch[1].trim();
+      console.log('规则1匹配（5g）:', spuPart);
+      return spuPart;
+    }
+    
+    // 规则2：如果找到内存（如 12+512 或 12GB+512GB），前面的内容为SPU
+    // 匹配 (12+512), 12+512, 12GB+512GB, (12GB+512GB) 等格式
+    const memoryPattern = /(.+?)\s*\(?\d+\s*(?:gb)?\s*\+\s*\d+\s*(?:gb)?\)?/i;
+    const memoryMatch = str.match(memoryPattern);
+    if (memoryMatch) {
+      const spuPart = memoryMatch[1].trim();
+      console.log('规则2匹配（内存）:', spuPart);
+      return spuPart;
+    }
+    
+    // 规则3：如果找不到内存，按照品牌+型号方法确定SPU
+    // 这种情况下，需要移除颜色和其他SKU特征词
     let spuPart = str;
     
-    // 1. 移除容量部分
-    // 匹配 (12+512), 12+512, 12GB+512GB, (12GB+512GB) 等格式
-    spuPart = spuPart.replace(/\(?\d+\s*(?:gb)?\s*\+\s*\d+\s*(?:gb)?\)?/gi, '');
-    
-    // 移除单个容量 128GB, 256GB等
-    spuPart = spuPart.replace(/\d+\s*gb/gi, '');
-    
-    // 2. 移除颜色部分（通常在末尾）
-    // 先尝试提取颜色
+    // 移除颜色部分（通常在末尾）
     const color = this.extractColor(str);
     if (color) {
       // 从末尾移除颜色
@@ -1173,11 +1206,13 @@ class SimpleMatcher {
       }
     }
     
-    // 3. 移除其他常见的 SKU 特征词
+    // 移除其他常见的 SKU 特征词
     spuPart = spuPart.replace(/软胶|硅胶|皮革|陶瓷|玻璃/gi, '');
     
-    // 4. 清理多余的空格和标点
+    // 清理多余的空格和标点
     spuPart = spuPart.trim().replace(/\s+/g, ' ');
+    
+    console.log('规则3匹配（品牌+型号）:', spuPart);
     
     return spuPart;
   }
