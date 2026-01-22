@@ -55,11 +55,13 @@ function QrLoginMobilePage() {
   // 移动端登录成功后不跳转，保持在当前页面显示成功提示
 
   // 未登录时跳转到桌面端 QR 登录页面
+  // 注意：只有在 token 明确为 null 且没有 storage 参数时才跳转
+  // 如果有 storage 参数，说明是扫码进来的，应该显示登录页面而不是跳转
   useEffect(() => {
-    if (token === null) {
+    if (token === null && !storage) {
       router.push('/qr-login-desk');
     }
-  }, [token, router]);
+  }, [token, router, storage]);
 
   // 抛错, 不是有效的参数
   if (typeof storage !== 'string') {
@@ -74,7 +76,9 @@ function QrLoginMobilePage() {
     );
   }
 
-  if (errMsg) {
+  // 如果有 storage 参数（扫码进来的），即使 errMsg 存在也不显示错误
+  // 因为可能是非钉钉环境的正常提示
+  if (errMsg && !storage) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-cyan-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center shadow-lg">
