@@ -893,11 +893,11 @@ class SimpleMatcher {
     // 这种格式很特殊，需要优先匹配
     // 包括三种模式：
     // 1. 单字母 + 产品词 (x note, x fold, x flip) - 最高优先级
-    // 2. 特定产品词 + 修饰词 + 可选数字 (watch gt 2, band se, etc.)
+    // 2. 特定产品词 + 修饰词 + 可选数字 (watch gt 2, band se, watch x2 mini, etc.)
     // 3. 特定产品词 + 数字 (watch 5, band 3, etc.)
     const wordModelPattern2 = /\b([a-z])\s+(note|fold|flip|pad)\b/gi;
-    // 改进：支持 watch gt 2 这样的格式（产品词 + 修饰词 + 可选数字）
-    const wordModelPattern1 = /\b(watch|band|buds|pad|fold|flip)\s+(gt|se|pro|max|plus|ultra|air|lite|\d+|[a-z]+\d*)(?:\s+\d+)?\b/gi;
+    // 改进：支持 watch x2 mini 这样的格式（产品词 + 修饰词 + 可选数字 + 可选修饰词）
+    const wordModelPattern1 = /\b(watch|band|buds|pad|fold|flip)\s+(gt|se|pro|max|plus|ultra|air|lite|x2|x3|x4|x5|\d+|[a-z]+\d*)(?:\s+(?:mini|pro|plus|ultra|air|lite|\d+))?\b/gi;
     
     // 优先匹配 pattern2（单字母+产品词），因为它更具体
     const wordMatches2 = normalizedStr.match(wordModelPattern2);
@@ -906,7 +906,11 @@ class SimpleMatcher {
     
     if (wordMatches && wordMatches.length > 0) {
       // 返回第一个匹配（通常是最准确的）
-      const model = wordMatches[0].toLowerCase().replace(/\s+/g, '');
+      let model = wordMatches[0].toLowerCase().replace(/\s+/g, '');
+      
+      // 移除尾部的 mm 和 4g/5g 等参数（如果有的话）
+      model = model.replace(/\d+mm.*$/, '').replace(/\d+g.*$/, '');
+      
       console.log('提取型号（优先级1-字母+字母）:', model);
       return model;
     }
@@ -1205,7 +1209,8 @@ class SimpleMatcher {
     
     // 规则2：如果找到内存（如 12+512 或 12GB+512GB），前面的内容为SPU
     // 匹配 (12+512), 12+512, 12GB+512GB, (12GB+512GB) 等格式
-    const memoryPattern = /(.+?)\s*\(?\d+\s*(?:gb)?\s*\+\s*\d+\s*(?:gb)?\)?/i;
+    // 注意：只匹配 GB 单位的内存，避免与 mm（尺寸）混淆
+    const memoryPattern = /(.+?)\s*\(?\d+\s*gb\s*\+\s*\d+\s*(?:gb)?\)?/i;
     const memoryMatch = str.match(memoryPattern);
     if (memoryMatch) {
       const spuPart = memoryMatch[1].trim();
