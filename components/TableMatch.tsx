@@ -5,6 +5,7 @@ import { Card, Button, Table, Tag, message, Spin, Select, Empty, Progress } from
 import { Upload, Play, Download, AlertCircle } from 'lucide-react';
 import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { SKUState, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
+import * as XLSX from 'xlsx';
 
 // 导入 SimpleMatcher 类（从 SmartMatch.tsx）
 // 注意：这里需要将 SimpleMatcher 从 SmartMatch.tsx 中导出
@@ -198,6 +199,45 @@ export function TableMatchComponent() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+
+    // 处理 Excel 文件
+    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          
+          // 读取第一个工作表
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          
+          // 转换为 JSON 数组
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+          
+          if (jsonData.length === 0) {
+            message.error('文件为空');
+            return;
+          }
+
+          const headers = jsonData[0].map(h => String(h || ''));
+          const rows = jsonData.slice(1).filter(row => row.some(cell => cell !== undefined && cell !== ''));
+
+          setTableData({ headers, rows: rows.map(row => row.map(cell => String(cell || ''))) });
+          setSelectedColumn(null);
+          setMatchResults([]);
+          message.success(`文件上传成功，共 ${rows.length} 行数据`);
+        } catch (error) {
+          message.error('Excel 文件解析失败');
+          console.error(error);
+        }
+      };
+      reader.readAsBinaryString(file);
+      return;
+    }
+
+    // 处理 CSV/TXT 文件
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -218,7 +258,7 @@ export function TableMatchComponent() {
         setTableData({ headers, rows });
         setSelectedColumn(null);
         setMatchResults([]);
-        message.success('文件上传成功');
+        message.success(`文件上传成功，共 ${rows.length} 行数据`);
       } catch (error) {
         message.error('文件解析失败');
         console.error(error);
@@ -515,7 +555,7 @@ export function TableMatchComponent() {
         <div className="flex items-center gap-4">
           <input
             type="file"
-            accept=".csv,.txt"
+            accept=".csv,.txt,.xlsx,.xls"
             onChange={handleFileUpload}
             className="hidden"
             id="file-upload"
@@ -529,6 +569,10 @@ export function TableMatchComponent() {
               已上传：{tableData.rows.length} 行数据
             </span>
           )}
+          
+          <span className="text-xs text-gray-500">
+            支持格式：CSV、TXT、Excel (xlsx/xls)
+          </span>
         </div>
 
         {/* 列选择 */}

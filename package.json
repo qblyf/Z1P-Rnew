@@ -36,7 +36,8 @@
     "react-dom": "^18.3.1",
     "styled-jsx": "^5.0.2",
     "swr": "^2.2.5",
-    "tiny-pinyin": "github:iugo/pinyin#master"
+    "tiny-pinyin": "github:iugo/pinyin#master",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@next/eslint-plugin-next": "^12.1.0",
