@@ -55,6 +55,42 @@ describe('SimpleMatcher - 型号提取', () => {
   });
 });
 
+describe('SimpleMatcher - 输入预处理', () => {
+  const matcher = new SimpleMatcher();
+
+  test('应该保留括号中的容量信息', () => {
+    const input = 'OPPO A5PRO (12+256)石英白';
+    const processed = matcher.preprocessInputAdvanced(input);
+    
+    // 应该包含容量信息
+    expect(processed).toContain('12+256');
+    // 应该包含型号
+    expect(processed).toContain('A5PRO');
+    // 应该包含颜色
+    expect(processed).toContain('石英白');
+  });
+
+  test('应该正确处理带网络制式的输入', () => {
+    const input = 'Vivo Y300 Pro+ 5G (12+512) 微粉';
+    const processed = matcher.preprocessInputAdvanced(input);
+    
+    // 应该包含容量信息
+    expect(processed).toContain('12+512');
+    // 应该包含网络制式
+    expect(processed).toContain('5G');
+  });
+
+  test('应该正确处理没有括号的输入', () => {
+    const input = 'OPPO A5PRO 12+256 石英白';
+    const processed = matcher.preprocessInputAdvanced(input);
+    
+    // 应该保持原样
+    expect(processed).toContain('A5PRO');
+    expect(processed).toContain('12+256');
+    expect(processed).toContain('石英白');
+  });
+});
+
 describe('SimpleMatcher - SPU 匹配', () => {
   const matcher = new SimpleMatcher();
 

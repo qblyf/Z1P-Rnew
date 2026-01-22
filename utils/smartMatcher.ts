@@ -255,7 +255,18 @@ export class SimpleMatcher {
     
     // 3. 重新添加容量信息
     if (capacities.length > 0) {
-      processed = processed.replace(/(\d+G)\s*/, `$1 ${capacities[0]} `);
+      // 改进：在品牌+型号后添加容量，而不是只在网络制式后
+      // 策略：在第一个中文字符（通常是颜色）前添加容量
+      const chinesePattern = /[\u4e00-\u9fa5]/;
+      const chineseIndex = processed.search(chinesePattern);
+      
+      if (chineseIndex !== -1) {
+        // 在中文字符前插入容量
+        processed = processed.slice(0, chineseIndex).trim() + ' ' + capacities[0] + ' ' + processed.slice(chineseIndex).trim();
+      } else {
+        // 如果没有中文字符，在末尾添加容量
+        processed = processed.trim() + ' ' + capacities[0];
+      }
     }
     
     // 4. 处理特殊字符
