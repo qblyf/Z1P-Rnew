@@ -762,6 +762,7 @@ class SimpleMatcher {
    * 实现版本过滤规则：
    * 1. 礼盒版过滤：当输入不包含"礼盒"、"套装"、"系列"等关键词时，过滤掉包含这些词的SPU
    * 2. 版本互斥过滤：当输入包含"蓝牙版"时，过滤掉"eSIM版"SPU；反之亦然
+   * 3. 配件过滤：当输入不包含配件关键词时，过滤掉配件类SPU
    * 
    * @param inputName - 用户输入的商品名称
    * @param spuName - SPU名称
@@ -802,6 +803,30 @@ class SimpleMatcher {
     if (hasESIM && lowerSPU.includes('蓝牙版')) {
       console.log(`过滤SPU（版本互斥-eSIM vs 蓝牙）: ${spuName}`);
       return true;
+    }
+    
+    // 规则3：配件过滤
+    // 当输入不包含配件关键词时，过滤掉配件类SPU
+    const accessoryKeywords = [
+      '保护壳', '手机壳', '保护套', '手机套', '壳',
+      '充电器', '充电线', '数据线', '耳机', '耳塞',
+      '贴膜', '钢化膜', '屏幕保护膜',
+      '支架', '车载支架',
+      '移动电源', '充电宝',
+      '转接头', '适配器',
+    ];
+    
+    const hasAccessoryKeywordInInput = accessoryKeywords.some(keyword => 
+      lowerInput.includes(keyword)
+    );
+    
+    const hasAccessoryKeywordInSPU = accessoryKeywords.some(keyword => 
+      lowerSPU.includes(keyword)
+    );
+    
+    if (!hasAccessoryKeywordInInput && hasAccessoryKeywordInSPU) {
+      console.log(`过滤SPU（配件）: ${spuName}`);
+      return true; // 输入不含配件关键词，但SPU含有，应该过滤
     }
     
     return false; // 不过滤
@@ -1445,7 +1470,13 @@ class SimpleMatcher {
         const priority = this.getSPUPriority(input, spu.name);
         
         // 更新最佳匹配
-        if (score > bestScore || (score === bestScore && priority > bestPriority)) {
+        // 优先级规则：
+        // 1. 分数更高的优先
+        // 2. 分数相同时，优先级更高的优先
+        // 3. 分数和优先级都相同时，名称更短的优先（更精确）
+        if (score > bestScore || 
+            (score === bestScore && priority > bestPriority) ||
+            (score === bestScore && priority === bestPriority && spu.name.length < (bestMatch?.name.length || Infinity))) {
           bestScore = score;
           bestMatch = spu;
           bestPriority = priority;
