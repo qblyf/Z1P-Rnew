@@ -140,6 +140,8 @@ const MODEL_NORMALIZATIONS: Record<string, string> = {
   'k13turbopro': 'k13 turbo pro',
   'y300i': 'y300i',
   'y300pro': 'y300 pro',
+  'y300pro+': 'y300 pro+',
+  'y300proplus': 'y300 pro plus',
   's30promini': 's30 pro mini',
   's50promini': 's50 pro mini',
   'xfold5': 'x fold5',
@@ -349,8 +351,8 @@ export class SimpleMatcher {
       return wordMatches[0].toLowerCase().replace(/\s+/g, '');
     }
     
-    // 优先级2: 复杂型号格式
-    const complexModelPattern = /\b([a-z]+)\s*(\d+)\s*(pro|max|plus|ultra|mini|se|air|lite|note|turbo)(\s+(mini|max|plus|ultra|pro))?\b/gi;
+    // 优先级2: 复杂型号格式（支持 Pro+, Max+ 等带加号的型号）
+    const complexModelPattern = /\b([a-z]+)\s*(\d+)\s*(pro|max|plus|ultra|mini|se|air|lite|note|turbo)(\+)?(\s+(mini|max|plus|ultra|pro))?\b/gi;
     const complexMatches = normalizedStr.match(complexModelPattern);
     
     if (complexMatches && complexMatches.length > 0) {
