@@ -32,6 +32,8 @@ interface MatchResult {
   color?: string;
   gtin?: string;
   similarity: number;
+  // 原表格的所有列数据
+  originalRow: string[];
 }
 
 /**
@@ -270,6 +272,7 @@ export function TableMatchComponent() {
             originalName: '',
             status: 'unmatched',
             similarity: 0,
+            originalRow: row,
           });
           continue;
         }
@@ -286,6 +289,7 @@ export function TableMatchComponent() {
             originalName: productName,
             status: 'unmatched',
             similarity: 0,
+            originalRow: row,
           });
           continue;
         }
@@ -302,6 +306,7 @@ export function TableMatchComponent() {
               brand: matcher.extractBrand(productName) || undefined,
               spu: matchedSPU.name,
               similarity: spuSimilarity * 100,
+              originalRow: row,
             });
             continue;
           }
@@ -334,6 +339,7 @@ export function TableMatchComponent() {
               color: matchedSKU.color,
               gtin: matchedSKU.gtin,
               similarity: skuSimilarity * 100,
+              originalRow: row,
             });
           } else {
             results.push({
@@ -342,6 +348,7 @@ export function TableMatchComponent() {
               brand: matcher.extractBrand(productName) || undefined,
               spu: matchedSPU.name,
               similarity: spuSimilarity * 100,
+              originalRow: row,
             });
           }
         } catch (error) {
@@ -352,6 +359,7 @@ export function TableMatchComponent() {
             brand: matcher.extractBrand(productName) || undefined,
             spu: matchedSPU.name,
             similarity: spuSimilarity * 100,
+            originalRow: row,
           });
         }
         
@@ -382,20 +390,24 @@ export function TableMatchComponent() {
       return;
     }
 
-    // 生成 CSV 内容
-    const headers = ['原商品名', '匹配状态', '品牌', 'SPU', 'SKU', '版本', '容量', '颜色', '69码', '相似度'];
-    const rows = matchResults.map(result => [
-      result.originalName,
-      result.status === 'matched' ? '完全匹配' : result.status === 'spu-matched' ? 'SPU匹配' : '未匹配',
-      result.brand || '-',
-      result.spu || '-',
-      result.sku || '-',
-      result.version || '-',
-      result.capacity || '-',
-      result.color || '-',
-      result.gtin || '-',
-      `${result.similarity.toFixed(1)}%`,
-    ]);
+    // 生成 CSV 内容 - 包含原表格的所有列
+    const matchHeaders = ['匹配状态', '品牌', 'SPU', 'SKU', '版本', '容量', '颜色', '69码', '相似度'];
+    const headers = [...(tableData?.headers || []), ...matchHeaders];
+    
+    const rows = matchResults.map(result => {
+      const matchData = [
+        result.status === 'matched' ? '完全匹配' : result.status === 'spu-matched' ? 'SPU匹配' : '未匹配',
+        result.brand || '-',
+        result.spu || '-',
+        result.sku || '-',
+        result.version || '-',
+        result.capacity || '-',
+        result.color || '-',
+        result.gtin || '-',
+        `${result.similarity.toFixed(1)}%`,
+      ];
+      return [...result.originalRow, ...matchData];
+    });
 
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -415,19 +427,23 @@ export function TableMatchComponent() {
     unmatched: matchResults.filter(r => r.status === 'unmatched').length,
   };
 
-  // 表格列定义
+  // 表格列定义 - 动态生成，包含原表格的所有列
   const columns = [
-    {
-      title: '原商品名',
-      dataIndex: 'originalName',
-      key: 'originalName',
-      width: 200,
-    },
+    // 原表格的列
+    ...(tableData?.headers.map((header, index) => ({
+      title: header,
+      dataIndex: `col_${index}`,
+      key: `col_${index}`,
+      width: 120,
+      render: (_: any, record: any) => record.originalRow[index] || '-',
+    })) || []),
+    // 匹配结果列
     {
       title: '匹配状态',
       dataIndex: 'status',
       key: 'status',
       width: 100,
+      fixed: 'right' as const,
       render: (status: string) => {
         const colorMap = {
           matched: 'success',
@@ -447,6 +463,7 @@ export function TableMatchComponent() {
       dataIndex: 'brand',
       key: 'brand',
       width: 100,
+      fixed: 'right' as const,
       render: (text: string) => text || '-',
     },
     {
@@ -454,6 +471,7 @@ export function TableMatchComponent() {
       dataIndex: 'spu',
       key: 'spu',
       width: 150,
+      fixed: 'right' as const,
       render: (text: string) => text || '-',
     },
     {
@@ -461,6 +479,7 @@ export function TableMatchComponent() {
       dataIndex: 'sku',
       key: 'sku',
       width: 150,
+      fixed: 'right' as const,
       render: (text: string) => text || '-',
     },
     {
@@ -468,6 +487,7 @@ export function TableMatchComponent() {
       dataIndex: 'capacity',
       key: 'capacity',
       width: 100,
+      fixed: 'right' as const,
       render: (text: string) => text || '-',
     },
     {
@@ -475,6 +495,7 @@ export function TableMatchComponent() {
       dataIndex: 'color',
       key: 'color',
       width: 100,
+      fixed: 'right' as const,
       render: (text: string) => text || '-',
     },
     {
@@ -482,6 +503,7 @@ export function TableMatchComponent() {
       dataIndex: 'similarity',
       key: 'similarity',
       width: 100,
+      fixed: 'right' as const,
       render: (value: number) => `${value.toFixed(1)}%`,
     },
   ];
@@ -580,7 +602,7 @@ export function TableMatchComponent() {
               key: index,
             }))}
             pagination={{ pageSize: 20 }}
-            scroll={{ x: 1200 }}
+            scroll={{ x: 1200 + (tableData?.headers.length || 0) * 120 }}
           />
         ) : (
           !matching && (
