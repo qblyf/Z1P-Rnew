@@ -57,11 +57,15 @@ function QrLoginMobilePage() {
   // 当有 storage 参数时（扫码进来），使用 contextToken；否则等待自动登录
   useEffect(() => {
     if (typeof storage === 'string') {
-      // 扫码进来的情况：使用 contextToken 作为登录token
-      if (contextToken) {
-        setToken(contextToken);
+      // 扫码进来的情况：等待钉钉自动登录完成
+      if (contextToken !== undefined) {
+        // contextToken 已经初始化完成（可能是 null 或有效 token）
+        if (contextToken) {
+          setToken(contextToken);
+        }
+        setIsInitialized(true);
       }
-      setIsInitialized(true);
+      // 如果 contextToken 还是 undefined，继续等待
     } else {
       // 没有 storage 参数的情况：等待自动登录
       if (contextToken === null) {
@@ -88,8 +92,31 @@ function QrLoginMobilePage() {
     );
   }
 
-  // 如果有 storage 参数（扫码进来的），即使 errMsg 存在也不显示错误
-  // 因为可能是非钉钉环境的正常提示
+  // 如果有 storage 参数（扫码进来的），检查是否是钉钉环境
+  if (errMsg && storage && isInitialized && !token) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-cyan-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center shadow-lg">
+          <AlertCircle size={48} className="mx-auto text-amber-500 mb-4" />
+          <h2 className="text-lg font-bold text-slate-800 mb-2">需要钉钉登录</h2>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+            <p className="text-amber-800 text-sm font-medium mb-2">
+              ⚠️ 重要提示
+            </p>
+            <p className="text-amber-700 text-xs mb-2">
+              本系统仅支持钉钉登录。请使用钉钉应用扫描二维码。
+            </p>
+            <p className="text-amber-700 text-xs">
+              如果您使用的是微信、浏览器等其他应用扫码，将无法完成登录。
+            </p>
+          </div>
+          <p className="text-slate-500 text-xs mt-4">错误信息: {errMsg}</p>
+        </Card>
+      </div>
+    );
+  }
+  
+  // 如果没有 storage 参数且有错误，显示错误
   if (errMsg && !storage) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-cyan-50 flex items-center justify-center p-4">
