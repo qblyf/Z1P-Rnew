@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, Button, Table, Tag, message, Spin, Select, Empty } from 'antd';
+import { Card, Button, Table, Tag, message, Spin, Select, Empty, Progress } from 'antd';
 import { Upload, Play, Download, AlertCircle } from 'lucide-react';
 import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { SKUState, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
@@ -183,6 +183,11 @@ export function TableMatchComponent() {
   const [selectedColumn, setSelectedColumn] = useState<number | null>(null);
   const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
   const [matching, setMatching] = useState(false);
+  
+  // 进度相关状态
+  const [matchProgress, setMatchProgress] = useState(0);
+  const [currentMatching, setCurrentMatching] = useState<string>('');
+  const [totalCount, setTotalCount] = useState(0);
 
   /**
    * 处理文件上传
@@ -232,6 +237,9 @@ export function TableMatchComponent() {
 
     setMatching(true);
     setMatchResults([]);
+    setMatchProgress(0);
+    setCurrentMatching('');
+    setTotalCount(tableData.rows.length);
 
     try {
       // 获取 SPU 列表
@@ -249,8 +257,13 @@ export function TableMatchComponent() {
       const results: MatchResult[] = [];
 
       // 遍历每一行进行匹配
-      for (const row of tableData.rows) {
+      for (let i = 0; i < tableData.rows.length; i++) {
+        const row = tableData.rows[i];
         const productName = row[selectedColumn]?.trim();
+        
+        // 更新进度
+        setMatchProgress(Math.round(((i + 1) / tableData.rows.length) * 100));
+        setCurrentMatching(productName || '(空)');
         
         if (!productName) {
           results.push({
@@ -341,9 +354,16 @@ export function TableMatchComponent() {
             similarity: spuSimilarity * 100,
           });
         }
+        
+        // 实时更新结果（每10条更新一次，避免频繁渲染）
+        if ((i + 1) % 10 === 0 || i === tableData.rows.length - 1) {
+          setMatchResults([...results]);
+        }
       }
 
       setMatchResults(results);
+      setMatchProgress(100);
+      setCurrentMatching('');
       message.success(`匹配完成！共 ${results.length} 条记录`);
     } catch (error) {
       message.error('匹配失败');
@@ -570,9 +590,46 @@ export function TableMatchComponent() {
 
         {/* 加载状态 */}
         {matching && (
-          <div className="text-center py-8">
-            <Spin size="large" />
-            <p className="mt-4 text-gray-600">正在匹配中，请稍候...</p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-blue-900">匹配进度</span>
+                <span className="text-sm font-medium text-blue-900">{matchProgress}%</span>
+              </div>
+              
+              <Progress 
+                percent={matchProgress} 
+                status="active"
+                strokeColor={{
+                  '0%': '#108ee9',
+                  '100%': '#87d068',
+                }}
+              />
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">总数：</span>
+                  <span className="font-medium text-gray-900">{totalCount} 条</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">已完成：</span>
+                  <span className="font-medium text-gray-900">{matchResults.length} 条</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">剩余：</span>
+                  <span className="font-medium text-gray-900">{totalCount - matchResults.length} 条</span>
+                </div>
+              </div>
+              
+              {currentMatching && (
+                <div className="mt-4 pt-4 border-t border-blue-200">
+                  <div className="text-sm text-gray-600 mb-1">正在匹配：</div>
+                  <div className="text-sm font-medium text-blue-900 bg-white px-3 py-2 rounded border border-blue-100">
+                    {currentMatching}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
