@@ -642,14 +642,14 @@ class SimpleMatcher {
     if (isColorVariant(color1, color2)) return true;
     
     // 基础颜色匹配（改进版）
-    // 只有当两个颜色都是同一个基础颜色时才匹配
-    // 例如："深空黑" 和 "曜石黑" 都包含 "黑"，但不应该匹配
-    // 除非它们在 COLOR_VARIANTS 中明确定义为变体
+    // 当两个颜色都包含同一个基础颜色时，应该匹配
+    // 例如："空白格" 和 "空格白" 都包含 "白"，应该匹配
+    // 例如："深空黑" 和 "曜石黑" 都包含 "黑"，应该匹配
     
-    // 定义基础颜色的严格映射
+    // 定义基础颜色的映射
     const basicColorMap: Record<string, string[]> = {
       '黑': ['黑', '深', '曜', '玄', '纯', '简', '辰'],
-      '白': ['白', '零', '雪'],
+      '白': ['白', '零', '雪', '空', '格'],  // 新增：空、格（用于匹配"空白格"、"空格白"）
       '蓝': ['蓝', '天', '星', '冰', '悠', '自', '薄'],
       '红': ['红', '深'],
       '绿': ['绿', '原', '玉'],
@@ -668,12 +668,8 @@ class SimpleMatcher {
       const color2HasBasic = variants.some(v => color2.includes(v));
       
       if (color1HasBasic && color2HasBasic) {
-        // 两个颜色都属于同一基础颜色族
-        // 但要排除明确不同的颜色（通过 COLOR_VARIANTS 检查）
-        if (!isColorVariant(color1, color2)) {
-          // 如果不在变体列表中，则不匹配
-          return false;
-        }
+        // 两个颜色都属于同一基础颜色族，匹配成功
+        // 例如："空白格" 和 "空格白" 都包含 "白"/"空"/"格"
         return true;
       }
     }
