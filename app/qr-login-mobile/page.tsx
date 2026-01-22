@@ -27,13 +27,15 @@ export default function () {
  */
 function QrLoginMobilePage() {
   const router = useRouter();
-  const { token, errMsg } = useTokenContext();
+  const { token: contextToken, errMsg } = useTokenContext();
 
   const searchParams = useSearchParams();
   const storage = useMemo(() => searchParams?.get('storage'), [searchParams]);
   const [status, setStatus] = useState<'等待确认' | '正在登录中' | '登录已完成' | '登录失败' | string>('等待确认');
   const [isLoading, setIsLoading] = useState(false);
   const [showDingtalkWarning, setShowDingtalkWarning] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     if (typeof storage !== 'string') {
@@ -52,16 +54,26 @@ function QrLoginMobilePage() {
     }
   }, [storage]);
 
-  // 移动端登录成功后不跳转，保持在当前页面显示成功提示
-
-  // 未登录时跳转到桌面端 QR 登录页面
-  // 注意：只有在 token 明确为 null 且没有 storage 参数时才跳转
-  // 如果有 storage 参数，说明是扫码进来的，应该显示登录页面而不是跳转
+  // 当有 storage 参数时（扫码进来），使用 contextToken；否则等待自动登录
   useEffect(() => {
-    if (token === null && !storage) {
-      router.push('/qr-login-desk');
+    if (typeof storage === 'string') {
+      // 扫码进来的情况：使用 contextToken 作为登录token
+      if (contextToken) {
+        setToken(contextToken);
+      }
+      setIsInitialized(true);
+    } else {
+      // 没有 storage 参数的情况：等待自动登录
+      if (contextToken === null) {
+        // 自动登录失败，跳转到PC端登录页面
+        router.push('/qr-login-desk');
+      } else if (contextToken) {
+        // 自动登录成功
+        setToken(contextToken);
+      }
+      setIsInitialized(true);
     }
-  }, [token, router, storage]);
+  }, [contextToken, storage, router]);
 
   // 抛错, 不是有效的参数
   if (typeof storage !== 'string') {
@@ -85,6 +97,18 @@ function QrLoginMobilePage() {
           <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
           <h2 className="text-lg font-bold text-slate-800 mb-2">登录失败</h2>
           <p className="text-slate-600 text-sm">{errMsg}</p>
+        </Card>
+      </div>
+    );
+  }
+
+  // 等待初始化完成
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-cyan-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center shadow-lg">
+          <Spin size="large" />
+          <p className="mt-4 text-slate-600">正在初始化...</p>
         </Card>
       </div>
     );
