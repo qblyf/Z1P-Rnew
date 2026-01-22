@@ -6,10 +6,7 @@ import { Upload, Play, Download, AlertCircle } from 'lucide-react';
 import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { SKUState, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import * as XLSX from 'xlsx';
-
-// 导入 SimpleMatcher 类（从 SmartMatch.tsx）
-// 注意：这里需要将 SimpleMatcher 从 SmartMatch.tsx 中导出
-// 或者在这里重新实现一个简化版本
+import { SimpleMatcher, type SPUData, type SKUData } from '../utils/smartMatcher';
 
 /**
  * 表格数据接口
@@ -38,145 +35,6 @@ interface MatchResult {
 }
 
 /**
- * 简化的匹配器类
- */
-class SimpleMatcher {
-  /**
-   * 提取品牌
-   */
-  extractBrand(str: string): string | null {
-    const brands = ['apple', 'huawei', 'honor', 'xiaomi', 'vivo', 'oppo', 'samsung', 'oneplus', 'redmi'];
-    const lowerStr = str.toLowerCase();
-    
-    for (const brand of brands) {
-      if (lowerStr.includes(brand)) {
-        return brand;
-      }
-    }
-    
-    return null;
-  }
-
-  /**
-   * 提取型号
-   */
-  extractModel(str: string): string | null {
-    // 简化的型号提取
-    const modelMatch = str.match(/[A-Z]\w+\s*\d+\w*/i);
-    return modelMatch ? modelMatch[0] : null;
-  }
-
-  /**
-   * 提取容量
-   */
-  extractCapacity(str: string): string | null {
-    const capacityMatch = str.match(/(\d+)\s*\+\s*(\d+)/);
-    if (capacityMatch) {
-      return `${capacityMatch[1]}+${capacityMatch[2]}`;
-    }
-    return null;
-  }
-
-  /**
-   * 提取颜色
-   */
-  extractColor(str: string): string | null {
-    const colors = ['黑', '白', '蓝', '红', '绿', '紫', '金', '银', '灰', '粉'];
-    
-    for (const color of colors) {
-      if (str.includes(color)) {
-        // 尝试提取完整颜色名称
-        const colorMatch = str.match(new RegExp(`[\\u4e00-\\u9fa5]*${color}[\\u4e00-\\u9fa5]*`));
-        if (colorMatch) {
-          return colorMatch[0];
-        }
-      }
-    }
-    
-    return null;
-  }
-
-  /**
-   * 计算相似度
-   */
-  calculateSimilarity(str1: string, str2: string): number {
-    const s1 = str1.toLowerCase();
-    const s2 = str2.toLowerCase();
-    
-    // 简单的相似度计算
-    let matches = 0;
-    const len = Math.min(s1.length, s2.length);
-    
-    for (let i = 0; i < len; i++) {
-      if (s1[i] === s2[i]) {
-        matches++;
-      }
-    }
-    
-    return matches / Math.max(s1.length, s2.length);
-  }
-
-  /**
-   * 查找最佳 SPU 匹配
-   */
-  findBestSPUMatch(
-    input: string,
-    spuList: any[],
-    threshold: number = 0.5
-  ): { spu: any | null; similarity: number } {
-    let bestMatch: any | null = null;
-    let bestSimilarity = 0;
-
-    for (const spu of spuList) {
-      const similarity = this.calculateSimilarity(input, spu.name || '');
-      
-      if (similarity > bestSimilarity && similarity >= threshold) {
-        bestSimilarity = similarity;
-        bestMatch = spu;
-      }
-    }
-
-    return { spu: bestMatch, similarity: bestSimilarity };
-  }
-
-  /**
-   * 查找最佳 SKU 匹配
-   */
-  findBestSKUWithVersion(
-    input: string,
-    skuList: any[],
-    inputVersion: any
-  ): { sku: any | null; similarity: number } {
-    let bestMatch: any | null = null;
-    let bestSimilarity = 0;
-
-    const inputCapacity = this.extractCapacity(input);
-    const inputColor = this.extractColor(input);
-
-    for (const sku of skuList) {
-      let similarity = this.calculateSimilarity(input, sku.name || '');
-      
-      // 容量匹配加分
-      if (inputCapacity && sku.capacity === inputCapacity) {
-        similarity += 0.2;
-      }
-      
-      // 颜色匹配加分
-      if (inputColor && sku.color && sku.color.includes(inputColor)) {
-        similarity += 0.2;
-      }
-      
-      if (similarity > bestSimilarity) {
-        bestSimilarity = similarity;
-        bestMatch = sku;
-      }
-    }
-
-    return { sku: bestMatch, similarity: bestSimilarity };
-  }
-}
-
-/**
  * TableMatch 组件
  * 用于批量匹配商品信息
  */
@@ -186,11 +44,14 @@ export function TableMatchComponent() {
   const [selectedColumn, setSelectedColumn] = useState<number | null>(null);
   const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
   const [matching, setMatching] = useState(false);
+  const [colorList, setColorList] = useState<string[]>([]);
   
   // 进度相关状态
   const [matchProgress, setMatchProgress] = useState(0);
   const [currentMatching, setCurrentMatching] = useState<string>('');
   const [totalCount, setTotalCount] = useState(0);
+  
+  const matcher = new SimpleMatcher();
 
   /**
    * 处理文件上传
@@ -294,8 +155,28 @@ export function TableMatchComponent() {
         },
         ['id', 'name', 'brand', 'skuIDs']
       );
+      
+      // 提取颜色列表
+      const colorMap = new Map<string, Set<number>>();
+      for (const spu of spuList) {
+        const { id, skuIDs } = spu;
+        if (!skuIDs || skuIDs.length === 0) continue;
+        
+        for (const skuInfo of skuIDs) {
+          if ('color' in skuInfo && skuInfo.color) {
+            const color = skuInfo.color;
+            if (!colorMap.has(color)) {
+              colorMap.set(color, new Set());
+            }
+            colorMap.get(color)!.add(id);
+          }
+        }
+      }
+      
+      const colors = Array.from(colorMap.keys()).sort((a, b) => b.length - a.length);
+      setColorList(colors);
+      matcher.setColorList(colors);
 
-      const matcher = new SimpleMatcher();
       const results: MatchResult[] = [];
 
       // 遍历每一行进行匹配
@@ -316,12 +197,19 @@ export function TableMatchComponent() {
           });
           continue;
         }
+        
+        // 清理和预处理输入
+        let trimmedLine = matcher.cleanDemoMarkers(productName);
+        trimmedLine = matcher.preprocessInputAdvanced(trimmedLine);
+        
+        // 提取版本信息
+        const inputVersion = matcher.extractVersion(trimmedLine);
 
         // 第一阶段：SPU 匹配
         const { spu: matchedSPU, similarity: spuSimilarity } = matcher.findBestSPUMatch(
-          productName,
+          trimmedLine,
           spuList,
-          0.3
+          0.5
         );
 
         if (!matchedSPU) {
@@ -353,32 +241,50 @@ export function TableMatchComponent() {
 
           // 获取 SKU 详细信息
           const skuDetails = await getSKUsInfo(skuIDs.map((s: any) => s.skuID));
-          const skuData = skuDetails.map((sku: any) => ({
-            id: sku.id,
-            name: sku.name,
-            capacity: sku.capacity,
-            color: sku.color,
-            gtin: sku.gtin,
-          }));
+          const skuData: SKUData[] = skuDetails
+            .filter((sku: any) => !('errInfo' in sku) && sku.state === SKUState.在用)
+            .map((sku: any) => ({
+              id: sku.id,
+              name: sku.name,
+              spuID: matchedSPU.id,
+              spuName: matchedSPU.name,
+              brand: matchedSPU.brand,
+              version: undefined,
+              memory: matcher.extractCapacity(sku.name) || undefined,
+              color: matcher.extractColorAdvanced(sku.name) || undefined,
+              gtins: sku.gtins || [],
+            }));
+
+          if (skuData.length === 0) {
+            results.push({
+              originalName: productName,
+              status: 'unmatched',
+              similarity: 0,
+              originalRow: row,
+            });
+            continue;
+          }
 
           // 第三阶段：SKU 匹配
           const { sku: matchedSKU, similarity: skuSimilarity } = matcher.findBestSKUWithVersion(
-            productName,
+            trimmedLine,
             skuData,
-            null
+            inputVersion
           );
 
           if (matchedSKU) {
+            const finalSimilarity = spuSimilarity * 0.5 + skuSimilarity * 0.5;
+            
             results.push({
               originalName: productName,
               status: 'matched',
               brand: matcher.extractBrand(productName) || undefined,
               spu: matchedSPU.name,
               sku: matchedSKU.name,
-              capacity: matchedSKU.capacity,
+              capacity: matchedSKU.memory,
               color: matchedSKU.color,
-              gtin: matchedSKU.gtin,
-              similarity: skuSimilarity * 100,
+              gtin: matchedSKU.gtins?.[0],
+              similarity: finalSimilarity * 100,
               originalRow: row,
             });
           } else {
