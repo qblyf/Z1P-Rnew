@@ -897,7 +897,7 @@ class SimpleMatcher {
     // 3. 特定产品词 + 数字 (watch 5, band 3, etc.)
     const wordModelPattern2 = /\b([a-z])\s+(note|fold|flip|pad)\b/gi;
     // 改进：支持 watch x2 mini 这样的格式（产品词 + 修饰词 + 可选数字 + 可选修饰词）
-    const wordModelPattern1 = /\b(watch|band|buds|pad|fold|flip)\s+(gt|se|pro|max|plus|ultra|air|lite|x2|x3|x4|x5|\d+|[a-z]+\d*)(?:\s+(?:mini|pro|plus|ultra|air|lite|\d+))?\b/gi;
+    const wordModelPattern1 = /\b(watch|band|buds|pad|fold|flip)\s+(gt|se|pro|max|plus|ultra|air|lite|x2|x3|x4|x5|s|\d+|[a-z]+\d*)(?:\s+(?:mini|pro|plus|ultra|air|lite|\d+))?\b/gi;
     
     // 优先匹配 pattern2（单字母+产品词），因为它更具体
     const wordMatches2 = normalizedStr.match(wordModelPattern2);
