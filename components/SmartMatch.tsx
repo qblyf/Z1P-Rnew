@@ -893,10 +893,11 @@ class SimpleMatcher {
     // 这种格式很特殊，需要优先匹配
     // 包括三种模式：
     // 1. 单字母 + 产品词 (x note, x fold, x flip) - 最高优先级
-    // 2. 特定产品词 + 修饰词 (watch gt, band se, etc.)
+    // 2. 特定产品词 + 修饰词 + 可选数字 (watch gt 2, band se, etc.)
     // 3. 特定产品词 + 数字 (watch 5, band 3, etc.)
     const wordModelPattern2 = /\b([a-z])\s+(note|fold|flip|pad)\b/gi;
-    const wordModelPattern1 = /\b(watch|band|buds|pad|fold|flip)\s+(gt|se|pro|max|plus|ultra|air|lite|\d+|[a-z]+\d*)\b/gi;
+    // 改进：支持 watch gt 2 这样的格式（产品词 + 修饰词 + 可选数字）
+    const wordModelPattern1 = /\b(watch|band|buds|pad|fold|flip)\s+(gt|se|pro|max|plus|ultra|air|lite|\d+|[a-z]+\d*)(?:\s+\d+)?\b/gi;
     
     // 优先匹配 pattern2（单字母+产品词），因为它更具体
     const wordMatches2 = normalizedStr.match(wordModelPattern2);
@@ -1107,14 +1108,29 @@ class SimpleMatcher {
     // 方法3：从字符串末尾提取颜色（通常颜色在最后）
     // 支持2-5个汉字的颜色名称
     // 例如：vivo Y500 全网通5G 12GB+512GB 龙晶紫 → 龙晶紫
+    // 注意：优先匹配较短的颜色词（2-3个汉字），避免贪心匹配
     // Requirements: 2.4.1, 2.4.2, 3.2.2, 3.2.3
-    const lastWords = str.match(/[\u4e00-\u9fa5]{2,5}$/);
+    
+    // 先尝试匹配2-3个汉字（最常见的颜色词长度）
+    let lastWords = str.match(/[\u4e00-\u9fa5]{2,3}$/);
     if (lastWords) {
       const word = lastWords[0];
       // 排除常见的非颜色词
-      const excludeWords = ['全网通', '网通', '版本', '标准', '套餐', '蓝牙版'];
+      const excludeWords = ['全网通', '网通', '版本', '标准', '套餐', '蓝牙版', '活力版', '优享版', '尊享版', '标准版', '基础版'];
       if (!excludeWords.includes(word)) {
-        console.log(`提取颜色（方法3-末尾提取）: ${word}`);
+        console.log(`提取颜色（方法3-末尾提取2-3字）: ${word}`);
+        return word;
+      }
+    }
+    
+    // 如果2-3字没有匹配，再尝试4-5个汉字
+    lastWords = str.match(/[\u4e00-\u9fa5]{4,5}$/);
+    if (lastWords) {
+      const word = lastWords[0];
+      // 排除常见的非颜色词
+      const excludeWords = ['全网通', '网通', '版本', '标准', '套餐', '蓝牙版', '活力版', '优享版', '尊享版', '标准版', '基础版'];
+      if (!excludeWords.includes(word)) {
+        console.log(`提取颜色（方法3-末尾提取4-5字）: ${word}`);
         return word;
       }
     }
@@ -1341,91 +1357,151 @@ class SimpleMatcher {
     let bestMatch: SPUData | null = null;
     let bestScore = 0;
     let bestPriority = 0;
-    let filteredCount = 0; // 统计被过滤的SPU数量
-    let candidateCount = 0; // 统计候选SPU数量
+    let filteredCount = 0;
+    let candidateCount = 0;
+    
+    // ==================== 第一阶段：有字母顺序全字匹配 ====================
+    console.log('\n--- 第一阶段：有字母顺序全字匹配 ---');
     
     for (const spu of spuList) {
-      // 应用版本过滤：在匹配前先检查是否应该过滤该SPU
-      // Requirements: 2.2.1, 2.2.2, 3.1.1, 3.1.2
+      // 应用版本过滤
       if (this.shouldFilterSPU(input, spu.name)) {
         filteredCount++;
-        continue; // 应该过滤，跳过该SPU
+        continue;
       }
       
-      // 同样提取 SPU 的 SPU 部分
+      // 提取 SPU 的信息
       const spuSPUPart = this.extractSPUPart(spu.name);
       const spuBrand = this.extractBrand(spuSPUPart);
       const spuModel = this.extractModel(spuSPUPart);
       
       let score = 0;
-      let matchCount = 0;
-      let totalCount = 0;
       
-      // 品牌匹配（必须）
-      if (inputBrand) {
-        totalCount++;
-        if (spuBrand && inputBrand === spuBrand) {
-          matchCount++;
-          score += 0.4; // 品牌权重40%
-        } else {
-          continue; // 品牌不匹配，跳过
-        }
-      }
-      
-      // 型号匹配（必须）
-      if (inputModel) {
-        totalCount++;
-        if (spuModel && inputModel === spuModel) {
-          matchCount++;
-          score += 0.6; // 型号权重60%
-        } else {
-          continue; // 型号不匹配，跳过
-        }
-      }
-      
-      // 如果既没有品牌也没有型号，使用字符串相似度（基于 SPU 部分）
-      if (!inputBrand && !inputModel) {
-        const similarity = this.calculateSimilarity(inputSPUPart, spuSPUPart);
-        score = similarity;
-      }
-      
-      // 只有分数达到阈值的才算候选
-      if (score >= threshold) {
-        candidateCount++;
-      }
-      
-      // 计算该SPU的优先级
-      // Requirements: 2.2.3, 3.1.3
-      const priority = this.getSPUPriority(input, spu.name);
-      
-      // 更新最佳匹配：
-      // 1. 如果分数更高，直接更新
-      // 2. 如果分数相同，比较优先级（优先级高的优先）
-      // Requirements: 2.2.3, 3.1.3
-      if (score > bestScore || (score === bestScore && priority > bestPriority)) {
-        const previousBest = bestMatch?.name;
-        bestScore = score;
-        bestMatch = spu;
-        bestPriority = priority;
+      // 品牌和型号都必须匹配
+      if (inputBrand && spuBrand && inputBrand === spuBrand &&
+          inputModel && spuModel && inputModel === spuModel) {
+        // 完全匹配：品牌和型号都相同
+        score = 1.0;
         
-        console.log('更新最佳SPU匹配:', {
-          previousBest,
-          newBest: spu.name,
-          score: score.toFixed(3),
-          priority,
-          priorityLabel: priority === 3 ? '标准版' : priority === 2 ? '版本匹配' : '其他特殊版',
-          reason: score > bestScore ? '分数更高' : '分数相同但优先级更高'
+        console.log('✅ 全字匹配:', {
+          input: `${inputBrand} ${inputModel}`,
+          spu: spu.name,
+          score: score.toFixed(3)
         });
+        
+        // 计算优先级
+        const priority = this.getSPUPriority(input, spu.name);
+        
+        // 更新最佳匹配
+        if (score > bestScore || (score === bestScore && priority > bestPriority)) {
+          bestScore = score;
+          bestMatch = spu;
+          bestPriority = priority;
+        }
       }
     }
     
-    console.log('=== SPU匹配结果 ===');
+    // 如果第一阶段找到了匹配，直接返回
+    if (bestMatch && bestScore >= threshold) {
+      console.log('\n✅ 第一阶段匹配成功！');
+      console.log('最佳匹配SPU:', bestMatch.name);
+      console.log('最佳匹配分数:', bestScore.toFixed(3));
+      console.log('最佳匹配优先级:', bestPriority);
+      return { spu: bestMatch, similarity: bestScore };
+    }
+    
+    // ==================== 第二阶段：无顺序的分词匹配 ====================
+    console.log('\n--- 第二阶段：无顺序的分词匹配 ---');
+    
+    // 重置最佳匹配
+    bestMatch = null;
+    bestScore = 0;
+    bestPriority = 0;
+    filteredCount = 0;
+    candidateCount = 0;
+    
+    // 分词：将输入和SPU分解为词汇
+    const inputWords = this.tokenize(inputSPUPart);
+    console.log('输入词汇:', inputWords);
+    
+    for (const spu of spuList) {
+      // 应用版本过滤
+      if (this.shouldFilterSPU(input, spu.name)) {
+        filteredCount++;
+        continue;
+      }
+      
+      // 提取 SPU 的信息
+      const spuSPUPart = this.extractSPUPart(spu.name);
+      const spuBrand = this.extractBrand(spuSPUPart);
+      const spuModel = this.extractModel(spuSPUPart);
+      const spuWords = this.tokenize(spuSPUPart);
+      
+      let score = 0;
+      
+      // 品牌必须匹配
+      if (inputBrand && spuBrand && inputBrand !== spuBrand) {
+        continue;
+      }
+      
+      // 计算词汇匹配度
+      if (inputModel && spuModel) {
+        // 型号词汇匹配
+        const modelScore = this.calculateTokenSimilarity(
+          this.tokenize(inputModel),
+          this.tokenize(spuModel)
+        );
+        
+        if (modelScore > 0.5) {
+          score = 0.4 + modelScore * 0.6; // 品牌40% + 型号60%
+          
+          console.log('✅ 分词匹配:', {
+            input: `${inputBrand} ${inputModel}`,
+            spu: spu.name,
+            modelScore: modelScore.toFixed(3),
+            score: score.toFixed(3)
+          });
+          
+          // 只有分数达到阈值的才算候选
+          if (score >= threshold) {
+            candidateCount++;
+          }
+          
+          // 计算优先级
+          const priority = this.getSPUPriority(input, spu.name);
+          
+          // 更新最佳匹配
+          if (score > bestScore || (score === bestScore && priority > bestPriority)) {
+            bestScore = score;
+            bestMatch = spu;
+            bestPriority = priority;
+          }
+        }
+      } else if (!inputModel && !spuModel) {
+        // 都没有型号，使用字符串相似度
+        const similarity = this.calculateSimilarity(inputSPUPart, spuSPUPart);
+        score = similarity;
+        
+        if (score >= threshold) {
+          candidateCount++;
+          const priority = this.getSPUPriority(input, spu.name);
+          
+          if (score > bestScore || (score === bestScore && priority > bestPriority)) {
+            bestScore = score;
+            bestMatch = spu;
+            bestPriority = priority;
+          }
+        }
+      }
+    }
+    
+    console.log('\n=== SPU匹配结果 ===');
     console.log('总SPU数量:', spuList.length);
     console.log('过滤SPU数量:', filteredCount);
     console.log('候选SPU数量:', candidateCount);
     console.log('最佳匹配SPU:', bestMatch?.name || '无');
     console.log('最佳匹配分数:', bestScore.toFixed(3));
-    console.log('最佳匹配优先级:', bestPriority, `(${bestPriority === 3 ? '标准版' : bestPriority === 2 ? '版本匹配' : '其他特殊版'})`);
+    console.log('最佳匹配优先级:', bestPriority);
     console.log('是否达到阈值:', bestScore >= threshold ? '是' : '否');
     
     if (bestScore < threshold) {
@@ -1435,6 +1511,70 @@ class SimpleMatcher {
     
     console.log('匹配成功！');
     return { spu: bestMatch, similarity: bestScore };
+  }
+
+  /**
+   * 分词：将字符串分解为词汇
+   * 支持英文单词和中文词汇
+   */
+  private tokenize(str: string): string[] {
+    if (!str) return [];
+    
+    const tokens: string[] = [];
+    let current = '';
+    
+    for (let i = 0; i < str.length; i++) {
+      const char = str[i];
+      const isEnglish = /[a-zA-Z0-9]/.test(char);
+      const isChinese = /[\u4e00-\u9fa5]/.test(char);
+      
+      if (isEnglish) {
+        current += char;
+      } else if (isChinese) {
+        if (current) {
+          tokens.push(current.toLowerCase());
+          current = '';
+        }
+        tokens.push(char);
+      } else {
+        if (current) {
+          tokens.push(current.toLowerCase());
+          current = '';
+        }
+      }
+    }
+    
+    if (current) {
+      tokens.push(current.toLowerCase());
+    }
+    
+    return tokens.filter(t => t.length > 0);
+  }
+
+  /**
+   * 计算两个词汇列表的相似度
+   * 使用无顺序的分词匹配
+   */
+  private calculateTokenSimilarity(tokens1: string[], tokens2: string[]): number {
+    if (tokens1.length === 0 || tokens2.length === 0) {
+      return 0;
+    }
+    
+    // 计算匹配的词汇数
+    let matchCount = 0;
+    
+    for (const token1 of tokens1) {
+      for (const token2 of tokens2) {
+        if (token1 === token2 || token1.includes(token2) || token2.includes(token1)) {
+          matchCount++;
+          break; // 每个 token1 只计算一次
+        }
+      }
+    }
+    
+    // 相似度 = 匹配词汇数 / 总词汇数（取较大值）
+    const totalTokens = Math.max(tokens1.length, tokens2.length);
+    return matchCount / totalTokens;
   }
 
   // 在SKU列表中查找最佳匹配（基于参数）
