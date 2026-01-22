@@ -242,7 +242,7 @@ export function TableMatchComponent() {
           offset: 0,
           orderBy: [{ key: 'p."id"', sort: 'DESC' }],
         },
-        ['id', 'name', 'brandID', 'skuIDs']
+        ['id', 'name', 'brand', 'skuIDs']
       );
 
       const matcher = new SimpleMatcher();
