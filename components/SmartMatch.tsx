@@ -491,7 +491,7 @@ class SimpleMatcher {
     inputVersion: VersionInfo | null
   ): { sku: SKUData | null; similarity: number } {
     const inputCapacity = this.extractCapacity(input);
-    const inputColor = this.extractColor(input);
+    const inputColor = this.extractColorAdvanced(input);
     
     console.log('=== SKU版本匹配 ===');
     console.log('输入版本:', inputVersion?.name || '无');
@@ -503,37 +503,53 @@ class SimpleMatcher {
     
     for (const sku of skuList) {
       const skuCapacity = this.extractCapacity(sku.name);
-      const skuColor = this.extractColor(sku.name);
+      const skuColor = this.extractColorAdvanced(sku.name);
       const skuVersion = this.extractVersion(sku.name);
       
       let score = 0;
-      let weight = 0;
+      let totalWeight = 0;
       
-      // 版本匹配（权重 30%）
-      weight += 0.3;
-      if (inputVersion && skuVersion) {
-        if (inputVersion.name === skuVersion.name) {
-          score += 0.3;  // 版本完全匹配
-        } else if (inputVersion.priority === skuVersion.priority) {
-          score += 0.25; // 版本优先级匹配
+      // 版本匹配（基础权重 30%）
+      // 动态调整：如果有版本信息则使用，否则权重转移到其他字段
+      if (inputVersion || skuVersion) {
+        totalWeight += 0.3;
+        if (inputVersion && skuVersion) {
+          if (inputVersion.name === skuVersion.name) {
+            score += 0.3;  // 版本完全匹配
+          } else if (inputVersion.priority === skuVersion.priority) {
+            score += 0.25; // 版本优先级匹配
+          }
+        } else if (!inputVersion && !skuVersion) {
+          score += 0.3;  // 都没有版本信息
         }
-      } else if (!inputVersion && !skuVersion) {
-        score += 0.3;  // 都没有版本信息
       }
       
-      // 容量匹配（权重 40%）
-      weight += 0.4;
-      if (inputCapacity && skuCapacity && inputCapacity === skuCapacity) {
-        score += 0.4;
+      // 容量匹配（基础权重 40%）
+      // 动态调整：如果有容量信息则使用，否则权重转移到其他字段
+      if (inputCapacity || skuCapacity) {
+        totalWeight += 0.4;
+        if (inputCapacity && skuCapacity && inputCapacity === skuCapacity) {
+          score += 0.4;
+        }
       }
       
-      // 颜色匹配（权重 30%）
-      weight += 0.3;
-      if (inputColor && skuColor && this.isColorMatch(inputColor, skuColor)) {
-        score += 0.3;
+      // 颜色匹配（基础权重 30%）
+      // 动态调整：如果有颜色信息则使用，否则权重转移到其他字段
+      if (inputColor || skuColor) {
+        totalWeight += 0.3;
+        if (inputColor && skuColor && this.isColorMatch(inputColor, skuColor)) {
+          score += 0.3;
+        }
       }
       
-      const finalScore = weight > 0 ? score / weight : 0;
+      // 如果没有任何字段信息，给予基础分数
+      if (totalWeight === 0) {
+        totalWeight = 1;
+        score = 0.1; // 基础分数
+      }
+      
+      // 计算最终分数（归一化）
+      const finalScore = score / totalWeight;
       
       if (finalScore > bestScore) {
         bestScore = finalScore;
@@ -543,7 +559,7 @@ class SimpleMatcher {
     
     console.log('最佳SKU版本匹配:', {
       sku: bestMatch?.name,
-      score: bestScore
+      score: bestScore.toFixed(3)
     });
     
     return { sku: bestMatch, similarity: bestScore };
@@ -578,10 +594,22 @@ class SimpleMatcher {
       }
     }
     
-    // 方法 3: 从字符串末尾提取
+    // 方法 3: 从字符串末尾提取（改进版）
     const lastWords = input.match(/[\u4e00-\u9fa5]{2,5}$/);
     if (lastWords) {
-      return lastWords[0];
+      const word = lastWords[0];
+      // 排除常见的非颜色词（扩展列表）
+      const excludeWords = [
+        '全网通', '网通', '版本', '标准', '套餐', '蓝牙版',
+        '活力版', '优享版', '尊享版', '标准版', '基础版',
+        '轻享版', '享受版', '高端版', 'pro版',
+        '套装', '礼盒', '系列', '礼品', '礼包',
+        '软胶', '硅胶', '皮革', '陶瓷', '玻璃', '金属', '塑料', '尼龙',
+        '演示机', '样机', '展示机', '体验机', '试用机', '测试机'
+      ];
+      if (!excludeWords.includes(word)) {
+        return word;
+      }
     }
     
     return null;
@@ -603,10 +631,39 @@ class SimpleMatcher {
     // 变体匹配
     if (isColorVariant(color1, color2)) return true;
     
-    // 基础颜色匹配
-    const basicColors = ['黑', '白', '蓝', '红', '绿', '紫', '粉', '金', '银', '灰', '棕', '青'];
-    for (const basic of basicColors) {
-      if (color1.includes(basic) && color2.includes(basic)) {
+    // 基础颜色匹配（改进版）
+    // 只有当两个颜色都是同一个基础颜色时才匹配
+    // 例如："深空黑" 和 "曜石黑" 都包含 "黑"，但不应该匹配
+    // 除非它们在 COLOR_VARIANTS 中明确定义为变体
+    
+    // 定义基础颜色的严格映射
+    const basicColorMap: Record<string, string[]> = {
+      '黑': ['黑', '深', '曜', '玄', '纯', '简', '辰'],
+      '白': ['白', '零', '雪'],
+      '蓝': ['蓝', '天', '星', '冰', '悠', '自', '薄'],
+      '红': ['红', '深'],
+      '绿': ['绿', '原', '玉'],
+      '紫': ['紫', '灵', '龙', '流', '极', '惬'],
+      '粉': ['粉', '玛', '晶', '梦', '桃', '酷', '告'],
+      '金': ['金', '流', '祥', '柠'],
+      '银': ['银'],
+      '灰': ['灰'],
+      '棕': ['棕', '琥', '马', '旷'],
+      '青': ['青', '薄'],
+    };
+    
+    // 检查是否属于同一基础颜色族
+    for (const [basicColor, variants] of Object.entries(basicColorMap)) {
+      const color1HasBasic = variants.some(v => color1.includes(v));
+      const color2HasBasic = variants.some(v => color2.includes(v));
+      
+      if (color1HasBasic && color2HasBasic) {
+        // 两个颜色都属于同一基础颜色族
+        // 但要排除明确不同的颜色（通过 COLOR_VARIANTS 检查）
+        if (!isColorVariant(color1, color2)) {
+          // 如果不在变体列表中，则不匹配
+          return false;
+        }
         return true;
       }
     }
