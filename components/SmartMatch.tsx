@@ -397,19 +397,26 @@ class SimpleMatcher {
     let processed = input;
     
     // 1. 移除括号，但保留容量信息
-    // 移除型号代码（如 (WA2456C)），但保留容量信息（如 (12+512)）
+    // 移除型号代码（如 (WA2456C)），但保留容量信息（如 (12+512)、(16+1T)、(12GB+512GB)）
     // 策略：将括号内的容量信息提取出来，移除括号，然后重新添加
     
-    // 1.1 提取容量信息（格式：数字+数字 或 数字GB+数字GB）
-    const capacityPattern = /\((\d+(?:GB)?\s*\+\s*\d+(?:GB)?)\)/g;
+    // 1.1 提取容量信息（支持多种格式）
+    // 格式1: 数字+数字 (如 12+512)
+    // 格式2: 数字GB+数字GB (如 12GB+512GB)
+    // 格式3: 数字+数字T (如 16+1T)
+    // 格式4: 数字GB+数字T (如 16GB+1T)
+    const capacityPattern = /\((\d+(?:GB)?\s*\+\s*\d+(?:GB|T)?)\)/gi;
     const capacities: string[] = [];
     let match;
     while ((match = capacityPattern.exec(processed)) !== null) {
       capacities.push(match[1]);
     }
     
+    console.log('  提取的容量:', capacities);
+    
     // 1.2 移除所有括号内容
     processed = processed.replace(/\s*[\(\(][^\)\)]*[\)\)]/g, '');
+    console.log('  移除括号后:', JSON.stringify(processed));
     
     // 1.3 重新添加容量信息（不带括号）
     if (capacities.length > 0) {

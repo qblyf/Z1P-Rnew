@@ -7,8 +7,8 @@ function preprocessInputAdvanced(input) {
   let processed = input;
   
   // 1. 移除括号，但保留容量信息
-  // 1.1 提取容量信息
-  const capacityPattern = /\((\d+(?:GB)?\s*\+\s*\d+(?:GB)?)\)/g;
+  // 1.1 提取容量信息（支持多种格式）
+  const capacityPattern = /\((\d+(?:GB)?\s*\+\s*\d+(?:GB|T)?)\)/gi;
   const capacities = [];
   let match;
   while ((match = capacityPattern.exec(processed)) !== null) {
@@ -49,15 +49,17 @@ function preprocessInputAdvanced(input) {
 }
 
 console.log('========================================');
-console.log('测试容量信息保留');
+console.log('测试容量信息保留（包含 T 单位）');
 console.log('========================================\n');
 
 const testCases = [
   'Vivo X200S 5G(12+512)简黑',
+  'Vivo X FOLD5 5G(16+1T)青松',  // 新增：T 单位
   'OPPO K13Turbo 5G(12+512)骑士白',
   'vivo S30Promini 5G(12+512)可可黑',
   'OPPO Reno15Pro 全网通5G版(8+256)龙晶紫',
   'vivo Y300i 4G全网通(6+128)简黑',
+  'Huawei Mate60Pro 5G(16GB+1T)雅川青',  // 新增：GB+T 混合
   'VIVO WatchGT2 软胶蓝牙版空白格',  // 没有容量
 ];
 
@@ -72,6 +74,11 @@ testCases.forEach((input, index) => {
 console.log('\n========================================');
 console.log('验证');
 console.log('========================================');
-console.log('✅ 容量信息应该被保留');
-console.log('✅ 型号不应该被拆分（X200S, K13Turbo）');
+console.log('✅ 容量信息应该被保留（包括 T 单位）');
+console.log('✅ 型号不应该被拆分（X200S, K13Turbo, FOLD5）');
 console.log('✅ 网络制式不应该被拆分（5G, 4G）');
+console.log('✅ 支持多种容量格式：');
+console.log('   - 12+512');
+console.log('   - 16+1T');
+console.log('   - 12GB+512GB');
+console.log('   - 16GB+1T');
