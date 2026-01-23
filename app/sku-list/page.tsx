@@ -279,7 +279,7 @@ function ClientPage() {
                     orderBy: { key: 'p.id', sort: 'DESC' },
                     offset: 0,
                   },
-                  { sku: ['id', 'name', 'gtins', 'state', 'spec', 'color', 'combo'], spu: ['brand'] }
+                  { sku: ['id', 'name', 'gtins', 'state', 'spec', 'color', 'combo'] as any, spu: ['brand'] }
                 );
                 
                 // 前端过滤：根据 spec、color、combo 关键词过滤
@@ -287,21 +287,21 @@ function ClientPage() {
                 
                 if (specKeyword) {
                   const specLower = specKeyword.toLowerCase();
-                  filteredRes = filteredRes.filter(item => 
+                  filteredRes = filteredRes.filter((item: any) => 
                     item.spec && item.spec.toLowerCase().includes(specLower)
                   );
                 }
                 
                 if (colorKeyword) {
                   const colorLower = colorKeyword.toLowerCase();
-                  filteredRes = filteredRes.filter(item => 
+                  filteredRes = filteredRes.filter((item: any) => 
                     item.color && item.color.toLowerCase().includes(colorLower)
                   );
                 }
                 
                 if (comboKeyword) {
                   const comboLower = comboKeyword.toLowerCase();
-                  filteredRes = filteredRes.filter(item => 
+                  filteredRes = filteredRes.filter((item: any) => 
                     item.combo && item.combo.toLowerCase().includes(comboLower)
                   );
                 }
