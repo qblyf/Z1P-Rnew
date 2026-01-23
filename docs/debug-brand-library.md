@@ -98,7 +98,7 @@ if (brands.length > 0) {
 // 检查是否有缺失的字段
 const missingSpell = brands.filter(b => !b.spell);
 if (missingSpell.length > 0) {
-  console.warn(`警告: ${missingSpell.length} 个品牌缺少拼音字段:`);
+  console.warn(`警告: ${missingSpell.length} 个品牌缺少品牌英文字段:`);
   missingSpell.forEach(b => console.log(`  - ${b.name}`));
 }
 ```
@@ -173,7 +173,7 @@ if (missingSpell.length > 0) {
    ```javascript
    console.log('品牌总数:', brands.length);
    
-   // 按拼音分组
+   // 按品牌英文分组
    const spellGroups = {};
    brands.forEach(b => {
      if (b.spell) {
@@ -184,7 +184,7 @@ if (missingSpell.length > 0) {
      }
    });
    
-   console.log('拼音分组:');
+   console.log('品牌英文分组:');
    Object.entries(spellGroups).forEach(([spell, names]) => {
      console.log(`  ${spell}: ${names.join(', ')}`);
    });

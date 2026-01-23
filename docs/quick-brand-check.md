@@ -43,10 +43,10 @@ console.log('=== 所有品牌 ===');
 brands.forEach((b, i) => console.log(`${i+1}. ${b.name} (spell: ${b.spell || '无'})`));
 ```
 
-### 步骤4：按拼音分组查看
+### 步骤4：按品牌英文分组查看
 
 ```javascript
-// 按拼音分组
+// 按品牌英文分组
 const groups = {};
 brands.forEach(b => {
   if (b.spell) {
@@ -55,7 +55,7 @@ brands.forEach(b => {
   }
 });
 
-console.log('=== 拼音分组 ===');
+console.log('=== 品牌英文分组 ===');
 Object.entries(groups)
   .filter(([_, names]) => names.length > 1)
   .forEach(([spell, names]) => {
@@ -69,8 +69,8 @@ Object.entries(groups)
 
 以下品牌对必须都存在：
 
-| 拼音 | 中文品牌 | 英文品牌 | 说明 |
-|------|---------|---------|------|
+| 品牌英文 | 中文品牌 | 英文品牌 | 说明 |
+|---------|---------|---------|------|
 | redmi | 红米 | Redmi | 红米是独立品牌 |
 | xiaomi | 小米 | Xiaomi | 小米主品牌 |
 | oneplus | 一加 | OnePlus | 一加品牌 |
@@ -85,7 +85,7 @@ Object.entries(groups)
 
 **正确的配置**：
 ```
-=== 拼音分组 ===
+=== 品牌英文分组 ===
 redmi: 红米, Redmi
 xiaomi: 小米, Xiaomi
 oneplus: 一加, OnePlus
@@ -95,7 +95,7 @@ honor: 荣耀, HONOR
 
 **错误的配置**（缺少中文品牌）：
 ```
-=== 拼音分组 ===
+=== 品牌英文分组 ===
 redmi: Redmi  ❌ 缺少"红米"
 xiaomi: 小米, Xiaomi
 ```
@@ -106,7 +106,7 @@ xiaomi: 小米, Xiaomi
 
 **可能原因**：
 1. 品牌库中只有"Redmi"，没有"红米"
-2. 品牌拼音配置错误
+2. 品牌英文配置错误
 
 **解决方案**：
 运行步骤2的检查脚本，确认"红米"品牌是否存在
@@ -135,7 +135,7 @@ required.forEach(([name, spell]) => {
   if (found) {
     console.log(`✓ ${name} (spell: ${spell})`);
   } else {
-    console.log(`✗ ${name} (spell: ${spell}) - 未找到或拼音不匹配`);
+    console.log(`✗ ${name} (spell: ${spell}) - 未找到或品牌英文不匹配`);
     allFound = false;
   }
 });
@@ -158,7 +158,7 @@ if (allFound) {
 2. **添加缺失的品牌**
    - 例如：添加"红米"
    - 品牌名称：`红米`
-   - 拼音：`redmi`
+   - 品牌英文：`redmi`
    - 保存
 
 3. **刷新页面**

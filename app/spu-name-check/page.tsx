@@ -761,6 +761,7 @@ export default function () {
   const [list, setList] = useState<SPUWithIssues[]>();
   const [loading, setLoading] = useState(false);
   const [editingSpuID, setEditingSpuID] = useState<number | undefined>();
+  const [editingSpuName, setEditingSpuName] = useState<string>('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [batchBrandModalVisible, setBatchBrandModalVisible] = useState(false);
   const [batchEditVisible, setBatchEditVisible] = useState(false);
@@ -798,6 +799,11 @@ export default function () {
 
   // 打开编辑抽屉
   const handleEdit = (spuId: number) => {
+    // 从列表中找到对应的 SPU 并获取名称
+    const spu = list?.find(item => item.id === spuId);
+    if (spu) {
+      setEditingSpuName(spu.name);
+    }
     setEditingSpuID(spuId);
     setDrawerOpen(true);
   };
@@ -806,6 +812,7 @@ export default function () {
   const handleCloseDrawer = () => {
     setDrawerOpen(false);
     setEditingSpuID(undefined);
+    setEditingSpuName('');
   };
 
   // 重新加载数据
@@ -1097,7 +1104,7 @@ export default function () {
 
         {/* SPU 编辑抽屉 */}
         <Drawer
-          title="编辑 SPU"
+          title={editingSpuName ? `编辑 SPU - ${editingSpuName}` : '编辑 SPU'}
           placement="right"
           onClose={handleCloseDrawer}
           open={drawerOpen}

@@ -2,6 +2,7 @@ import { SPU } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import {
   editSPUInfo,
   getSPUInfo,
+  getSKUsInfo,
   invalidateSPUInfo,
 } from '@zsqk/z1-sdk/es/z1p/product';
 import { paramsDetail } from '@zsqk/z1-sdk/es/z1p/params-value';
@@ -60,6 +61,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
   const [showSkuEditDrawer, setShowSkuEditDrawer] = useState(false);
   const [selectedSkuID, setSelectedSkuID] = useState<number | undefined>();
+  const [selectedSkuName, setSelectedSkuName] = useState<string>('');
   const [hasSetParams, setHasSetParams] = useState<boolean>(true); // 默认true避免闪烁
 
   // 当defaultTab变化时更新activeTab
@@ -455,9 +457,26 @@ export default function SPUEdit(props: { defaultTab?: string }) {
               label: 'SKU编辑',
               children: (
                 <SKUManager 
-                  onWantEditSKU={(skuID) => {
+                  onWantEditSKU={async (skuID) => {
                     setSelectedSkuID(skuID);
                     setShowSkuEditDrawer(true);
+                    
+                    // 异步获取 SKU 名称
+                    try {
+                      const skuInfo = await getSKUsInfo([skuID]);
+                      if (skuInfo && skuInfo.length > 0 && !('errInfo' in skuInfo[0])) {
+                        setSelectedSkuName(skuInfo[0].name);
+                      }
+                    } catch (error) {
+                      console.error('获取 SKU 名称失败:', error);
+                      // 如果获取失败，尝试从 preData 中获取
+                      if (preData?.skuIDs) {
+                        const sku = preData.skuIDs.find((s: any) => s.skuID === skuID);
+                        if (sku && 'name' in sku) {
+                          setSelectedSkuName(sku.name as string);
+                        }
+                      }
+                    }
                   }}
                 />
               ),
@@ -482,11 +501,12 @@ export default function SPUEdit(props: { defaultTab?: string }) {
         {/* SKU 编辑 Drawer */}
         {selectedSkuID && (
           <Drawer
-            title="编辑 SKU"
+            title={selectedSkuName ? `编辑 SKU - ${selectedSkuName}` : '编辑 SKU'}
             placement="right"
             onClose={() => {
               setShowSkuEditDrawer(false);
               setSelectedSkuID(undefined);
+              setSelectedSkuName('');
             }}
             open={showSkuEditDrawer}
             width="33.33%"

@@ -140,7 +140,7 @@ if (isBrandMatch(inputBrand, spuBrand) &&
 if (brand1 === brand2) return true;
 ```
 
-### 规则 2：拼音匹配
+### 规则 2：品牌英文匹配
 
 ```typescript
 // 通过品牌库的 spell 字段匹配
@@ -281,7 +281,7 @@ finalScore = spuSimilarity * 0.5 + skuSimilarity * 0.5;
 
 ### 必需数据
 
-1. ✅ **品牌库**：必须正确配置，包含所有品牌的中英文名称和拼音
+1. ✅ **品牌库**：必须正确配置，包含所有品牌的中英文名称和品牌英文
 2. ✅ **SPU 数据**：必须包含 `brand` 字段
 3. ✅ **SKU 数据**：必须包含规格信息（颜色、容量等）
 
