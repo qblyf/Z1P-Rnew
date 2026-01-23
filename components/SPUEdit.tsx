@@ -2,9 +2,9 @@ import { SPU } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import {
   editSPUInfo,
   getSPUInfo,
-  getSKUsInfo,
   invalidateSPUInfo,
 } from '@zsqk/z1-sdk/es/z1p/product';
+import { getSKUsInfo } from '../data/product';
 import { paramsDetail } from '@zsqk/z1-sdk/es/z1p/params-value';
 import { EditSPUInfo } from '@zsqk/z1-sdk/es/z1p/product-types';
 import {
@@ -463,9 +463,15 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                     
                     // 异步获取 SKU 名称
                     try {
+                      console.log('正在获取 SKU 名称, SKU ID:', skuID);
                       const skuInfo = await getSKUsInfo([skuID]);
+                      console.log('SKU 信息返回:', skuInfo);
+                      
                       if (skuInfo && skuInfo.length > 0 && !('errInfo' in skuInfo[0])) {
+                        console.log('设置 SKU 名称:', skuInfo[0].name);
                         setSelectedSkuName(skuInfo[0].name);
+                      } else {
+                        console.log('SKU 信息无效或包含错误');
                       }
                     } catch (error) {
                       console.error('获取 SKU 名称失败:', error);
@@ -473,6 +479,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                       if (preData?.skuIDs) {
                         const sku = preData.skuIDs.find((s: any) => s.skuID === skuID);
                         if (sku && 'name' in sku) {
+                          console.log('从 preData 获取 SKU 名称:', sku.name);
                           setSelectedSkuName(sku.name as string);
                         }
                       }
@@ -501,7 +508,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
         {/* SKU 编辑 Drawer */}
         {selectedSkuID && (
           <Drawer
-            title={selectedSkuName ? `编辑 SKU - ${selectedSkuName}` : '编辑 SKU'}
+            title={selectedSkuName ? `编辑 SKU - ${selectedSkuName}` : '编辑 SKU (加载中...)'}
             placement="right"
             onClose={() => {
               setShowSkuEditDrawer(false);
