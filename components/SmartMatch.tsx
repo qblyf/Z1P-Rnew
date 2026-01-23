@@ -182,6 +182,10 @@ export function SmartMatchComponent() {
     matcher.setColorList(colorList);
     console.log('使用颜色列表:', colorList.length, '个颜色');
     
+    // 设置品牌列表到 matcher
+    matcher.setBrandList(brandList);
+    console.log('使用品牌列表:', brandList.length, '个品牌');
+    
     try {
       // 将输入按行分割
       const lines = inputText.split('\n').filter(line => line.trim());

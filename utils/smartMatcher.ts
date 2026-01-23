@@ -202,12 +202,20 @@ function isColorVariant(color1: string, color2: string): boolean {
 
 export class SimpleMatcher {
   private dynamicColors: string[] = [];
+  private brandList: Array<{ name: string; spell?: string }> = [];
   
   /**
    * 设置动态颜色列表
    */
   setColorList(colors: string[]) {
     this.dynamicColors = colors;
+  }
+
+  /**
+   * 设置品牌列表（从品牌库读取）
+   */
+  setBrandList(brands: Array<{ name: string; spell?: string }>) {
+    this.brandList = brands;
   }
 
   /**
@@ -312,44 +320,33 @@ export class SimpleMatcher {
   }
 
   /**
-   * 提取品牌
+   * 提取品牌（完全使用品牌库数据）
    */
   extractBrand(str: string): string | null {
     const lowerStr = str.toLowerCase();
     
-    // 品牌映射：将所有变体统一到主品牌
-    const brandMap: Record<string, string> = {
-      'apple': 'apple',
-      '苹果': 'apple',
-      'huawei': 'huawei',
-      '华为': 'huawei',
-      'honor': 'honor',
-      '荣耀': 'honor',
-      'xiaomi': 'xiaomi',
-      '小米': 'xiaomi',
-      'redmi': 'xiaomi',  // Redmi 统一到 xiaomi
-      '红米': 'xiaomi',
-      'vivo': 'vivo',
-      'oppo': 'oppo',
-      'samsung': 'samsung',
-      'oneplus': 'oneplus',
-      'realme': 'realme',
-      'iqoo': 'iqoo',
-      'nova': 'huawei',  // Nova 是华为子品牌
-      'mate': 'huawei',  // Mate 是华为系列
-      'pura': 'huawei',  // Pura 是华为系列
-      'pocket': 'huawei', // Pocket 是华为系列
-      'reno': 'oppo',    // Reno 是 OPPO 系列
-      'find': 'oppo',    // Find 是 OPPO 系列
-    };
-    
-    // 按长度降序排序，优先匹配更长的品牌名
-    const sortedBrands = Object.keys(brandMap).sort((a, b) => b.length - a.length);
-    
-    for (const brand of sortedBrands) {
-      if (lowerStr.includes(brand)) {
-        return brandMap[brand];
+    // 使用品牌库数据
+    if (this.brandList.length > 0) {
+      // 按品牌名称长度降序排序，优先匹配更长的品牌名
+      const sortedBrands = [...this.brandList].sort((a, b) => b.name.length - a.name.length);
+      
+      for (const brand of sortedBrands) {
+        const brandName = brand.name.toLowerCase();
+        const brandSpell = brand.spell?.toLowerCase();
+        
+        // 匹配中文品牌名
+        if (lowerStr.includes(brandName)) {
+          return brand.name; // 返回原始品牌名（保持大小写）
+        }
+        
+        // 匹配拼音
+        if (brandSpell && lowerStr.includes(brandSpell)) {
+          return brand.name;
+        }
       }
+    } else {
+      // 如果品牌库未加载，记录警告
+      console.warn('品牌库未加载，品牌识别可能不准确');
     }
     
     return null;
@@ -361,26 +358,38 @@ export class SimpleMatcher {
   extractModel(str: string): string | null {
     let lowerStr = str.toLowerCase();
     
-    // 先将中文品牌转换为英文（在移除品牌前）
-    const chineseBrandMap: Record<string, string> = {
-      '红米': 'redmi',
-      '小米': 'xiaomi',
-      '华为': 'huawei',
-      '荣耀': 'honor',
-      '苹果': 'apple',
-    };
-    
-    for (const [chinese, english] of Object.entries(chineseBrandMap)) {
-      lowerStr = lowerStr.replace(new RegExp(chinese, 'g'), ' ' + english + ' ');
-    }
-    
     // 移除括号内容
     let normalizedStr = lowerStr.replace(/[（(][^)）]*[)）]/g, ' ');
     
-    // 移除品牌（包括英文和可能的中文品牌）
-    const brands = ['apple', 'huawei', 'honor', 'xiaomi', 'vivo', 'oppo', 'samsung', 'oneplus', 'redmi'];
-    for (const brand of brands) {
-      const brandRegex = new RegExp(`\\b${brand}\\b`, 'gi');
+    // 移除品牌（完全使用品牌库数据）
+    const brandsToRemove: string[] = [];
+    
+    if (this.brandList.length > 0) {
+      // 使用品牌库数据
+      for (const brand of this.brandList) {
+        brandsToRemove.push(brand.name.toLowerCase());
+        if (brand.spell) {
+          brandsToRemove.push(brand.spell.toLowerCase());
+        }
+      }
+    } else {
+      // 如果品牌库未加载，记录警告但继续处理
+      console.warn('品牌库未加载，型号提取可能不准确');
+    }
+    
+    // 按长度降序排序，优先移除更长的品牌名（避免部分匹配问题）
+    brandsToRemove.sort((a, b) => b.length - a.length);
+    
+    for (const brand of brandsToRemove) {
+      // 转义特殊字符
+      const escapedBrand = brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      
+      // 对于中文品牌，不使用单词边界；对于英文品牌，使用单词边界
+      const hasChinese = /[\u4e00-\u9fa5]/.test(brand);
+      const brandRegex = hasChinese 
+        ? new RegExp(escapedBrand, 'gi')  // 中文：直接匹配
+        : new RegExp(`\\b${escapedBrand}\\b`, 'gi');  // 英文：使用单词边界
+      
       normalizedStr = normalizedStr.replace(brandRegex, ' ');
     }
     
@@ -437,7 +446,8 @@ export class SimpleMatcher {
     }
     
     // 优先级2: 复杂型号格式（支持 Pro+, Max+ 等带加号的型号）
-    const complexModelPattern = /\b([a-z]+)\s*(\d+)\s*(pro|max|plus|ultra|mini|se|air|lite|note|turbo)(\+)?(\s+(mini|max|plus|ultra|pro))?\b/gi;
+    // 改进：支持数字开头的型号（如 "14 ultra"）
+    const complexModelPattern = /\b([a-z]*)\s*(\d+)\s*(pro|max|plus|ultra|mini|se|air|lite|note|turbo|r)(\+)?(\s+(mini|max|plus|ultra|pro))?\b/gi;
     const complexMatches = normalizedStr.match(complexModelPattern);
     
     if (complexMatches && complexMatches.length > 0) {
@@ -830,9 +840,9 @@ export class SimpleMatcher {
           }
         }
         
-        // 关键词匹配数越多，分数越高（最多加 0.2 分）
-        const keywordBonus = Math.min(keywordMatchCount * 0.05, 0.2);
-        const finalScore = score + keywordBonus;
+        // 关键词匹配数越多，分数越高（最多加 0.1 分，确保总分不超过 1.0）
+        const keywordBonus = Math.min(keywordMatchCount * 0.05, 0.1);
+        const finalScore = Math.min(score + keywordBonus, 1.0); // 确保不超过 1.0
         
         if (finalScore > bestScore || 
             (finalScore === bestScore && priority > bestPriority) ||
@@ -891,9 +901,9 @@ export class SimpleMatcher {
               }
             }
             
-            // 关键词匹配数越多，分数越高（最多加 0.2 分）
-            const keywordBonus = Math.min(keywordMatchCount * 0.05, 0.2);
-            const finalScore = score + keywordBonus;
+            // 关键词匹配数越多，分数越高（最多加 0.1 分，确保总分不超过 1.0）
+            const keywordBonus = Math.min(keywordMatchCount * 0.05, 0.1);
+            const finalScore = Math.min(score + keywordBonus, 1.0); // 确保不超过 1.0
             
             if (finalScore > bestScore || 
                 (finalScore === bestScore && priority > bestPriority)) {
