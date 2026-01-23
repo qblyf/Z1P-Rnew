@@ -219,6 +219,30 @@ export class SimpleMatcher {
   }
 
   /**
+   * 检查两个品牌是否匹配（考虑不同写法）
+   * 例如："红米" 和 "Redmi" 应该匹配（它们有相同的拼音）
+   */
+  private isBrandMatch(brand1: string | null, brand2: string | null): boolean {
+    if (!brand1 || !brand2) return false;
+    
+    // 完全匹配
+    if (brand1 === brand2) return true;
+    
+    // 通过拼音匹配
+    if (this.brandList.length > 0) {
+      const brand1Info = this.brandList.find(b => b.name === brand1);
+      const brand2Info = this.brandList.find(b => b.name === brand2);
+      
+      // 如果两个品牌有相同的拼音，认为它们匹配
+      if (brand1Info && brand2Info && brand1Info.spell && brand2Info.spell) {
+        return brand1Info.spell.toLowerCase() === brand2Info.spell.toLowerCase();
+      }
+    }
+    
+    return false;
+  }
+
+  /**
    * 检测产品类型
    */
   detectProductType(input: string): ProductType {
@@ -803,13 +827,17 @@ export class SimpleMatcher {
       }
       
       const spuSPUPart = this.extractSPUPart(spu.name);
-      const spuBrand = this.extractBrand(spuSPUPart);
+      // 优先使用 SPU 的 brand 字段，如果不存在则从名称中提取
+      const spuBrand = spu.brand || this.extractBrand(spuSPUPart);
       const spuModel = this.extractModel(spuSPUPart);
       const spuVersion = this.extractVersion(spuSPUPart);
       
       let score = 0;
       
-      if (inputBrand && spuBrand && inputBrand === spuBrand &&
+      // 品牌匹配：需要考虑品牌的不同写法（如"红米"和"Redmi"）
+      const brandMatch = this.isBrandMatch(inputBrand, spuBrand);
+      
+      if (inputBrand && spuBrand && brandMatch &&
           inputModel && spuModel && 
           inputModel.replace(/\s+/g, '') === spuModel.replace(/\s+/g, '')) {
         
@@ -873,15 +901,18 @@ export class SimpleMatcher {
         }
         
         const spuSPUPart = this.extractSPUPart(spu.name);
-        const spuBrand = this.extractBrand(spuSPUPart);
+        // 优先使用 SPU 的 brand 字段，如果不存在则从名称中提取
+        const spuBrand = spu.brand || this.extractBrand(spuSPUPart);
         const spuModel = this.extractModel(spuSPUPart);
         
         let score = 0;
         
         // 严格的品牌过滤：
-        // 1. 如果输入品牌和SPU品牌都识别出来了，必须匹配
+        // 1. 如果输入品牌和SPU品牌都识别出来了，必须匹配（考虑不同写法）
         // 2. 如果输入品牌未识别，但SPU品牌识别出来了，跳过（避免误匹配）
-        if (inputBrand && spuBrand && inputBrand !== spuBrand) {
+        const brandMatch = this.isBrandMatch(inputBrand, spuBrand);
+        
+        if (inputBrand && spuBrand && !brandMatch) {
           continue;  // 品牌不匹配，跳过
         }
         
