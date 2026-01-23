@@ -1,0 +1,18 @@
+{
+  "note": "仅保留无法通过智能算法处理的特殊情况",
+  "normalizations": {
+    "xfold5": "x fold5",
+    "watchgt": "watch gt",
+    "watchgt2": "watch gt 2",
+    "watchgt3": "watch gt 3",
+    "watchgt4": "watch gt 4",
+    "watchgt5": "watch gt 5",
+    "watchgt6": "watch gt 6",
+    "watchse": "watch se",
+    "watchd": "watch d",
+    "watchd2": "watch d2",
+    "watchfit": "watch fit",
+    "watchx2mini": "watch x2 mini",
+    "watchs": "watch s"
+  }
+}

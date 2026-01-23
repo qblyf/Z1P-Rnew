@@ -1,0 +1,55 @@
+{
+  "variants": [
+    {
+      "group": "blue_mist",
+      "colors": ["雾凇蓝", "雾松蓝"],
+      "primary": "雾凇蓝"
+    },
+    {
+      "group": "white_space",
+      "colors": ["空白格", "空格白"],
+      "primary": "空白格"
+    },
+    {
+      "group": "jade_green",
+      "colors": ["玉石绿", "玉龙雪", "锆石黑"],
+      "primary": "玉石绿"
+    },
+    {
+      "group": "agate_pink",
+      "colors": ["玛瑙粉", "晶钻粉", "粉梦生花"],
+      "primary": "玛瑙粉"
+    },
+    {
+      "group": "amber_black",
+      "colors": ["琥珀黑", "锆石黑", "曜石黑"],
+      "primary": "琥珀黑"
+    },
+    {
+      "group": "basalt_black",
+      "colors": ["玄武黑", "曜石黑", "深空黑"],
+      "primary": "玄武黑"
+    },
+    {
+      "group": "dragon_purple",
+      "colors": ["龙晶紫", "极光紫", "流光紫"],
+      "primary": "龙晶紫"
+    },
+    {
+      "group": "glacier_blue",
+      "colors": ["冰川蓝", "天青蓝", "星河蓝"],
+      "primary": "冰川蓝"
+    },
+    {
+      "group": "deep_black",
+      "colors": ["深空黑", "曜石黑", "玄武黑"],
+      "primary": "深空黑"
+    },
+    {
+      "group": "inspiration_purple",
+      "colors": ["灵感紫", "流光紫", "龙晶紫"],
+      "primary": "灵感紫"
+    }
+  ],
+  "note": "告白是独立的颜色，不是灵感紫的变体。告白属于白色系，灵感紫属于紫色系。"
+}

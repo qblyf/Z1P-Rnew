@@ -5,6 +5,13 @@
 
 import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { SKUState, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
+import { 
+  ConfigLoader, 
+  type VersionKeywordConfig, 
+  type ColorVariantConfig, 
+  type FilterKeywordConfig,
+  type ModelNormalizationConfig 
+} from './config-loader';
 
 // ==================== 类型定义 ====================
 
@@ -105,104 +112,58 @@ const PRODUCT_TYPE_FEATURES: Record<ProductType, ProductTypeFeature> = {
   },
 };
 
-// 版本关键词映射
-const VERSION_KEYWORDS_MAP: Record<string, VersionInfo> = {
-  'standard': { name: '标准版', keywords: ['标准版', '基础版'], priority: 1 },
-  'lite': { name: '活力版', keywords: ['活力版', '轻享版'], priority: 2 },
-  'enjoy': { name: '优享版', keywords: ['优享版', '享受版'], priority: 3 },
-  'premium': { name: '尊享版', keywords: ['尊享版', '高端版'], priority: 4 },
-  'pro': { name: 'Pro 版', keywords: ['pro', 'pro版'], priority: 5 },
-};
-
-// 型号标准化映射
-const MODEL_NORMALIZATIONS: Record<string, string> = {
-  'promini': 'pro mini',
-  'promax': 'pro max',
-  'proplus': 'pro plus',
-  'watchgt': 'watch gt',
-  'watchgt2': 'watch gt 2',
-  'watchgt3': 'watch gt 3',
-  'watchgt4': 'watch gt 4',
-  'watchgt5': 'watch gt 5',
-  'watchgt6': 'watch gt 6',
-  'watchse': 'watch se',
-  'watchd': 'watch d',
-  'watchd2': 'watch d2',
-  'watchfit': 'watch fit',
-  'watchx2mini': 'watch x2 mini',
-  'watchs': 'watch s',
-  'reno15': 'reno 15',
-  'reno15pro': 'reno 15 pro',
-  'reno15c': 'reno 15c',
-  'findx9': 'find x9',
-  'findx9pro': 'find x9 pro',
-  'findn5': 'find n5',
-  'k13turbopro': 'k13 turbo pro',
-  'y300i': 'y300i',
-  'y300pro': 'y300 pro',
-  'y300pro+': 'y300 pro+',
-  'y300proplus': 'y300 pro plus',
-  's30promini': 's30 pro mini',
-  's50promini': 's50 pro mini',
-  'xfold5': 'x fold5',
-  'x200pro': 'x200 pro',
-  'x200s': 'x200s',
-  'x200ultra': 'x200 ultra',
-  // Redmi 系列
-  'redmi15r': '15r',
-  'redmi15': '15',
-  'redmi14': '14',
-  'redmi13': '13',
-  'redminote15': 'note 15',
-  'redminote14': 'note 14',
-  'redminote13': 'note 13',
-};
-
-// 礼盒版过滤关键词
-const GIFT_BOX_KEYWORDS = ['礼盒', '套装', '系列', '礼品', '礼包'];
-
-// 版本关键词
-const VERSION_KEYWORDS = ['蓝牙版', 'eSIM版', 'esim版', '5G版', '4G版', '3G版', '全网通版'];
-
-// 颜色变体映射
-// 定义已知的颜色变体对，这些颜色应该被视为等价（同一种颜色的不同写法）
-const COLOR_VARIANTS: Record<string, string[]> = {
-  '雾凇蓝': ['雾松蓝'],
-  '雾松蓝': ['雾凇蓝'],
-  '空白格': ['空格白'],
-  '空格白': ['空白格'],
-  '玉石绿': ['玉龙雪', '锆石黑'],
-  '玛瑙粉': ['晶钻粉', '粉梦生花'],
-  '琥珀黑': ['锆石黑', '曜石黑'],
-  '玄武黑': ['曜石黑', '深空黑'],
-  '龙晶紫': ['极光紫', '流光紫'],
-  '冰川蓝': ['天青蓝', '星河蓝'],
-  '深空黑': ['曜石黑', '玄武黑'],
-  '灵感紫': ['流光紫', '龙晶紫'],
-  // 注意：告白是独立的颜色，不是灵感紫的变体
-  // 告白属于白色系，灵感紫属于紫色系
-};
-
-/**
- * 检查两个颜色是否为已知的变体对
- */
-function isColorVariant(color1: string, color2: string): boolean {
-  if (!color1 || !color2) return false;
-  
-  const variants1 = COLOR_VARIANTS[color1];
-  if (variants1 && variants1.includes(color2)) return true;
-  
-  const variants2 = COLOR_VARIANTS[color2];
-  if (variants2 && variants2.includes(color1)) return true;
-  
-  return false;
-}
-
 // ==================== SimpleMatcher 类 ====================
-
 export class SimpleMatcher {
   private dynamicColors: string[] = [];
   private brandList: Array<{ name: string; spell?: string }> = [];
+  private versionKeywords: VersionKeywordConfig['versions'] = [];
+  private networkVersions: string[] = [];
+  private colorVariantsMap: Map<string, string[]> = new Map();
+  private filterKeywords: FilterKeywordConfig | null = null;
+  private modelNormalizations: Record<string, string> = {};
+  private initialized = false;
+  
+  /**
+   * 初始化配置（异步）
+   * 在使用 matcher 前应该调用此方法
+   */
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+    
+    try {
+      // 加载所有配置
+      const [versionConfig, colorConfig, filterConfig, modelConfig] = await Promise.all([
+        ConfigLoader.load<VersionKeywordConfig>('version-keywords'),
+        ConfigLoader.load<ColorVariantConfig>('color-variants'),
+        ConfigLoader.load<FilterKeywordConfig>('filter-keywords'),
+        ConfigLoader.load<ModelNormalizationConfig>('model-normalizations')
+      ]);
+      
+      // 设置版本关键词
+      this.versionKeywords = versionConfig.versions;
+      this.networkVersions = versionConfig.networkVersions;
+      
+      // 设置颜色变体映射
+      colorConfig.variants.forEach(variant => {
+        variant.colors.forEach(color => {
+          this.colorVariantsMap.set(color, variant.colors);
+        });
+      });
+      
+      // 设置过滤关键词
+      this.filterKeywords = filterConfig;
+      
+      // 设置型号标准化映射
+      this.modelNormalizations = modelConfig.normalizations;
+      
+      this.initialized = true;
+      console.log('✓ SimpleMatcher initialized with configs');
+    } catch (error) {
+      console.error('Failed to initialize SimpleMatcher:', error);
+      // 使用默认值继续运行
+      this.initialized = true;
+    }
+  }
   
   /**
    * 设置动态颜色列表
@@ -265,7 +226,8 @@ export class SimpleMatcher {
   extractVersion(input: string): VersionInfo | null {
     const lowerInput = input.toLowerCase();
     
-    for (const versionInfo of Object.values(VERSION_KEYWORDS_MAP)) {
+    // 使用配置的版本关键词
+    for (const versionInfo of this.versionKeywords) {
       for (const keyword of versionInfo.keywords) {
         if (lowerInput.includes(keyword.toLowerCase())) {
           return versionInfo;
@@ -327,8 +289,9 @@ export class SimpleMatcher {
    * 清理演示机/样机标记和配件品牌前缀
    */
   cleanDemoMarkers(input: string): string {
-    const demoKeywords = ['演示机', '样机', '展示机', '体验机', '试用机', '测试机'];
-    const accessoryBrands = ['优诺严选', '品牌', '赠品', '严选', '檀木'];
+    // 使用配置的关键词，如果未加载则使用默认值
+    const demoKeywords = this.filterKeywords?.demo || ['演示机', '样机', '展示机', '体验机', '试用机', '测试机'];
+    const accessoryBrands = this.filterKeywords?.accessoryBrands || ['优诺严选', '品牌', '赠品', '严选', '檀木'];
     
     let cleaned = input;
     
@@ -377,6 +340,45 @@ export class SimpleMatcher {
   }
 
   /**
+   * 智能型号标准化
+   * 自动在关键词前添加空格，减少硬编码映射
+   */
+  private normalizeModel(model: string): string {
+    if (!model) return model;
+    
+    let normalized = model.toLowerCase();
+    
+    // 1. 在常见后缀关键词前添加空格
+    const suffixKeywords = [
+      'pro', 'max', 'plus', 'ultra', 'mini', 'se', 'air', 'lite',
+      'note', 'turbo', 'fold', 'flip', 'find', 'reno'
+    ];
+    
+    suffixKeywords.forEach(keyword => {
+      // 使用负向后顾断言，确保关键词前面不是空格
+      const regex = new RegExp(`(?<!\\s)${keyword}`, 'gi');
+      normalized = normalized.replace(regex, ` ${keyword}`);
+    });
+    
+    // 2. 在数字和字母之间添加空格
+    normalized = normalized.replace(/(\d)([a-z])/gi, '$1 $2');
+    normalized = normalized.replace(/([a-z])(\d)/gi, '$1 $2');
+    
+    // 3. 清理多余空格
+    normalized = normalized.replace(/\s+/g, ' ').trim();
+    
+    // 4. 应用配置的特殊情况标准化
+    if (this.modelNormalizations && Object.keys(this.modelNormalizations).length > 0) {
+      Object.entries(this.modelNormalizations).forEach(([from, to]) => {
+        const regex = new RegExp(`\\b${from}\\b`, 'gi');
+        normalized = normalized.replace(regex, to);
+      });
+    }
+    
+    return normalized;
+  }
+
+  /**
    * 提取型号（多层次匹配）
    */
   extractModel(str: string): string | null {
@@ -419,11 +421,8 @@ export class SimpleMatcher {
     
     normalizedStr = normalizedStr.replace(/\s+/g, ' ').trim();
     
-    // 应用型号标准化
-    Object.entries(MODEL_NORMALIZATIONS).forEach(([from, to]) => {
-      const regex = new RegExp(`\\b${from}\\b`, 'gi');
-      normalizedStr = normalizedStr.replace(regex, to);
-    });
+    // 应用智能标准化（包含配置的特殊情况）
+    normalizedStr = this.normalizeModel(normalizedStr);
     
     // 优先级1: 平板特殊处理 - 提取 MatePad/iPad 等平板型号
     // 对于平板，型号通常是 "MatePad" + 可选的版本/尺寸信息
@@ -556,17 +555,37 @@ export class SimpleMatcher {
   }
 
   /**
+   * 检查两个颜色是否为已知的变体对
+   */
+  private isColorVariant(color1: string, color2: string): boolean {
+    if (!color1 || !color2) return false;
+    
+    // 使用配置的颜色变体映射
+    if (this.colorVariantsMap.size > 0) {
+      const variants1 = this.colorVariantsMap.get(color1);
+      if (variants1 && variants1.includes(color2)) return true;
+      
+      const variants2 = this.colorVariantsMap.get(color2);
+      if (variants2 && variants2.includes(color1)) return true;
+    }
+    
+    return false;
+  }
+
+  /**
    * 改进的颜色提取
    */
   extractColorAdvanced(input: string): string | null {
-    // 方法1: 使用扩展颜色库
-    for (const [colorName, colorInfo] of Object.entries(COLOR_VARIANTS)) {
-      if (input.includes(colorName)) {
-        return colorName;
-      }
-      for (const variant of colorInfo) {
-        if (input.includes(variant)) {
+    // 方法1: 使用配置的颜色变体库
+    if (this.colorVariantsMap.size > 0) {
+      for (const [colorName, variants] of this.colorVariantsMap.entries()) {
+        if (input.includes(colorName)) {
           return colorName;
+        }
+        for (const variant of variants) {
+          if (input.includes(variant)) {
+            return colorName; // 返回主颜色名
+          }
         }
       }
     }
@@ -611,7 +630,7 @@ export class SimpleMatcher {
     if (color1 === color2) return true;
     
     // 优先级2: 颜色变体匹配
-    if (isColorVariant(color1, color2)) return true;
+    if (this.isColorVariant(color1, color2)) return true;
     
     // 优先级3: 基础颜色匹配
     return this.isBasicColorMatch(color1, color2);
@@ -625,10 +644,11 @@ export class SimpleMatcher {
     const lowerSPU = spuName.toLowerCase();
     
     // 规则1: 礼盒版过滤
-    const hasGiftBoxKeywordInInput = GIFT_BOX_KEYWORDS.some(keyword => 
+    const giftBoxKeywords = this.filterKeywords?.giftBox || ['礼盒', '套装', '系列', '礼品', '礼包'];
+    const hasGiftBoxKeywordInInput = giftBoxKeywords.some(keyword => 
       lowerInput.includes(keyword.toLowerCase())
     );
-    const hasGiftBoxKeywordInSPU = GIFT_BOX_KEYWORDS.some(keyword => 
+    const hasGiftBoxKeywordInSPU = giftBoxKeywords.some(keyword => 
       lowerSPU.includes(keyword.toLowerCase())
     );
     
@@ -658,11 +678,15 @@ export class SimpleMatcher {
     const lowerInput = inputName.toLowerCase();
     const lowerSPU = spuName.toLowerCase();
     
-    const hasGiftBoxKeyword = GIFT_BOX_KEYWORDS.some(keyword => 
+    const giftBoxKeywords = this.filterKeywords?.giftBox || ['礼盒', '套装', '系列', '礼品', '礼包'];
+    const hasGiftBoxKeyword = giftBoxKeywords.some(keyword => 
       lowerSPU.includes(keyword.toLowerCase())
     );
     
-    const hasSpecialVersion = VERSION_KEYWORDS.some(keyword => 
+    const networkVersions = this.networkVersions.length > 0 
+      ? this.networkVersions 
+      : ['蓝牙版', 'eSIM版', 'esim版', '5G版', '4G版', '3G版', '全网通版'];
+    const hasSpecialVersion = networkVersions.some(keyword => 
       lowerSPU.includes(keyword.toLowerCase())
     );
     
@@ -671,7 +695,7 @@ export class SimpleMatcher {
     }
     
     if (hasSpecialVersion) {
-      for (const keyword of VERSION_KEYWORDS) {
+      for (const keyword of networkVersions) {
         const lowerKeyword = keyword.toLowerCase();
         if (lowerInput.includes(lowerKeyword) && lowerSPU.includes(lowerKeyword)) {
           return 2; // 版本匹配的特殊版：优先级中等
@@ -713,7 +737,8 @@ export class SimpleMatcher {
     let versionKeyword: string | null = null;
     let versionIndex = -1;
     
-    for (const versionInfo of Object.values(VERSION_KEYWORDS_MAP)) {
+    // 使用配置的版本关键词
+    for (const versionInfo of this.versionKeywords) {
       for (const keyword of versionInfo.keywords) {
         const index = spuPart.indexOf(keyword);
         if (index !== -1) {
@@ -1030,7 +1055,7 @@ export class SimpleMatcher {
             score += 0.3;
           }
           // 优先级2: 颜色变体匹配（90%分数）
-          else if (isColorVariant(inputColor, skuColor)) {
+          else if (this.isColorVariant(inputColor, skuColor)) {
             score += 0.27;
           }
           // 优先级3: 基础颜色匹配（50%分数）
@@ -1120,7 +1145,7 @@ export class SimpleMatcher {
         paramWeight += 0.3;
         if (inputColor === skuColor) {
           paramScore += 0.3;
-        } else if (isColorVariant(inputColor, skuColor)) {
+        } else if (this.isColorVariant(inputColor, skuColor)) {
           paramScore += 0.3;
         } else if (
           inputColor.length > 1 && skuColor.length > 1 && 

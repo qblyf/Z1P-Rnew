@@ -35,7 +35,24 @@ export function SmartMatchComponent() {
   ]);
   const [columnDropdownVisible, setColumnDropdownVisible] = useState(false);
   const [tempVisibleColumns, setTempVisibleColumns] = useState<string[]>(visibleColumns);
-  const matcher = new SimpleMatcher();
+  const [matcher] = useState(() => new SimpleMatcher());
+  const [matcherInitialized, setMatcherInitialized] = useState(false);
+
+  // 初始化 matcher（加载配置）
+  useEffect(() => {
+    const initMatcher = async () => {
+      try {
+        await matcher.initialize();
+        setMatcherInitialized(true);
+        console.log('✓ Matcher initialized');
+      } catch (error) {
+        console.error('Failed to initialize matcher:', error);
+        // 即使初始化失败，也允许继续使用（会使用默认值）
+        setMatcherInitialized(true);
+      }
+    };
+    initMatcher();
+  }, [matcher]);
 
   // 加载品牌数据
   useEffect(() => {
@@ -171,6 +188,11 @@ export function SmartMatchComponent() {
 
     if (spuList.length === 0) {
       message.warning('SPU数据未加载完成，请稍候');
+      return;
+    }
+
+    if (!matcherInitialized) {
+      message.warning('匹配器初始化中，请稍候');
       return;
     }
 
