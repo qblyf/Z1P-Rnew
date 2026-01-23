@@ -19,6 +19,9 @@ function QueryForm(props: {
     nameKeyword?: string;
     brands?: string[];
     skuState?: SKU['state'];
+    specKeyword?: string;
+    colorKeyword?: string;
+    comboKeyword?: string;
   }) => void;
   loading?: boolean;
 }) {
@@ -28,6 +31,9 @@ function QueryForm(props: {
   const [nameKeyword, setNameKeyword] = useState('');
   const [selectedBrands, setSelectedBrands] = useState<string[]>();
   const [skuState, setSKUState] = useState<SKU['state']>();
+  const [specKeyword, setSpecKeyword] = useState('');
+  const [colorKeyword, setColorKeyword] = useState('');
+  const [comboKeyword, setComboKeyword] = useState('');
 
   const handleSearch = () => {
     let k1: string | undefined = gtinKeyword.trim();
@@ -45,11 +51,29 @@ function QueryForm(props: {
       k3 = undefined;
     }
 
+    let k4: string | undefined = specKeyword.trim();
+    if (!k4) {
+      k4 = undefined;
+    }
+
+    let k5: string | undefined = colorKeyword.trim();
+    if (!k5) {
+      k5 = undefined;
+    }
+
+    let k6: string | undefined = comboKeyword.trim();
+    if (!k6) {
+      k6 = undefined;
+    }
+
     onQuery({
       gtinKeyword: k1,
       nameKeyword: k2,
       brands: k3,
       skuState,
+      specKeyword: k4,
+      colorKeyword: k5,
+      comboKeyword: k6,
     });
   };
 
@@ -77,13 +101,58 @@ function QueryForm(props: {
           </Col>
           <Col {...formItemCol}>
             <Form.Item
-              label="名称 关键词"
+              label="名称关键词"
               tooltip="输入 SKU 名称的部分值, 支持模糊搜索"
             >
               <Input
                 placeholder="请输入 SKU 名称"
                 value={nameKeyword}
                 onChange={e => setNameKeyword(e.target.value)}
+                onPressEnter={handleSearch}
+                size="large"
+                prefix={<Search size={16} style={{ color: '#999' }} />}
+              />
+            </Form.Item>
+          </Col>
+          <Col {...formItemCol}>
+            <Form.Item
+              label="配置/内存"
+              tooltip="输入配置或内存规格，如 8GB+256GB、12+512 等"
+            >
+              <Input
+                placeholder="如: 8GB+256GB"
+                value={specKeyword}
+                onChange={e => setSpecKeyword(e.target.value)}
+                onPressEnter={handleSearch}
+                size="large"
+                prefix={<Search size={16} style={{ color: '#999' }} />}
+              />
+            </Form.Item>
+          </Col>
+          <Col {...formItemCol}>
+            <Form.Item
+              label="颜色"
+              tooltip="输入颜色关键词，如 黑色、白色、蓝色 等"
+            >
+              <Input
+                placeholder="如: 黑色"
+                value={colorKeyword}
+                onChange={e => setColorKeyword(e.target.value)}
+                onPressEnter={handleSearch}
+                size="large"
+                prefix={<Search size={16} style={{ color: '#999' }} />}
+              />
+            </Form.Item>
+          </Col>
+          <Col {...formItemCol}>
+            <Form.Item
+              label="版本"
+              tooltip="输入版本关键词，如 5G版、4G版、标准版 等"
+            >
+              <Input
+                placeholder="如: 5G版"
+                value={comboKeyword}
+                onChange={e => setComboKeyword(e.target.value)}
                 onPressEnter={handleSearch}
                 size="large"
                 prefix={<Search size={16} style={{ color: '#999' }} />}
@@ -124,6 +193,9 @@ function QueryForm(props: {
                 setNameKeyword('');
                 setSelectedBrands(undefined);
                 setSKUState(undefined);
+                setSpecKeyword('');
+                setColorKeyword('');
+                setComboKeyword('');
               }}
               disabled={loading}
             >
@@ -195,7 +267,7 @@ function ClientPage() {
             const fn = getAwait(async () => {
               setLoading(true);
               try {
-                const { brands, gtinKeyword, nameKeyword, skuState } = v;
+                const { brands, gtinKeyword, nameKeyword, skuState, specKeyword, colorKeyword, comboKeyword } = v;
                 // 从服务器获取数据
                 const res = await getSKUListJoinSPU(
                   {
@@ -207,10 +279,35 @@ function ClientPage() {
                     orderBy: { key: 'p.id', sort: 'DESC' },
                     offset: 0,
                   },
-                  { sku: ['id', 'name', 'gtins', 'state'], spu: ['brand'] }
+                  { sku: ['id', 'name', 'gtins', 'state', 'spec', 'color', 'combo'], spu: ['brand'] }
                 );
+                
+                // 前端过滤：根据 spec、color、combo 关键词过滤
+                let filteredRes = res;
+                
+                if (specKeyword) {
+                  const specLower = specKeyword.toLowerCase();
+                  filteredRes = filteredRes.filter(item => 
+                    item.spec && item.spec.toLowerCase().includes(specLower)
+                  );
+                }
+                
+                if (colorKeyword) {
+                  const colorLower = colorKeyword.toLowerCase();
+                  filteredRes = filteredRes.filter(item => 
+                    item.color && item.color.toLowerCase().includes(colorLower)
+                  );
+                }
+                
+                if (comboKeyword) {
+                  const comboLower = comboKeyword.toLowerCase();
+                  filteredRes = filteredRes.filter(item => 
+                    item.combo && item.combo.toLowerCase().includes(comboLower)
+                  );
+                }
+                
                 // 使用 setList 设置 state 数据
-                setList(res);
+                setList(filteredRes);
               } finally {
                 setLoading(false);
               }
@@ -259,6 +356,39 @@ function ClientPage() {
                 width: 120,
               },
               {
+                dataIndex: 'spec',
+                title: '配置/内存',
+                width: 150,
+                render: (spec: string) => {
+                  if (!spec) {
+                    return <span style={{ color: '#999' }}>-</span>;
+                  }
+                  return <Tag color="cyan">{spec}</Tag>;
+                },
+              },
+              {
+                dataIndex: 'color',
+                title: '颜色',
+                width: 120,
+                render: (color: string) => {
+                  if (!color) {
+                    return <span style={{ color: '#999' }}>-</span>;
+                  }
+                  return <Tag color="purple">{color}</Tag>;
+                },
+              },
+              {
+                dataIndex: 'combo',
+                title: '版本',
+                width: 120,
+                render: (combo: string) => {
+                  if (!combo) {
+                    return <span style={{ color: '#999' }}>-</span>;
+                  }
+                  return <Tag color="orange">{combo}</Tag>;
+                },
+              },
+              {
                 dataIndex: 'gtins',
                 title: 'GTINs (69码)',
                 width: 200,
@@ -300,7 +430,7 @@ function ClientPage() {
               showQuickJumper: true,
               showTotal: (total) => `共 ${total} 条记录`,
             }}
-            scroll={{ x: 1000 }}
+            scroll={{ x: 1200 }}
           />
         </Card>
       </div>
