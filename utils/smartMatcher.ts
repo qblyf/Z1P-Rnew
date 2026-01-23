@@ -861,58 +861,76 @@ export class SimpleMatcher {
     }
     
     // 第二阶段：无顺序的分词匹配
-    bestMatch = null;
-    bestScore = 0;
-    bestPriority = 0;
-    
-    for (const spu of spuList) {
-      if (this.shouldFilterSPU(input, spu.name)) {
-        continue;
-      }
+    // 重置最佳匹配（如果第一阶段没有找到足够好的匹配）
+    if (!bestMatch || bestScore < 0.99) {
+      let secondBestMatch: SPUData | null = null;
+      let secondBestScore = 0;
+      let secondBestPriority = 0;
       
-      const spuSPUPart = this.extractSPUPart(spu.name);
-      const spuBrand = this.extractBrand(spuSPUPart);
-      const spuModel = this.extractModel(spuSPUPart);
-      
-      let score = 0;
-      
-      if (inputBrand && spuBrand && inputBrand !== spuBrand) {
-        continue;
-      }
-      
-      if (inputModel && spuModel) {
-        const modelScore = this.calculateTokenSimilarity(
-          this.tokenize(inputModel),
-          this.tokenize(spuModel)
-        );
+      for (const spu of spuList) {
+        if (this.shouldFilterSPU(input, spu.name)) {
+          continue;
+        }
         
-        if (modelScore > 0.5) {
-          score = 0.4 + modelScore * 0.6;
+        const spuSPUPart = this.extractSPUPart(spu.name);
+        const spuBrand = this.extractBrand(spuSPUPart);
+        const spuModel = this.extractModel(spuSPUPart);
+        
+        let score = 0;
+        
+        // 严格的品牌过滤：
+        // 1. 如果输入品牌和SPU品牌都识别出来了，必须匹配
+        // 2. 如果输入品牌未识别，但SPU品牌识别出来了，跳过（避免误匹配）
+        if (inputBrand && spuBrand && inputBrand !== spuBrand) {
+          continue;  // 品牌不匹配，跳过
+        }
+        
+        if (!inputBrand && spuBrand) {
+          // 输入品牌未识别，但SPU有品牌，降低优先级（可能是品牌库问题）
+          // 不直接跳过，但给予较低的分数
+          score = 0.3;  // 基础分数降低
+        }
+        
+        if (inputModel && spuModel) {
+          const modelScore = this.calculateTokenSimilarity(
+            this.tokenize(inputModel),
+            this.tokenize(spuModel)
+          );
           
-          if (score >= threshold) {
-            const priority = this.getSPUPriority(input, spu.name);
+          if (modelScore > 0.5) {
+            score = Math.max(score, 0.4 + modelScore * 0.6);
             
-            // 改进：计算关键词匹配数，作为额外的评分因素
-            let keywordMatchCount = 0;
-            const inputTokens = this.tokenize(input);
-            for (const token of inputTokens) {
-              if (token.length > 2 && spu.name.toLowerCase().includes(token)) {
-                keywordMatchCount++;
+            if (score >= threshold) {
+              const priority = this.getSPUPriority(input, spu.name);
+              
+              // 改进：计算关键词匹配数，作为额外的评分因素
+              let keywordMatchCount = 0;
+              const inputTokens = this.tokenize(input);
+              for (const token of inputTokens) {
+                if (token.length > 2 && spu.name.toLowerCase().includes(token)) {
+                  keywordMatchCount++;
+                }
               }
-            }
-            
-            // 关键词匹配数越多，分数越高（最多加 0.1 分，确保总分不超过 1.0）
-            const keywordBonus = Math.min(keywordMatchCount * 0.05, 0.1);
-            const finalScore = Math.min(score + keywordBonus, 1.0); // 确保不超过 1.0
-            
-            if (finalScore > bestScore || 
-                (finalScore === bestScore && priority > bestPriority)) {
-              bestScore = finalScore;
-              bestMatch = spu;
-              bestPriority = priority;
+              
+              // 关键词匹配数越多，分数越高（最多加 0.1 分，确保总分不超过 1.0）
+              const keywordBonus = Math.min(keywordMatchCount * 0.05, 0.1);
+              const finalScore = Math.min(score + keywordBonus, 1.0); // 确保不超过 1.0
+              
+              if (finalScore > secondBestScore || 
+                  (finalScore === secondBestScore && priority > secondBestPriority)) {
+                secondBestScore = finalScore;
+                secondBestMatch = spu;
+                secondBestPriority = priority;
+              }
             }
           }
         }
+      }
+      
+      // 如果第二阶段找到了更好的匹配，使用第二阶段的结果
+      if (secondBestMatch && (secondBestScore > bestScore || !bestMatch)) {
+        bestMatch = secondBestMatch;
+        bestScore = secondBestScore;
       }
     }
     

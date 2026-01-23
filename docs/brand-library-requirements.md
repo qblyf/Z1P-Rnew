@@ -1,8 +1,20 @@
-# 品牌库要求
+# 品牌库配置指南
 
 ## 概述
 
-智能匹配功能完全依赖品牌库数据来识别品牌和提取型号。品牌库必须包含所有需要识别的品牌及其变体。
+智能匹配功能完全依赖品牌库数据来识别品牌和提取型号。品牌库在**数据管理 > 基础数据管理**中维护。
+
+## ⚠️ 重要提示
+
+**品牌库配置不完整会导致严重的匹配错误！**
+
+例如：
+- 如果品牌库中缺少"红米"，输入"红米15R"可能会错误匹配到其他包含"15"的产品（如"WIWU 电脑包15.6寸"）
+- 如果品牌库中只有"Redmi"没有"红米"，中文输入"红米15R"将无法识别品牌
+
+## 品牌库配置位置
+
+**路径**：数据管理 > 基础数据管理 > 品牌管理
 
 ## 品牌库数据结构
 
@@ -15,25 +27,24 @@ interface Brand {
 }
 ```
 
-## 品牌库要求
+## 配置要求
 
 ### 1. 必须包含中英文品牌名
 
-对于有中英文名称的品牌，需要分别添加两个条目：
+对于有中英文名称的品牌，**必须分别添加两个条目**：
 
-```typescript
-// 正确示例
-[
-  { name: 'Redmi', spell: 'redmi' },
-  { name: '红米', spell: 'redmi' },  // 中文品牌名
-]
+#### ✅ 正确配置示例
 
-// 错误示例（缺少中文品牌名）
-[
-  { name: 'Redmi', spell: 'redmi' },
-  // 缺少 '红米'，导致 "红米15R" 无法识别品牌
-]
-```
+| 品牌名称 | 拼音 | 说明 |
+|---------|------|------|
+| Redmi | redmi | 英文品牌名 |
+| 红米 | redmi | 中文品牌名 |
+
+#### ❌ 错误配置示例
+
+| 品牌名称 | 拼音 | 问题 |
+|---------|------|------|
+| Redmi | redmi | ❌ 缺少中文"红米"，导致"红米15R"无法识别品牌 |
 
 ### 2. 拼音字段用于匹配英文输入
 
@@ -48,88 +59,149 @@ interface Brand {
 
 品牌名称的大小写会被保留并用于显示：
 
+| 品牌名称 | 显示效果 |
+|---------|---------|
+| HUAWEI | HUAWEI |
+| vivo | vivo |
+| 小米 | 小米 |
+
+## 常见品牌配置清单
+
+以下是推荐的品牌配置清单，请在基础数据管理中逐一添加：
+
+### Apple / 苹果
+- [ ] Apple (spell: apple)
+- [ ] 苹果 (spell: apple)
+
+### 华为 / HUAWEI
+- [ ] HUAWEI (spell: huawei)
+- [ ] 华为 (spell: huawei)
+
+### 荣耀 / HONOR
+- [ ] HONOR (spell: honor)
+- [ ] 荣耀 (spell: honor)
+
+### 小米 / Xiaomi
+- [ ] 小米 (spell: xiaomi)
+- [ ] Xiaomi (spell: xiaomi)
+
+### 红米 / Redmi（独立品牌）
+- [ ] Redmi (spell: redmi)
+- [ ] 红米 (spell: redmi)
+
+### vivo
+- [ ] vivo (spell: vivo)
+
+### OPPO
+- [ ] OPPO (spell: oppo)
+
+### 三星 / Samsung
+- [ ] 三星 (spell: samsung)
+- [ ] Samsung (spell: samsung)
+
+### 一加 / OnePlus
+- [ ] 一加 (spell: oneplus)
+- [ ] OnePlus (spell: oneplus)
+
+### 真我 / realme
+- [ ] 真我 (spell: realme)
+- [ ] realme (spell: realme)
+
+### iQOO
+- [ ] iQOO (spell: iqoo)
+
+### WIWU
+- [ ] WIWU (spell: wiwu)
+
+## 配置步骤
+
+1. 登录系统
+2. 进入**数据管理 > 基础数据管理 > 品牌管理**
+3. 点击"添加品牌"
+4. 填写品牌信息：
+   - 品牌名称：输入品牌名（如"Redmi"或"红米"）
+   - 拼音：输入品牌拼音（如"redmi"）
+   - 颜色：选择品牌颜色（可选）
+5. 保存
+6. 重复步骤3-5，添加所有品牌的中英文名称
+
+## 验证配置
+
+配置完成后，可以通过以下方式验证：
+
+1. 进入**智能匹配**页面
+2. 查看页面右上角的"已加载 X 个品牌"提示
+3. 输入测试数据，如"红米15R 4+128星岩黑"
+4. 检查匹配结果是否正确
+
+## 常见问题
+
+### Q1: 为什么"红米15R"匹配到了"WIWU 电脑包15.6寸"？
+
+**原因**：品牌库中缺少"红米"品牌，导致：
+1. 输入的品牌无法识别（brand = null）
+2. 系统无法过滤掉不相关的品牌
+3. 只能通过型号"15"进行模糊匹配
+4. 错误匹配到包含"15"的其他产品
+
+**解决方案**：在基础数据管理中添加"红米"品牌（name: "红米", spell: "redmi"）
+
+### Q2: 为什么品牌库中有"Redmi"，但"红米15R"还是无法识别？
+
+**原因**：品牌库中只有英文"Redmi"，没有中文"红米"
+
+**解决方案**：在基础数据管理中添加中文品牌（name: "红米", spell: "redmi"）
+
+### Q3: 如何确认品牌库是否正确加载？
+
+在浏览器控制台（F12）中查看日志：
+```
+已加载品牌数据: X 个品牌
+```
+
+如果看到"品牌库未加载"警告，说明品牌库加载失败。
+
+### Q4: 品牌库更新后需要刷新页面吗？
+
+是的，品牌库更新后需要刷新智能匹配页面，以重新加载品牌数据。
+
+## 技术说明
+
+### 品牌匹配逻辑
+
+1. **第一阶段**：精确匹配（品牌 + 型号）
+   - 提取输入的品牌和型号
+   - 在SPU列表中查找品牌和型号都匹配的产品
+   - 如果品牌未识别，跳过此阶段
+
+2. **第二阶段**：分词匹配（降级匹配）
+   - 如果第一阶段未找到匹配
+   - 使用分词算法进行模糊匹配
+   - **如果输入品牌未识别，但SPU有品牌，降低优先级**（避免误匹配）
+
+### 品牌过滤规则
+
 ```typescript
-{ name: 'HUAWEI', spell: 'huawei' }  // 显示为 HUAWEI
-{ name: 'vivo', spell: 'vivo' }      // 显示为 vivo
-{ name: '小米', spell: 'xiaomi' }    // 显示为 小米
+// 严格的品牌过滤：
+// 1. 如果输入品牌和SPU品牌都识别出来了，必须匹配
+if (inputBrand && spuBrand && inputBrand !== spuBrand) {
+  continue;  // 品牌不匹配，跳过
+}
+
+// 2. 如果输入品牌未识别，但SPU品牌识别出来了，降低优先级
+if (!inputBrand && spuBrand) {
+  score = 0.3;  // 基础分数降低（避免误匹配）
+}
 ```
 
-## 常见品牌示例
+## 维护建议
 
-```typescript
-const brandList = [
-  // Apple
-  { name: 'Apple', spell: 'apple' },
-  { name: '苹果', spell: 'apple' },
-  
-  // 华为
-  { name: 'HUAWEI', spell: 'huawei' },
-  { name: '华为', spell: 'huawei' },
-  
-  // 荣耀
-  { name: 'HONOR', spell: 'honor' },
-  { name: '荣耀', spell: 'honor' },
-  
-  // 小米
-  { name: '小米', spell: 'xiaomi' },
-  { name: 'Xiaomi', spell: 'xiaomi' },
-  
-  // 红米（独立品牌）
-  { name: 'Redmi', spell: 'redmi' },
-  { name: '红米', spell: 'redmi' },
-  
-  // vivo
-  { name: 'vivo', spell: 'vivo' },
-  
-  // OPPO
-  { name: 'OPPO', spell: 'oppo' },
-  
-  // 三星
-  { name: '三星', spell: 'samsung' },
-  { name: 'Samsung', spell: 'samsung' },
-  
-  // 一加
-  { name: '一加', spell: 'oneplus' },
-  { name: 'OnePlus', spell: 'oneplus' },
-  
-  // 真我
-  { name: '真我', spell: 'realme' },
-  { name: 'realme', spell: 'realme' },
-  
-  // iQOO
-  { name: 'iQOO', spell: 'iqoo' },
-];
-```
+1. **定期检查**：定期检查品牌库是否包含所有常见品牌
+2. **新品牌添加**：发现新品牌时，及时添加到品牌库
+3. **中英文完整**：确保每个品牌都有中英文名称
+4. **测试验证**：添加新品牌后，使用智能匹配功能进行测试
 
-## 使用方法
+## 相关文档
 
-在 `SmartMatch` 组件中，品牌库数据会自动加载并传递给匹配器：
-
-```typescript
-// 加载品牌库
-const brands = await getBrandBaseList();
-setBrandList(brands);
-
-// 在匹配前设置品牌库
-matcher.setBrandList(brandList);
-```
-
-## 注意事项
-
-1. **品牌库未加载时**：如果品牌库未加载，匹配器会输出警告，品牌识别和型号提取可能不准确。
-
-2. **品牌优先级**：品牌按名称长度降序匹配，优先匹配更长的品牌名（避免部分匹配问题）。
-
-3. **中文品牌匹配**：中文品牌不使用单词边界，直接进行字符串匹配。
-
-4. **英文品牌匹配**：英文品牌使用单词边界 `\b`，确保完整匹配。
-
-## 测试
-
-运行以下命令测试品牌识别：
-
-```bash
-npm test
-```
-
-所有测试应该通过，确保品牌库数据正确。
+- [智能匹配功能说明](./smart-match-guide.md)
+- [品牌管理API文档](./brand-api.md)
