@@ -73,6 +73,9 @@ function AddLog(props: {
               if (!content) {
                 throw new Error('内容不能为空');
               }
+              if (!token) {
+                throw new Error('未登录，无法添加日志');
+              }
               // 新增系统更新日志
               await addUpdateLog(
                 {

@@ -82,6 +82,9 @@ function EditLog(props: {
               if (!content) {
                 throw new Error('内容不能为空');
               }
+              if (!token) {
+                throw new Error('未登录，无法编辑日志');
+              }
 
               const data = {
                 id: editLog.id,
