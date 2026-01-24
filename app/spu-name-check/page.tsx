@@ -91,8 +91,8 @@ function checkSPUNaming(spu: Pick<SPU, 'name' | 'brand'>, brandList: string[]): 
   const appleProductPrefixes = ['iPhone', 'iPad', 'MacBook', 'iMac', 'Mac', 'AirPods', 'Apple Watch', 'Apple TV'];
   const isAppleBrand = brand.toLowerCase() === 'apple' || brand === '苹果';
   
-  // 特殊品牌处理：realme 品牌的产品使用"真我"开头
-  const realmeProductPrefixes = ['真我'];
+  // 特殊品牌处理：realme 品牌的产品使用"真我"或"realme"开头
+  const realmeProductPrefixes = ['真我', 'realme'];
   const isRealmeBrand = brand.toLowerCase() === 'realme';
   
   // 特殊品牌处理：荣耀品牌后面不需要空格
@@ -121,20 +121,29 @@ function checkSPUNaming(spu: Pick<SPU, 'name' | 'brand'>, brandList: string[]): 
       });
     }
   } else if (isRealmeBrand) {
-    // realme 品牌：检查是否以"真我"开头
+    // realme 品牌：检查是否以"真我"或"realme"开头
     const hasValidRealmePrefix = realmeProductPrefixes.some(prefix => name.startsWith(prefix));
     
     if (!hasValidRealmePrefix) {
       issues.push({
         type: 'brand_mismatch',
-        message: `realme 品牌产品名称应以"真我"开头`,
+        message: `realme 品牌产品名称应以"真我"或"realme"开头`,
         severity: 'error',
       });
       return issues;
     }
     
-    // realme 品牌特殊规则："真我"后不需要空格
-    // 不检查空格
+    // realme 品牌特殊规则：
+    // - "真我"后不需要空格
+    // - "realme"后需要空格（如果后面还有内容）
+    const matchedPrefix = realmeProductPrefixes.find(prefix => name.startsWith(prefix));
+    if (matchedPrefix === 'realme' && name.length > matchedPrefix.length && name[matchedPrefix.length] !== ' ') {
+      issues.push({
+        type: 'no_space',
+        message: `realme 后缺少空格`,
+        severity: 'error',
+      });
+    }
   } else if (isHonorBrand) {
     // 荣耀品牌：检查品牌名是否在名称开头
     if (!name.startsWith(brand)) {
@@ -878,7 +887,7 @@ export default function () {
                   <li>✅ 不要有错别字</li>
                   <li>✅ 不要有"全网通"字样</li>
                   <li>⚠️ <strong>特殊规则</strong>：Apple 品牌产品使用产品系列名开头（如 <code>iPhone 15 Pro</code>、<code>iPad Air</code>、<code>MacBook Pro</code>），而不是 "Apple" 开头</li>
-                  <li>⚠️ <strong>特殊规则</strong>：realme 品牌产品使用"真我"开头，后面不需要空格（如 <code>真我GT5 Pro</code>）</li>
+                  <li>⚠️ <strong>特殊规则</strong>：realme 品牌产品使用"真我"或"realme"开头，"真我"后不需要空格（如 <code>真我GT5 Pro</code>），"realme"后需要空格（如 <code>realme GT5 Pro</code>）</li>
                   <li>⚠️ <strong>特殊规则</strong>：荣耀品牌后面不需要空格（如 <code>荣耀Magic6 Pro</code>）</li>
                 </ul>
               </div>
