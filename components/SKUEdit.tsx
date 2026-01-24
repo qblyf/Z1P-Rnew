@@ -23,8 +23,11 @@ import { validateGTIN } from './SKUManager';
  * [组件] 修改 SKU
  * @author Lian Zheren <lzr@go0356.com>
  */
-export function SKUEdit(props: { selectedSkuID: SkuID }) {
-  const { selectedSkuID } = props;
+export function SKUEdit(props: { 
+  selectedSkuID: SkuID;
+  onNameChange?: (name: string) => void;
+}) {
+  const { selectedSkuID, onNameChange } = props;
   const [preData, setPreData] = useState<SKU>();
   const [input, setInput] = useState<{
     gtins?: string[];
@@ -318,17 +321,16 @@ export function SKUEdit(props: { selectedSkuID: SkuID }) {
                       }
                       await editSKUInfo(selectedSkuID, patch, { auth: token });
                       
+                      // 重新获取 SKU 数据以获取最新的名称
+                      const updatedSku = await getSKUInfo(selectedSkuID);
+                      
                       // 更新前端状态
-                      if (preData) {
-                        setPreData(update(preData, {
-                          gtins: { $set: input.gtins ?? preData.gtins },
-                          listPrice: { $set: patch.listPrice ?? preData.listPrice },
-                          unit: { $set: input.unit ?? preData.unit },
-                          grossWeight: { $set: input.grossWeight ?? preData.grossWeight },
-                          thumbnail: { $set: patch.thumbnail ?? preData.thumbnail },
-                          remarks: { $set: input.remarks ?? preData.remarks },
-                          defaultSNRules: { $set: patch.defaultSNRules ?? preData.defaultSNRules },
-                        }));
+                      if (updatedSku) {
+                        setPreData(updatedSku);
+                        // 通知父组件更新名称
+                        if (onNameChange) {
+                          onNameChange(updatedSku.name);
+                        }
                       }
                       
                       // 清空输入状态

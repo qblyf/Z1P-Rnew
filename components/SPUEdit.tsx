@@ -3,6 +3,7 @@ import {
   editSPUInfo,
   getSPUInfo,
   invalidateSPUInfo,
+  getSKUsInfo as getSKUsInfoAPI,
 } from '@zsqk/z1-sdk/es/z1p/product';
 import { getSKUsInfo } from '../data/product';
 import { paramsDetail } from '@zsqk/z1-sdk/es/z1p/params-value';
@@ -461,10 +462,10 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                     setSelectedSkuID(skuID);
                     setShowSkuEditDrawer(true);
                     
-                    // 异步获取 SKU 名称
+                    // 异步获取 SKU 名称 - 使用 API 直接获取，不使用缓存
                     try {
                       console.log('正在获取 SKU 名称, SKU ID:', skuID);
-                      const skuInfo = await getSKUsInfo([skuID]);
+                      const skuInfo = await getSKUsInfoAPI([skuID]);
                       console.log('SKU 信息返回:', skuInfo);
                       
                       if (skuInfo && skuInfo.length > 0 && !('errInfo' in skuInfo[0])) {
@@ -517,8 +518,32 @@ export default function SPUEdit(props: { defaultTab?: string }) {
             }}
             open={showSkuEditDrawer}
             width="33.33%"
+            afterOpenChange={(open) => {
+              // 当抽屉打开时，刷新 SKU 名称 - 使用 API 直接获取，不使用缓存
+              if (open && selectedSkuID) {
+                const refreshSkuName = async () => {
+                  try {
+                    console.log('刷新 SKU 名称, SKU ID:', selectedSkuID);
+                    const skuInfo = await getSKUsInfoAPI([selectedSkuID]);
+                    console.log('刷新后的 SKU 信息:', skuInfo);
+                    if (skuInfo && skuInfo.length > 0 && !('errInfo' in skuInfo[0])) {
+                      console.log('更新 SKU 名称为:', skuInfo[0].name);
+                      setSelectedSkuName(skuInfo[0].name);
+                    }
+                  } catch (error) {
+                    console.error('刷新 SKU 名称失败:', error);
+                  }
+                };
+                refreshSkuName();
+              }
+            }}
           >
-            <SKUEdit selectedSkuID={selectedSkuID} />
+            <SKUEdit 
+              selectedSkuID={selectedSkuID}
+              onNameChange={(name) => {
+                setSelectedSkuName(name);
+              }}
+            />
           </Drawer>
         )}
       </div>

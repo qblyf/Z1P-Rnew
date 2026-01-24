@@ -268,17 +268,25 @@ function ClientPage() {
               setLoading(true);
               try {
                 const { brands, gtinKeyword, nameKeyword, skuState, specKeyword, colorKeyword, comboKeyword } = v;
+                
+                // 构建查询参数，确保所有参数都是有效的
+                const queryParams: any = {
+                  limit: 1000,
+                  offset: 0,
+                };
+                
+                // 只添加非空的查询参数
+                if (gtinKeyword) queryParams.gtinKeyword = gtinKeyword;
+                if (nameKeyword) queryParams.nameKeyword = nameKeyword;
+                if (brands && brands.length > 0) queryParams.brands = brands;
+                if (skuState) queryParams.states = [skuState];
+                
+                // 添加 orderBy 参数
+                queryParams.orderBy = { key: 'p.id', sort: 'DESC' };
+                
                 // 从服务器获取数据
                 const res = await getSKUListJoinSPU(
-                  {
-                    gtinKeyword,
-                    nameKeyword,
-                    brands,
-                    states: skuState ? [skuState] : undefined,
-                    limit: 1000,
-                    orderBy: { key: 'p.id', sort: 'DESC' },
-                    offset: 0,
-                  },
+                  queryParams,
                   { sku: ['id', 'name', 'gtins', 'state', 'spec', 'color', 'combo'] as any, spu: ['brand'] }
                 );
                 
