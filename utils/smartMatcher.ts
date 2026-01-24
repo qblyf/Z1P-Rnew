@@ -524,7 +524,6 @@ export class SimpleMatcher {
       if (lowerInput.includes(networkVersion.toLowerCase())) {
         // 找到匹配的网络版本，创建一个 VersionInfo 对象
         return {
-          id: `network-${networkVersion.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
           name: networkVersion,
           keywords: [networkVersion],
           priority: 10, // 网络版本优先级高于产品版本
