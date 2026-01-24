@@ -447,13 +447,21 @@ export class SimpleMatcher {
       // ✅ 修复：同时使用品牌名和拼音作为索引键
       const keys = [brand.toLowerCase()];
       
-      // 查找品牌的拼音
+      // 正向查找：如果品牌是中文，添加其拼音
       const brandInfo = this.brandList.find(b => b.name === brand);
       if (brandInfo && brandInfo.spell) {
         const spellKey = brandInfo.spell.toLowerCase();
-        // 避免重复添加相同的键
         if (!keys.includes(spellKey)) {
           keys.push(spellKey);
+        }
+      }
+      
+      // 反向查找：如果品牌是拼音，添加对应的中文品牌名
+      const brandInfoBySpell = this.brandList.find(b => b.spell?.toLowerCase() === brand.toLowerCase());
+      if (brandInfoBySpell && brandInfoBySpell.name) {
+        const chineseKey = brandInfoBySpell.name.toLowerCase();
+        if (!keys.includes(chineseKey)) {
+          keys.push(chineseKey);
         }
       }
       
@@ -816,7 +824,18 @@ export class SimpleMatcher {
         }
       }
     } else {
-      console.warn('品牌库未加载，型号提取可能不准确');
+      // 降级方案：使用硬编码的常见品牌列表
+      console.warn('品牌库未加载，使用硬编码品牌列表');
+      const fallbackBrands = [
+        // 中文品牌名
+        '小米', '红米', '华为', 'vivo', 'oppo', '荣耀', '一加', '真我', '魅族',
+        '中兴', '努比亚', '联想', '摩托罗拉', '三星', '苹果', '诺基亚',
+        // 英文品牌名
+        'xiaomi', 'redmi', 'huawei', 'vivo', 'oppo', 'honor', 'oneplus', 
+        'realme', 'meizu', 'zte', 'nubia', 'lenovo', 'motorola', 
+        'samsung', 'apple', 'nokia', 'iphone', 'ipad'
+      ];
+      brandsToRemove.push(...fallbackBrands);
     }
     
     // 按长度降序排序，优先移除更长的品牌名，并缓存结果
@@ -1132,8 +1151,8 @@ export class SimpleMatcher {
       return fiveGMatch[1].trim();
     }
     
-    // 规则3: 如果找到内存
-    const memoryPattern = /(.+?)\s*\(?\d+\s*gb\s*\+\s*\d+\s*(?:gb)?\)?/i;
+    // 规则3: 如果找到容量（改进：支持 4+128 格式）
+    const memoryPattern = /(.+?)\s*\(?\d+\s*(?:gb)?\s*\+\s*\d+\s*(?:gb)?\)?/i;
     const memoryMatch = str.match(memoryPattern);
     if (memoryMatch) {
       return memoryMatch[1].trim();
@@ -1366,8 +1385,20 @@ export class SimpleMatcher {
   ): Array<{ spu: SPUData; score: number; priority: number }> {
     const matches: Array<{ spu: SPUData; score: number; priority: number }> = [];
     
+    // 调试：记录输入型号的标准化形式
+    const inputModelNormalized = inputModel?.toLowerCase().replace(/\s+/g, '');
+    console.log(`[精确匹配] 输入型号标准化: "${inputModel}" -> "${inputModelNormalized}"`);
+    
+    let checkedCount = 0;
+    let filteredCount = 0;
+    let brandMismatchCount = 0;
+    let modelMismatchCount = 0;
+    
     for (const spu of spuList) {
+      checkedCount++;
+      
       if (this.shouldFilterSPU(input, spu.name)) {
+        filteredCount++;
         continue;
       }
       
@@ -1376,10 +1407,28 @@ export class SimpleMatcher {
       const spuModel = this.extractModel(spuSPUPart);
       const spuVersion = this.extractVersion(spuSPUPart);
       
+      // 调试：对于包含"15"的SPU，输出详细信息
+      if (spu.name.includes('15') && spu.name.includes('R')) {
+        const spuModelNormalized = spuModel?.toLowerCase().replace(/\s+/g, '');
+        console.log(`[精确匹配] 检查SPU: "${spu.name}"`);
+        console.log(`  SPU部分: "${spuSPUPart}"`);
+        console.log(`  SPU品牌: "${spuBrand}"`);
+        console.log(`  SPU型号: "${spuModel}" -> "${spuModelNormalized}"`);
+        console.log(`  SPU版本: ${spuVersion ? `"${spuVersion.name}"` : 'null'}`);
+      }
+      
       // 品牌和型号必须完全匹配
       const brandMatch = this.isBrandMatch(inputBrand, spuBrand);
       const modelMatch = inputModel && spuModel && 
                         inputModel.toLowerCase().replace(/\s+/g, '') === spuModel.toLowerCase().replace(/\s+/g, '');
+      
+      if (!brandMatch) {
+        brandMismatchCount++;
+      }
+      
+      if (!modelMatch && spuModel) {
+        modelMismatchCount++;
+      }
       
       if (inputBrand && spuBrand && brandMatch && modelMatch) {
         const score = this.calculateExactSPUScore(inputVersion, spuVersion);
@@ -1387,9 +1436,12 @@ export class SimpleMatcher {
         const keywordBonus = this.calculateKeywordBonus(input, spu.name);
         const finalScore = Math.min(score + keywordBonus, 1.0);
         
+        console.log(`[精确匹配] ✓ 找到匹配: "${spu.name}", 分数: ${finalScore.toFixed(2)}`);
         matches.push({ spu, score: finalScore, priority });
       }
     }
+    
+    console.log(`[精确匹配] 统计: 检查${checkedCount}个, 过滤${filteredCount}个, 品牌不匹配${brandMismatchCount}个, 型号不匹配${modelMismatchCount}个`);
     
     return matches;
   }
@@ -1462,6 +1514,9 @@ export class SimpleMatcher {
 
   /**
    * 计算精确匹配的 SPU 分数（基于版本匹配）
+   * 
+   * 改进：当输入没有版本但SPU有版本时，给予更高的分数
+   * 原因：用户输入通常省略版本信息，不应该因此大幅降低匹配分数
    */
   private calculateExactSPUScore(
     inputVersion: VersionInfo | null,
@@ -1480,7 +1535,9 @@ export class SimpleMatcher {
     } else if (inputVersion && !spuVersion) {
       score = SPU_MATCH_SCORES.INPUT_VERSION_ONLY;
     } else if (!inputVersion && spuVersion) {
-      score = SPU_MATCH_SCORES.SPU_VERSION_ONLY;
+      // 改进：提高分数从 0.9 到 0.95
+      // 用户输入通常省略版本信息，这是正常情况
+      score = 0.95;
     }
     
     return score;
