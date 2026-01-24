@@ -433,18 +433,30 @@ export class SimpleMatcher {
   buildSPUIndex(spuList: SPUData[]) {
     this.spuIndexByBrand.clear();
     
+    let indexedCount = 0;
+    let noBrandCount = 0;
+    
     for (const spu of spuList) {
       const brand = spu.brand || this.extractBrand(spu.name);
-      if (!brand) continue;
+      if (!brand) {
+        noBrandCount++;
+        console.warn(`⚠️  SPU "${spu.name}" (ID: ${spu.id}) 品牌提取失败`);
+        continue;
+      }
       
       const lowerBrand = brand.toLowerCase();
       if (!this.spuIndexByBrand.has(lowerBrand)) {
         this.spuIndexByBrand.set(lowerBrand, []);
       }
       this.spuIndexByBrand.get(lowerBrand)!.push(spu);
+      indexedCount++;
     }
     
-    console.log(`✓ SPU index built: ${this.spuIndexByBrand.size} brands, ${spuList.length} SPUs`);
+    console.log(`✓ SPU index built: ${this.spuIndexByBrand.size} brands, ${indexedCount} SPUs indexed, ${noBrandCount} SPUs without brand`);
+    
+    // 输出品牌索引的前10个品牌（用于调试）
+    const brandKeys = Array.from(this.spuIndexByBrand.keys()).slice(0, 10);
+    console.log(`  品牌索引示例: ${brandKeys.join(', ')}${this.spuIndexByBrand.size > 10 ? '...' : ''}`);
   }
 
   /**
@@ -1140,29 +1152,54 @@ export class SimpleMatcher {
     const inputModel = this.extractModel(inputSPUPart);
     const inputVersion = this.extractVersion(inputSPUPart);
     
+    console.log(`[匹配调试] 输入: "${input}"`);
+    console.log(`[匹配调试] SPU部分: "${inputSPUPart}"`);
+    console.log(`[匹配调试] 提取品牌: "${inputBrand}"`);
+    console.log(`[匹配调试] 提取型号: "${inputModel}"`);
+    
     // 性能优化：使用品牌索引缩小候选范围
     let candidateSPUs: SPUData[];
+    let usedBrandFilter = false;
+    
     if (inputBrand && this.spuIndexByBrand.size > 0) {
       const lowerBrand = inputBrand.toLowerCase();
       candidateSPUs = this.spuIndexByBrand.get(lowerBrand) || [];
+      
+      console.log(`[匹配调试] 品牌索引查找 "${lowerBrand}": ${candidateSPUs.length} 个SPU`);
       
       // 如果品牌索引中没有找到，尝试通过拼音匹配
       if (candidateSPUs.length === 0) {
         const brandInfo = this.brandList.find(b => b.name === inputBrand);
         if (brandInfo && brandInfo.spell) {
           candidateSPUs = this.spuIndexByBrand.get(brandInfo.spell.toLowerCase()) || [];
+          console.log(`[匹配调试] 拼音索引查找 "${brandInfo.spell}": ${candidateSPUs.length} 个SPU`);
         }
       }
       
       if (candidateSPUs.length > 0) {
         console.log(`✓ 使用品牌索引: ${inputBrand}, 候选SPU: ${candidateSPUs.length}/${spuList.length}`);
+        usedBrandFilter = true;
+      } else {
+        // 关键修复：如果品牌识别成功但索引中没有找到，说明数据有问题
+        // 不应该回退到全部 SPU，而是应该严格过滤
+        console.warn(`⚠️  品牌 "${inputBrand}" 在索引中未找到，将严格过滤品牌`);
+        candidateSPUs = spuList.filter(spu => {
+          const spuBrand = spu.brand || this.extractBrand(spu.name);
+          return spuBrand && this.isBrandMatch(inputBrand, spuBrand);
+        });
+        console.log(`[匹配调试] 严格品牌过滤后: ${candidateSPUs.length} 个SPU`);
+        usedBrandFilter = true;
       }
     } else {
+      if (!inputBrand) {
+        console.warn(`⚠️  品牌提取失败，将在所有 ${spuList.length} 个SPU中搜索`);
+      }
       candidateSPUs = spuList;
     }
     
     // 如果没有候选SPU，返回null
     if (candidateSPUs.length === 0) {
+      console.log(`[匹配调试] 没有候选SPU，匹配失败`);
       return { spu: null, similarity: 0 };
     }
     
@@ -1273,15 +1310,24 @@ export class SimpleMatcher {
       const spuBrand = spu.brand || this.extractBrand(spuSPUPart);
       const spuModel = this.extractModel(spuSPUPart);
       
-      // 严格的品牌过滤
+      // 严格的品牌过滤 - 关键修复
       const brandMatch = this.isBrandMatch(inputBrand, spuBrand);
       
+      // 如果输入品牌识别成功，必须严格匹配
       if (inputBrand && spuBrand && !brandMatch) {
+        continue;
+      }
+      
+      // 如果输入品牌识别成功，但 SPU 品牌未识别，也应该跳过
+      // 这可以防止手机匹配到配件等问题
+      if (inputBrand && !spuBrand) {
+        console.log(`[模糊匹配] 跳过 SPU "${spu.name}" - 输入品牌"${inputBrand}"已识别，但SPU品牌未识别`);
         continue;
       }
       
       let score = 0;
       
+      // 只有在输入品牌未识别时才降低分数
       if (!inputBrand && spuBrand) {
         score = 0.3; // 输入品牌未识别，降低基础分数
       }
