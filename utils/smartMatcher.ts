@@ -505,14 +505,49 @@ export class SimpleMatcher {
 
   /**
    * 提取版本信息
+   * 
+   * 优先级：
+   * 1. 网络制式版本（5G、4G、蓝牙版等）
+   * 2. 产品版本（标准版、活力版等）
+   * 
+   * 特殊处理：
+   * - "Pro" 如果后面跟着 mini/max/plus 等，则是型号的一部分，不是版本
    */
   extractVersion(input: string): VersionInfo | null {
     const lowerInput = input.toLowerCase();
     
-    // 使用配置的版本关键词
+    // 优先检查网络制式版本
+    // 按长度降序排序，优先匹配更长的版本（如 "全网通5G" 优先于 "5G"）
+    const sortedNetworkVersions = [...this.networkVersions].sort((a, b) => b.length - a.length);
+    
+    for (const networkVersion of sortedNetworkVersions) {
+      if (lowerInput.includes(networkVersion.toLowerCase())) {
+        // 找到匹配的网络版本，创建一个 VersionInfo 对象
+        return {
+          id: `network-${networkVersion.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+          name: networkVersion,
+          keywords: [networkVersion],
+          priority: 10, // 网络版本优先级高于产品版本
+        };
+      }
+    }
+    
+    // 检查产品版本（标准版、活力版等）
     for (const versionInfo of this.versionKeywords) {
       for (const keyword of versionInfo.keywords) {
-        if (lowerInput.includes(keyword.toLowerCase())) {
+        const lowerKeyword = keyword.toLowerCase();
+        
+        // 特殊处理：如果是 "pro"，检查是否是型号的一部分
+        if (lowerKeyword === 'pro' || lowerKeyword === 'pro版') {
+          // 检查 "pro" 后面是否跟着型号后缀（mini, max, plus, ultra 等）
+          const proPattern = /\bpro\s*(mini|max|plus|ultra|air|lite|se)\b/i;
+          if (proPattern.test(input)) {
+            // "pro" 是型号的一部分，跳过
+            continue;
+          }
+        }
+        
+        if (lowerInput.includes(lowerKeyword)) {
           return versionInfo;
         }
       }

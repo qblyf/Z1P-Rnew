@@ -105,7 +105,7 @@ export class ConfigLoader {
           { id: 'premium', name: '尊享版', keywords: ['尊享版', '高端版'], priority: 4 },
           { id: 'pro', name: 'Pro 版', keywords: ['pro', 'pro版'], priority: 5 }
         ],
-        networkVersions: ['蓝牙版', 'eSIM版', 'esim版', '5G版', '4G版', '3G版', '全网通版']
+        networkVersions: ['全网通5G', '全网通版', '蓝牙版', 'eSIM版', 'esim版', '5G版', '4G版', '3G版', '5G', '4G', '3G']
       },
       'color-variants': {
         variants: []
