@@ -466,8 +466,11 @@ export class SimpleMatcher {
   private isBrandMatch(brand1: string | null, brand2: string | null): boolean {
     if (!brand1 || !brand2) return false;
     
-    // 完全匹配
+    // 完全匹配（精确）
     if (brand1 === brand2) return true;
+    
+    // 大小写不敏感匹配（修复 Vivo vs vivo 问题）
+    if (brand1.toLowerCase() === brand2.toLowerCase()) return true;
     
     // 通过拼音匹配
     if (this.brandList.length > 0) {
@@ -673,7 +676,11 @@ export class SimpleMatcher {
     // 预处理：移除括号和品牌
     let normalizedStr = this.preprocessModelString(lowerStr);
     
-    // 应用智能标准化
+    // ⚠️ 重要：先尝试提取简单型号（在 normalizeModel 之前）
+    // 因为 normalizeModel 会在字母和数字之间添加空格，导致 "y50" 变成 "y 50"
+    const simpleModelBeforeNormalize = this.extractSimpleModel(normalizedStr);
+    
+    // 应用智能标准化（用于复杂型号匹配）
     normalizedStr = this.normalizeModel(normalizedStr);
     
     // 优先级1: 平板型号
@@ -688,7 +695,10 @@ export class SimpleMatcher {
     const complexModel = this.extractComplexModel(normalizedStr);
     if (complexModel) return complexModel;
     
-    // 优先级4: 简单型号（P50、14 等）
+    // 优先级4: 简单型号（优先使用标准化前的结果）
+    if (simpleModelBeforeNormalize) return simpleModelBeforeNormalize;
+    
+    // 降级：尝试从标准化后的字符串提取
     const simpleModel = this.extractSimpleModel(normalizedStr);
     if (simpleModel) return simpleModel;
     
@@ -976,6 +986,26 @@ export class SimpleMatcher {
     }
     
     if (hasESIM && lowerSPU.includes('蓝牙版')) {
+      return true;
+    }
+    
+    // 规则3: 配件过滤（使用配置或默认值）
+    const accessoryKeywords = this.filterKeywords?.accessoryKeywords || [
+      '充电器', '充电线', '数据线', '耳机', '保护壳', '保护套', 
+      '贴膜', '钢化膜', '支架', '转接头', '适配器', '电源',
+      '原装', '配件', '套餐'
+    ];
+    
+    const hasAccessoryKeywordInInput = accessoryKeywords.some(keyword => 
+      lowerInput.includes(keyword)
+    );
+    const hasAccessoryKeywordInSPU = accessoryKeywords.some(keyword => 
+      lowerSPU.includes(keyword)
+    );
+    
+    // 如果输入不包含配件关键词，但 SPU 包含配件关键词，则过滤
+    if (!hasAccessoryKeywordInInput && hasAccessoryKeywordInSPU) {
+      console.log(`[过滤] SPU "${spuName}" 被过滤 - 包含配件关键词`);
       return true;
     }
     

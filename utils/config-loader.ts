@@ -26,6 +26,7 @@ export interface FilterKeywordConfig {
   giftBox: string[];
   demo: string[];
   accessoryBrands: string[];
+  accessoryKeywords?: string[]; // 新增：配件关键词
 }
 
 export interface ModelNormalizationConfig {
@@ -112,7 +113,8 @@ export class ConfigLoader {
       'filter-keywords': {
         giftBox: ['礼盒', '套装', '系列', '礼品', '礼包'],
         demo: ['演示机', '样机', '展示机', '体验机', '试用机', '测试机'],
-        accessoryBrands: ['优诺严选', '品牌', '赠品', '严选', '檀木']
+        accessoryBrands: ['优诺严选', '品牌', '赠品', '严选', '檀木'],
+        accessoryKeywords: ['充电器', '充电线', '数据线', '耳机', '保护壳', '保护套', '贴膜', '钢化膜', '支架', '转接头', '适配器', '电源', '原装', '配件', '套餐']
       },
       'model-normalizations': {
         normalizations: {
