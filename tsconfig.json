@@ -35,6 +35,7 @@
   "exclude": [
     "api",
     "z1clients.example.ts",
+    "scripts",
     "node_modules",
     ".next"
   ]
