@@ -444,11 +444,27 @@ export class SimpleMatcher {
         continue;
       }
       
-      const lowerBrand = brand.toLowerCase();
-      if (!this.spuIndexByBrand.has(lowerBrand)) {
-        this.spuIndexByBrand.set(lowerBrand, []);
+      // ✅ 修复：同时使用品牌名和拼音作为索引键
+      const keys = [brand.toLowerCase()];
+      
+      // 查找品牌的拼音
+      const brandInfo = this.brandList.find(b => b.name === brand);
+      if (brandInfo && brandInfo.spell) {
+        const spellKey = brandInfo.spell.toLowerCase();
+        // 避免重复添加相同的键
+        if (!keys.includes(spellKey)) {
+          keys.push(spellKey);
+        }
       }
-      this.spuIndexByBrand.get(lowerBrand)!.push(spu);
+      
+      // 为每个键添加索引
+      for (const key of keys) {
+        if (!this.spuIndexByBrand.has(key)) {
+          this.spuIndexByBrand.set(key, []);
+        }
+        this.spuIndexByBrand.get(key)!.push(spu);
+      }
+      
       indexedCount++;
     }
     
