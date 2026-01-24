@@ -11,12 +11,7 @@ import { SPU_MATCH_THRESHOLD } from '../utils/constants';
 import { InputPanel } from './SmartMatch/InputPanel';
 import { ResultPanel } from './SmartMatch/ResultPanel';
 
-interface BrandData {
-  name: string;
-  color: string;
-  spell?: string;
-  order?: number;
-}
+export default function SmartMatch() {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingSPU, setLoadingSPU] = useState(true);
