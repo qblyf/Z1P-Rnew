@@ -19,6 +19,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "allowImportingTsExtensions": true,
+    "tsBuildInfoFile": ".next/cache/tsconfig.tsbuildinfo",
     "plugins": [
       {
         "name": "next"

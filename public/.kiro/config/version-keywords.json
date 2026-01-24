@@ -1,0 +1,43 @@
+{
+  "versions": [
+    {
+      "id": "standard",
+      "name": "标准版",
+      "keywords": ["标准版", "基础版"],
+      "priority": 1
+    },
+    {
+      "id": "lite",
+      "name": "活力版",
+      "keywords": ["活力版", "轻享版"],
+      "priority": 2
+    },
+    {
+      "id": "enjoy",
+      "name": "优享版",
+      "keywords": ["优享版", "享受版"],
+      "priority": 3
+    },
+    {
+      "id": "premium",
+      "name": "尊享版",
+      "keywords": ["尊享版", "高端版"],
+      "priority": 4
+    },
+    {
+      "id": "pro",
+      "name": "Pro 版",
+      "keywords": ["pro", "pro版"],
+      "priority": 5
+    }
+  ],
+  "networkVersions": [
+    "蓝牙版",
+    "eSIM版",
+    "esim版",
+    "5G版",
+    "4G版",
+    "3G版",
+    "全网通版"
+  ]
+}
