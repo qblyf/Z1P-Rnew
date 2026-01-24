@@ -24,11 +24,9 @@ const nextConfig = {
     ];
     
     // 优化构建缓存
+    // Note: Removed buildDependencies.config as __filename is not available in ES modules
     config.cache = {
       type: 'filesystem',
-      buildDependencies: {
-        config: [__filename],
-      },
     };
     
     return config;
