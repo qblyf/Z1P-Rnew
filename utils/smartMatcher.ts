@@ -849,10 +849,11 @@ export class SimpleMatcher {
   }
 
   /**
-   * 提取字母+字母格式的型号（Watch GT、Band 5 等）
+   * 提取字母+字母格式的型号（Watch GT、Band 5、X Fold5 等）
    */
   private extractWordModel(normalizedStr: string): string | null {
-    const wordModelPattern2 = /\b([a-z])\s+(note|fold|flip|pad)\b/gi;
+    // Pattern 2: 单字母 + 关键词 + 可选数字（如 X Fold5, Z Flip3）
+    const wordModelPattern2 = /\b([a-z])\s+(note|fold|flip|pad)(?:\s+(\d+))?\b/gi;
     const wordModelPattern1 = /\b(watch|band|buds|pad|fold|flip)\s+(gt|se|pro|max|plus|ultra|air|lite|x2|x3|x4|x5|s|\d+|[a-z]+\d*)(?:\s+(?:mini|pro|plus|ultra|air|lite|\d+))?\b/gi;
     
     const wordMatches2 = normalizedStr.match(wordModelPattern2);
@@ -1026,7 +1027,7 @@ export class SimpleMatcher {
     
     // 规则3: 配件过滤（使用配置或默认值）
     const accessoryKeywords = this.filterKeywords?.accessoryKeywords || [
-      '充电器', '充电线', '数据线', '耳机', '保护壳', '保护套', 
+      '充电器', '充电线', '数据线', '耳机', '保护壳', '保护套', '保护膜',
       '贴膜', '钢化膜', '支架', '转接头', '适配器', '电源',
       '原装', '配件', '套餐'
     ];
