@@ -232,6 +232,9 @@ export default function SmartMatch() {
         // 改进的输入预处理
         trimmedLine = matcher.preprocessInputAdvanced(trimmedLine);
         
+        // 从输入中提取品牌（用于显示）
+        const inputBrand = matcher.extractBrand(trimmedLine);
+        
         // 提取版本信息（用于 SKU 匹配）
         const inputVersion = matcher.extractVersion(trimmedLine);
         
@@ -248,7 +251,7 @@ export default function SmartMatch() {
             inputName: trimmedLine,
             matchedSKU: null,
             matchedSPU: null,
-            matchedBrand: null,
+            matchedBrand: inputBrand || null,
             matchedVersion: null,
             matchedMemory: null,
             matchedColor: null,
@@ -264,7 +267,7 @@ export default function SmartMatch() {
           inputName: trimmedLine,
           matchedSKU: null,
           matchedSPU: matchedSPU.name,
-          matchedBrand: matchedSPU.brand || null,
+          matchedBrand: inputBrand || null,
           matchedVersion: null,
           matchedMemory: null,
           matchedColor: null,
@@ -275,7 +278,7 @@ export default function SmartMatch() {
         
         setResults(prev => [...prev, tempResult]);
         
-        console.log('匹配到SPU:', matchedSPU.name, 'ID:', matchedSPU.id);
+        console.log('匹配到SPU:', matchedSPU.name, 'ID:', matchedSPU.id, '输入品牌:', inputBrand);
         
         // 第二阶段：加载该SPU的所有SKU
         try {
@@ -304,6 +307,7 @@ export default function SmartMatch() {
               // 从 SKU 名称中提取规格信息
               const capacity = matcher.extractCapacity(sku.name);
               const color = matcher.extractColorAdvanced(sku.name);
+              const version = matcher.extractVersion(sku.name);
               
               return {
                 id: sku.id,
@@ -311,7 +315,7 @@ export default function SmartMatch() {
                 spuID: matchedSPU.id,
                 spuName: matchedSPU.name,
                 brand: matchedSPU.brand,
-                version: undefined, // SKU 中没有版本字段，可以从名称提取
+                version: version?.name || undefined, // 从 SKU 名称中提取版本
                 memory: capacity || undefined, // 使用容量作为内存
                 color: color || undefined,
                 gtins: sku.gtins || [],

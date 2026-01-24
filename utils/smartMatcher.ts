@@ -1208,6 +1208,7 @@ export class SimpleMatcher {
     let bestPriority = 0;
     
     // 第一阶段：精确匹配（品牌+型号完全匹配）
+    console.log(`[匹配调试] 开始精确匹配，候选SPU: ${candidateSPUs.length} 个`);
     const exactMatches = this.findExactSPUMatches(
       input,
       candidateSPUs, // 使用候选列表而不是完整列表
@@ -1216,15 +1217,18 @@ export class SimpleMatcher {
       inputVersion
     );
     
+    console.log(`[匹配调试] 精确匹配结果: ${exactMatches.length} 个`);
     if (exactMatches.length > 0) {
       const best = this.selectBestSPUMatch(exactMatches);
       bestMatch = best.spu;
       bestScore = best.score;
       bestPriority = best.priority;
+      console.log(`[匹配调试] 精确匹配最佳: "${best.spu.name}", 分数: ${best.score.toFixed(2)}`);
     }
     
     // 第二阶段：模糊匹配（如果第一阶段没有找到高分匹配）
     if (!bestMatch || bestScore < 0.99) {
+      console.log(`[匹配调试] 开始模糊匹配${bestMatch ? `（精确匹配分数 ${bestScore.toFixed(2)} < 0.99）` : ''}`);
       const fuzzyMatches = this.findFuzzySPUMatches(
         input,
         candidateSPUs, // 使用候选列表而不是完整列表
@@ -1233,8 +1237,10 @@ export class SimpleMatcher {
         threshold
       );
       
+      console.log(`[匹配调试] 模糊匹配结果: ${fuzzyMatches.length} 个`);
       if (fuzzyMatches.length > 0) {
         const best = this.selectBestSPUMatch(fuzzyMatches);
+        console.log(`[匹配调试] 模糊匹配最佳: "${best.spu.name}", 分数: ${best.score.toFixed(2)}`);
         if (best.score > bestScore || !bestMatch) {
           bestMatch = best.spu;
           bestScore = best.score;
@@ -1242,7 +1248,9 @@ export class SimpleMatcher {
       }
     }
     
+    console.log(`[匹配调试] 最终匹配: ${bestMatch ? `"${bestMatch.name}"` : 'null'}, 分数: ${bestScore.toFixed(2)}, 阈值: ${threshold}`);
     if (bestScore < threshold) {
+      console.log(`[匹配调试] ❌ 分数低于阈值，匹配失败`);
       return { spu: null, similarity: 0 };
     }
     
@@ -1274,7 +1282,7 @@ export class SimpleMatcher {
       // 品牌和型号必须完全匹配
       const brandMatch = this.isBrandMatch(inputBrand, spuBrand);
       const modelMatch = inputModel && spuModel && 
-                        inputModel.replace(/\s+/g, '') === spuModel.replace(/\s+/g, '');
+                        inputModel.toLowerCase().replace(/\s+/g, '') === spuModel.toLowerCase().replace(/\s+/g, '');
       
       if (inputBrand && spuBrand && brandMatch && modelMatch) {
         const score = this.calculateExactSPUScore(inputVersion, spuVersion);
