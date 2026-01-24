@@ -573,12 +573,15 @@ export class SimpleMatcher {
 
   /**
    * 改进的输入预处理
+   * 
+   * 正确顺序：品牌 + 型号 + 版本 + 容量 + 颜色
+   * 例如：OPPO A5 活力版 12+256 玉石绿
    */
   preprocessInputAdvanced(input: string): string {
     let processed = input;
     
-    // 1. 提取容量信息
-    const capacityPattern = /\((\d+(?:GB)?\s*\+\s*\d+(?:GB|T)?)\)/gi;
+    // 1. 提取容量信息（支持两种格式：8+256 和 256GB）
+    const capacityPattern = /\((\d+(?:GB|TB|T)?\s*\+\s*\d+(?:GB|TB|T)?|\d+(?:GB|TB|T))\)/gi;
     const capacities: string[] = [];
     let match;
     while ((match = capacityPattern.exec(processed)) !== null) {
@@ -590,29 +593,42 @@ export class SimpleMatcher {
     
     // 3. 重新添加容量信息
     if (capacities.length > 0) {
-      // 改进：在品牌+型号后添加容量，而不是只在网络制式后
-      // 策略：在第一个中文字符（通常是颜色）前添加容量
-      const chinesePattern = /[\u4e00-\u9fa5]/;
-      const chineseIndex = processed.search(chinesePattern);
+      // 策略：在版本后、颜色前添加容量
+      // 正确顺序：品牌 + 型号 + 版本 + 容量 + 颜色
       
-      if (chineseIndex !== -1) {
-        // 在中文字符前插入容量
-        processed = processed.slice(0, chineseIndex).trim() + ' ' + capacities[0] + ' ' + processed.slice(chineseIndex).trim();
+      // 查找版本关键词的结束位置
+      const versionKeywords = ['活力版', '标准版', '优享版', '尊享版', 'Pro版', 'pro版', '轻享版', '基础版'];
+      let versionEndIndex = -1;
+      
+      for (const keyword of versionKeywords) {
+        const index = processed.indexOf(keyword);
+        if (index !== -1) {
+          versionEndIndex = index + keyword.length;
+          break;
+        }
+      }
+      
+      if (versionEndIndex !== -1) {
+        // 在版本后插入容量
+        processed = processed.slice(0, versionEndIndex).trim() + ' ' + capacities[0] + ' ' + processed.slice(versionEndIndex).trim();
       } else {
-        // 如果没有中文字符，在末尾添加容量
-        processed = processed.trim() + ' ' + capacities[0];
+        // 如果没有版本，在第一个中文字符（通常是颜色）前插入容量
+        const chinesePattern = /[\u4e00-\u9fa5]/;
+        const chineseIndex = processed.search(chinesePattern);
+        
+        if (chineseIndex !== -1) {
+          processed = processed.slice(0, chineseIndex).trim() + ' ' + capacities[0] + ' ' + processed.slice(chineseIndex).trim();
+        } else {
+          // 如果没有中文字符，在末尾添加容量
+          processed = processed.trim() + ' ' + capacities[0];
+        }
       }
     }
     
     // 4. 处理特殊字符
     processed = processed.replace(/[（）]/g, (match) => match === '（' ? '(' : ')');
     
-    // 5. 处理空格变体
-    processed = processed.replace(/([A-Z])(\d+)([A-Z][a-z]{2,})/g, '$1$2 $3');
-    processed = processed.replace(/(\d)([A-Z][a-z]+)/g, '$1 $2');
-    processed = processed.replace(/([a-z])([A-Z])/g, '$1 $2');
-    
-    // 6. 清理多余空格
+    // 5. 清理多余空格
     processed = processed.replace(/\s+/g, ' ').trim();
     
     return processed;
