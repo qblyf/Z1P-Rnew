@@ -71,6 +71,10 @@ function Log(): JSX.Element {
           message.warning('没有找到日志信息');
           return;
         }
+        if (!token) {
+          message.error('未登录，无法删除');
+          return;
+        }
         // 删除系统更新日志
         deleteUpdateLog(log.id, {
           auth: token,
