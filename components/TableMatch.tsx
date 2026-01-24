@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, Button, Table, Tag, message, Spin, Select, Empty, Progress } from 'antd';
 import { Upload, Play, Download, AlertCircle } from 'lucide-react';
 import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
+import { getBrandBaseList } from '@zsqk/z1-sdk/es/z1p/brand';
 import { SKUState, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import * as XLSX from 'xlsx';
 import { SimpleMatcher, type SPUData, type SKUData } from '../utils/smartMatcher';
@@ -51,7 +52,24 @@ export function TableMatchComponent() {
   const [currentMatching, setCurrentMatching] = useState<string>('');
   const [totalCount, setTotalCount] = useState(0);
   
-  const matcher = new SimpleMatcher();
+  // 创建 matcher 实例（使用 useState 确保只创建一次）
+  const [matcher] = useState(() => new SimpleMatcher());
+  const [matcherInitialized, setMatcherInitialized] = useState(false);
+
+  // 初始化 matcher（加载配置）
+  useEffect(() => {
+    const initMatcher = async () => {
+      try {
+        await matcher.initialize();
+        setMatcherInitialized(true);
+        console.log('✓ TableMatch Matcher initialized');
+      } catch (error) {
+        console.error('Failed to initialize matcher:', error);
+        setMatcherInitialized(true);
+      }
+    };
+    initMatcher();
+  }, [matcher]);
 
   /**
    * 处理文件上传
@@ -145,7 +163,12 @@ export function TableMatchComponent() {
     setTotalCount(tableData.rows.length);
 
     try {
-      // 获取 SPU 列表
+      // 1. 加载品牌列表
+      const brandList = await getBrandBaseList();
+      console.log('✓ 已加载品牌数据:', brandList.length, '个品牌');
+      matcher.setBrandList(brandList);
+      
+      // 2. 获取 SPU 列表
       const spuList = await getSPUListNew(
         {
           states: [SPUState.在用],
@@ -156,7 +179,10 @@ export function TableMatchComponent() {
         ['id', 'name', 'brand', 'skuIDs']
       );
       
-      // 提取颜色列表
+      // 3. 建立品牌索引
+      matcher.buildSPUIndex(spuList);
+      
+      // 4. 提取颜色列表
       const colorMap = new Map<string, Set<number>>();
       for (const spu of spuList) {
         const { id, skuIDs } = spu;
@@ -176,6 +202,7 @@ export function TableMatchComponent() {
       const colors = Array.from(colorMap.keys()).sort((a, b) => b.length - a.length);
       setColorList(colors);
       matcher.setColorList(colors);
+      console.log('✓ 已提取颜色列表:', colors.length, '个颜色');
 
       const results: MatchResult[] = [];
 
