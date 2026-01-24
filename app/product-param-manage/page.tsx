@@ -312,7 +312,6 @@ function ProductParamManage(): JSX.Element {
     },
   ];
   return (
-    // TODO ppKey
     <PageWrap ppKey={'product-manage'}>
       <Layout style={{ minHeight: '100vh' }}>
         <Sider

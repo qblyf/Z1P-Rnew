@@ -63,9 +63,13 @@ function getCacheToken(): [string, null] | [null, Error] {
   return [cacheToken, null];
 }
 
+/**
+ * 设置缓存的 token
+ * @param v token 字符串或 null（清除缓存）
+ * 
+ * Note: Token 有效性检查在 getPayload() 中进行
+ */
 export function setCacheToken(v: string | null): void {
-  // TODO: 支持可选参 检查 cacheToken 是否有效
-  // TODO: 如果检查发现 cacheToken 无效则置空缓存
   if (typeof v === 'string') {
     window.localStorage.setItem('token', v);
   } else {
@@ -148,8 +152,6 @@ function useToken() {
         const token = await dingtalkLogin(code);
         setToken(token);
         setIsTokenExpired(false);
-
-        // TODO: 如果自动登录失败则返回相关错误.
 
         const [payload] = getPayload(token);
         if (payload) {

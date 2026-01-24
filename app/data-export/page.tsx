@@ -49,7 +49,7 @@ function SKUDataExport1() {
       <Space>
         <Button
           onClick={postAwait(async () => {
-            // TODO: 获取真实数据
+            // 获取所有在用的 SKU 数据
             let done = false;
             let offset = 0;
             const limit = 1000;

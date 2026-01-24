@@ -3,6 +3,7 @@ import { Form, Input, Button, DatePicker } from 'antd';
 import { addUpdateLog } from '@zsqk/z1-sdk/es/z1p/update-log';
 import { postAwait } from '../error';
 import { useState } from 'react';
+import { useTokenContext } from '../datahooks/auth';
 
 const { TextArea } = Input;
 const FormItem = Form.Item;
@@ -22,6 +23,7 @@ function AddLog(props: {
   updateList: () => void;
 }): JSX.Element {
   const { updateList, close } = props;
+  const { token } = useTokenContext();
 
   const [version, setVersion] = useState<string>();
   const [date, setDate] = useState<number>();
@@ -80,7 +82,7 @@ function AddLog(props: {
                   version,
                 },
                 {
-                  auth: 'todo',
+                  auth: token,
                 }
               );
               await updateList();

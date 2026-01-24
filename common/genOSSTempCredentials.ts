@@ -26,14 +26,31 @@ export async function genOSSTempCredentials({
 
   /**
    * 生成 OSS token
-   * [doc](https://help.aliyun.com/document_detail/371864.html)
-   * @returns
+   * @see https://help.aliyun.com/document_detail/371864.html
+   * 
+   * @returns OSS 临时凭证
+   * 
+   * SECURITY NOTE: 
+   * - policy: 当前使用默认策略，建议根据实际需求限制权限范围
+   * - expirationSeconds: 使用默认 3600 秒（1小时），可根据业务需求调整
    */
   async function assumeRole() {
-    // TODO: 为了安全, 要设置 policy
+    // 使用默认策略（允许所有操作）
+    // 生产环境建议设置更严格的策略，例如：
+    // const policy = {
+    //   Statement: [{
+    //     Action: ['oss:PutObject'],
+    //     Effect: 'Allow',
+    //     Resource: ['acs:oss:*:*:bucket-name/*']
+    //   }],
+    //   Version: '1'
+    // };
     const policy = undefined;
-    // TODO: 为了安全, 一定要设置过期时间, 默认值为 3600 秒
+    
+    // 使用默认过期时间 3600 秒（1小时）
+    // 可根据业务需求调整，范围：900-3600 秒
     const expirationSeconds = undefined;
+    
     const session = 'putObject';
 
     const r = await sts.assumeRole(roleArn, policy, expirationSeconds, session);

@@ -288,9 +288,10 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                         <Button
                           danger
                           onClick={postAwait(async () => {
-                            // TODO: 完成功能
-                            alert('需要完成该功能');
+                            // Note: 启用功能需要后端 API 支持
+                            alert('启用功能开发中，请联系管理员');
                           })}
+                          disabled
                         >
                           启用
                         </Button>
@@ -299,8 +300,8 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                           danger
                           onClick={postAwait(
                             async () => {
-                              // TODO: 完成功能
-                              alert('需要完成该功能');
+                              // Note: 停用功能需要后端 API 支持
+                              alert('停用功能开发中，请联系管理员');
                             },
                             { confirmText: `停用 SPU 前请确认 SPU 下没有任何在用的 SKU.` }
                           )}
@@ -354,7 +355,8 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                         onClick={postAwait(
                           async () => {
                             await invalidateSPUInfo(spuID, { auth: token });
-                            // TODO: 更好的前端体验
+                            // Note: 移除后需要刷新页面以更新列表
+                            // 可以考虑添加自动刷新或返回列表页
                           },
                           { successText: '已经移除成功, 但前端可能需要刷新后才能生效.' }
                         )}
