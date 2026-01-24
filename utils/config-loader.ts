@@ -33,6 +33,15 @@ export interface ModelNormalizationConfig {
   normalizations: Record<string, string>;
 }
 
+export interface BasicColorMapConfig {
+  note?: string;
+  colorFamilies: Array<{
+    family: string;
+    name: string;
+    keywords: string[];
+  }>;
+}
+
 export class ConfigLoader {
   private static configs: Map<string, any> = new Map();
   private static loading: Map<string, Promise<any>> = new Map();
@@ -111,6 +120,14 @@ export class ConfigLoader {
           'watchgt': 'watch gt',
           'watchse': 'watch se'
         }
+      },
+      'basic-color-map': {
+        colorFamilies: [
+          { family: 'black', name: '黑色系', keywords: ['黑', '深', '曜', '玄'] },
+          { family: 'white', name: '白色系', keywords: ['白', '零', '雪', '空', '格', '告'] },
+          { family: 'blue', name: '蓝色系', keywords: ['蓝', '天', '星', '冰'] },
+          { family: 'purple', name: '紫色系', keywords: ['紫', '灵', '龙', '流'] },
+        ]
       }
     };
     
@@ -143,7 +160,8 @@ export class ConfigLoader {
       'version-keywords',
       'color-variants',
       'filter-keywords',
-      'model-normalizations'
+      'model-normalizations',
+      'basic-color-map'
     ];
     
     await Promise.all(configNames.map(name => this.load(name)));

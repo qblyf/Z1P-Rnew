@@ -10,7 +10,8 @@ import {
   type VersionKeywordConfig, 
   type ColorVariantConfig, 
   type FilterKeywordConfig,
-  type ModelNormalizationConfig 
+  type ModelNormalizationConfig,
+  type BasicColorMapConfig
 } from './config-loader';
 
 // ==================== 类型定义 ====================
@@ -58,6 +59,49 @@ export interface VersionInfo {
 }
 
 // ==================== 配置常量 ====================
+
+// 匹配权重常量
+export const MATCH_WEIGHTS = {
+  VERSION: 0.3,
+  CAPACITY: 0.4,
+  COLOR: 0.3,
+} as const;
+
+// 匹配阈值常量
+export const MATCH_THRESHOLDS = {
+  SPU: 0.5,
+  SKU: 0.6,
+  MODEL_SIMILARITY: 0.5,
+} as const;
+
+// 颜色匹配分数常量
+export const COLOR_MATCH_SCORES = {
+  EXACT: 1.0,      // 完全匹配
+  VARIANT: 0.9,    // 颜色变体匹配
+  BASIC: 0.5,      // 基础颜色匹配
+} as const;
+
+// SPU 匹配分数常量
+export const SPU_MATCH_SCORES = {
+  BASE: 0.8,                    // 品牌+型号匹配的基础分
+  VERSION_EXACT: 1.0,           // 版本完全匹配
+  VERSION_MISMATCH: 0.6,        // 版本不匹配
+  VERSION_PRIORITY_MATCH: 0.83, // 版本优先级匹配（0.25 / 0.3）
+  NO_VERSION: 1.0,              // 都没有版本
+  INPUT_VERSION_ONLY: 0.7,      // 只有输入有版本
+  SPU_VERSION_ONLY: 0.9,        // 只有 SPU 有版本
+  FUZZY_BASE: 0.4,              // 模糊匹配的基础分
+  FUZZY_MODEL_WEIGHT: 0.6,      // 模糊匹配中型号相似度的权重
+  KEYWORD_BONUS_PER_MATCH: 0.05,// 每个关键词匹配的加分
+  KEYWORD_BONUS_MAX: 0.1,       // 关键词加分的最大值
+} as const;
+
+// SPU 优先级常量
+export const SPU_PRIORITIES = {
+  STANDARD: 3,      // 标准版（无礼盒、无特殊版本）
+  VERSION_MATCH: 2, // 版本匹配的特殊版
+  OTHER: 1,         // 其他情况（礼盒版等）
+} as const;
 
 // 产品类型特征
 interface ProductTypeFeature {
@@ -112,6 +156,187 @@ const PRODUCT_TYPE_FEATURES: Record<ProductType, ProductTypeFeature> = {
   },
 };
 
+// ==================== ColorMatcher 类 ====================
+
+/**
+ * 颜色匹配服务类
+ * 统一管理所有颜色相关的匹配逻辑
+ */
+class ColorMatcher {
+  private dynamicColors: string[] = [];
+  private colorVariantsMap: Map<string, string[]> = new Map();
+  private basicColorMap: Map<string, string[]> = new Map();
+  
+  /**
+   * 设置动态颜色列表
+   */
+  setColorList(colors: string[]) {
+    this.dynamicColors = colors;
+  }
+  
+  /**
+   * 设置颜色变体映射
+   */
+  setColorVariants(variants: Array<{ colors: string[] }>) {
+    variants.forEach(variant => {
+      variant.colors.forEach(color => {
+        this.colorVariantsMap.set(color, variant.colors);
+      });
+    });
+  }
+  
+  /**
+   * 设置基础颜色映射
+   */
+  setBasicColorMap(colorFamilies: Array<{ keywords: string[] }>) {
+    colorFamilies.forEach(family => {
+      family.keywords.forEach(keyword => {
+        this.basicColorMap.set(keyword, family.keywords);
+      });
+    });
+  }
+  
+  /**
+   * 提取颜色（改进的颜色提取）
+   */
+  extractColor(input: string): string | null {
+    // 方法1: 使用配置的颜色变体库
+    if (this.colorVariantsMap.size > 0) {
+      for (const [colorName, variants] of this.colorVariantsMap.entries()) {
+        if (input.includes(colorName)) {
+          return colorName;
+        }
+        for (const variant of variants) {
+          if (input.includes(variant)) {
+            return colorName; // 返回主颜色名
+          }
+        }
+      }
+    }
+    
+    // 方法2: 使用动态颜色列表
+    if (this.dynamicColors.length > 0) {
+      for (const color of this.dynamicColors) {
+        if (input.includes(color)) {
+          return color;
+        }
+      }
+    }
+    
+    // 方法3: 从字符串末尾提取
+    const lastWords = input.match(/[\u4e00-\u9fa5]{2,5}$/);
+    if (lastWords) {
+      const word = lastWords[0];
+      const excludeWords = [
+        '全网通', '网通', '版本', '标准', '套餐', '蓝牙版',
+        '活力版', '优享版', '尊享版', '标准版', '基础版'
+      ];
+      if (!excludeWords.includes(word)) {
+        return word;
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * 颜色匹配（统一入口）
+   * 
+   * @returns { match: boolean, score: number, type: 'exact' | 'variant' | 'basic' | 'none' }
+   */
+  match(color1: string, color2: string): { 
+    match: boolean; 
+    score: number; 
+    type: 'exact' | 'variant' | 'basic' | 'none' 
+  } {
+    if (!color1 || !color2) {
+      return { match: false, score: 0, type: 'none' };
+    }
+    
+    // 优先级1: 完全匹配
+    if (color1 === color2) {
+      return { match: true, score: COLOR_MATCH_SCORES.EXACT, type: 'exact' };
+    }
+    
+    // 优先级2: 颜色变体匹配
+    if (this.isVariant(color1, color2)) {
+      return { match: true, score: COLOR_MATCH_SCORES.VARIANT, type: 'variant' };
+    }
+    
+    // 优先级3: 基础颜色匹配
+    if (this.isBasicMatch(color1, color2)) {
+      return { match: true, score: COLOR_MATCH_SCORES.BASIC, type: 'basic' };
+    }
+    
+    return { match: false, score: 0, type: 'none' };
+  }
+  
+  /**
+   * 检查两个颜色是否为已知的变体对
+   */
+  private isVariant(color1: string, color2: string): boolean {
+    if (!color1 || !color2) return false;
+    
+    // 使用配置的颜色变体映射
+    if (this.colorVariantsMap.size > 0) {
+      const variants1 = this.colorVariantsMap.get(color1);
+      if (variants1 && variants1.includes(color2)) return true;
+      
+      const variants2 = this.colorVariantsMap.get(color2);
+      if (variants2 && variants2.includes(color1)) return true;
+    }
+    
+    return false;
+  }
+  
+  /**
+   * 基础颜色匹配（仅用于模糊匹配）
+   */
+  private isBasicMatch(color1: string, color2: string): boolean {
+    if (!color1 || !color2) return false;
+    
+    // 如果已经加载了配置的基础颜色映射，使用配置
+    if (this.basicColorMap.size > 0) {
+      for (const [keyword, family] of this.basicColorMap.entries()) {
+        const color1HasKeyword = color1.includes(keyword);
+        const color2HasKeyword = color2.includes(keyword);
+        
+        if (color1HasKeyword && color2HasKeyword) {
+          return true;
+        }
+      }
+      return false;
+    }
+    
+    // 降级方案：使用硬编码的基础颜色映射
+    const basicColorMap: Record<string, string[]> = {
+      '黑': ['黑', '深', '曜', '玄', '纯', '简', '辰'],
+      '白': ['白', '零', '雪', '空', '格', '告'],
+      '蓝': ['蓝', '天', '星', '冰', '悠', '自', '薄'],
+      '红': ['红', '深'],
+      '绿': ['绿', '原', '玉'],
+      '紫': ['紫', '灵', '龙', '流', '极', '惬'],
+      '粉': ['粉', '玛', '晶', '梦', '桃', '酷'],
+      '金': ['金', '流', '祥', '柠'],
+      '银': ['银'],
+      '灰': ['灰'],
+      '棕': ['棕', '琥', '马', '旷'],
+      '青': ['青', '薄'],
+    };
+    
+    for (const [basicColor, variants] of Object.entries(basicColorMap)) {
+      const color1HasBasic = variants.some(v => color1.includes(v));
+      const color2HasBasic = variants.some(v => color2.includes(v));
+      
+      if (color1HasBasic && color2HasBasic) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+}
+
 // ==================== SimpleMatcher 类 ====================
 export class SimpleMatcher {
   private dynamicColors: string[] = [];
@@ -123,6 +348,15 @@ export class SimpleMatcher {
   private modelNormalizations: Record<string, string> = {};
   private initialized = false;
   
+  // 颜色匹配器
+  private colorMatcher = new ColorMatcher();
+  
+  // 性能优化：缓存
+  private brandsToRemoveCache: string[] | null = null;
+  
+  // 性能优化：SPU 品牌索引
+  private spuIndexByBrand: Map<string, SPUData[]> = new Map();
+  
   /**
    * 初始化配置（异步）
    * 在使用 matcher 前应该调用此方法
@@ -132,23 +366,28 @@ export class SimpleMatcher {
     
     try {
       // 加载所有配置
-      const [versionConfig, colorConfig, filterConfig, modelConfig] = await Promise.all([
+      const [versionConfig, colorConfig, filterConfig, modelConfig, basicColorConfig] = await Promise.all([
         ConfigLoader.load<VersionKeywordConfig>('version-keywords'),
         ConfigLoader.load<ColorVariantConfig>('color-variants'),
         ConfigLoader.load<FilterKeywordConfig>('filter-keywords'),
-        ConfigLoader.load<ModelNormalizationConfig>('model-normalizations')
+        ConfigLoader.load<ModelNormalizationConfig>('model-normalizations'),
+        ConfigLoader.load<BasicColorMapConfig>('basic-color-map')
       ]);
       
       // 设置版本关键词
       this.versionKeywords = versionConfig.versions;
       this.networkVersions = versionConfig.networkVersions;
       
-      // 设置颜色变体映射
+      // 设置颜色变体映射（保留用于向后兼容）
       colorConfig.variants.forEach(variant => {
         variant.colors.forEach(color => {
           this.colorVariantsMap.set(color, variant.colors);
         });
       });
+      
+      // 初始化颜色匹配器
+      this.colorMatcher.setColorVariants(colorConfig.variants);
+      this.colorMatcher.setBasicColorMap(basicColorConfig.colorFamilies);
       
       // 设置过滤关键词
       this.filterKeywords = filterConfig;
@@ -170,6 +409,7 @@ export class SimpleMatcher {
    */
   setColorList(colors: string[]) {
     this.dynamicColors = colors;
+    this.colorMatcher.setColorList(colors);
   }
 
   /**
@@ -177,6 +417,34 @@ export class SimpleMatcher {
    */
   setBrandList(brands: Array<{ name: string; spell?: string }>) {
     this.brandList = brands;
+    // 清除缓存，因为品牌列表已更新
+    this.brandsToRemoveCache = null;
+  }
+
+  /**
+   * 建立 SPU 品牌索引（性能优化）
+   * 
+   * 将 SPU 按品牌分组，加速查找
+   * 时间复杂度：O(n)，n = SPU 总数
+   * 空间复杂度：O(n)
+   * 
+   * @param spuList SPU 列表
+   */
+  buildSPUIndex(spuList: SPUData[]) {
+    this.spuIndexByBrand.clear();
+    
+    for (const spu of spuList) {
+      const brand = spu.brand || this.extractBrand(spu.name);
+      if (!brand) continue;
+      
+      const lowerBrand = brand.toLowerCase();
+      if (!this.spuIndexByBrand.has(lowerBrand)) {
+        this.spuIndexByBrand.set(lowerBrand, []);
+      }
+      this.spuIndexByBrand.get(lowerBrand)!.push(spu);
+    }
+    
+    console.log(`✓ SPU index built: ${this.spuIndexByBrand.size} brands, ${spuList.length} SPUs`);
   }
 
   /**
@@ -380,31 +648,50 @@ export class SimpleMatcher {
 
   /**
    * 提取型号（多层次匹配）
+   * 
+   * 匹配优先级：
+   * 1. 平板型号（MatePad、iPad 等）
+   * 2. 字母+字母格式（Watch GT、Band 5 等）
+   * 3. 复杂型号（14 Pro Max+、Y300 Pro+ 等）
+   * 4. 简单型号（P50、14 等）
    */
   extractModel(str: string): string | null {
     let lowerStr = str.toLowerCase();
     
+    // 预处理：移除括号和品牌
+    let normalizedStr = this.preprocessModelString(lowerStr);
+    
+    // 应用智能标准化
+    normalizedStr = this.normalizeModel(normalizedStr);
+    
+    // 优先级1: 平板型号
+    const tabletModel = this.extractTabletModel(normalizedStr);
+    if (tabletModel) return tabletModel;
+    
+    // 优先级2: 字母+字母格式（Watch GT、Band 5 等）
+    const wordModel = this.extractWordModel(normalizedStr);
+    if (wordModel) return wordModel;
+    
+    // 优先级3: 复杂型号（14 Pro Max+、Y300 Pro+ 等）
+    const complexModel = this.extractComplexModel(normalizedStr);
+    if (complexModel) return complexModel;
+    
+    // 优先级4: 简单型号（P50、14 等）
+    const simpleModel = this.extractSimpleModel(normalizedStr);
+    if (simpleModel) return simpleModel;
+    
+    return null;
+  }
+
+  /**
+   * 预处理型号字符串：移除括号和品牌
+   */
+  private preprocessModelString(lowerStr: string): string {
     // 移除括号内容
     let normalizedStr = lowerStr.replace(/[（(][^)）]*[)）]/g, ' ');
     
-    // 移除品牌（完全使用品牌库数据）
-    const brandsToRemove: string[] = [];
-    
-    if (this.brandList.length > 0) {
-      // 使用品牌库数据
-      for (const brand of this.brandList) {
-        brandsToRemove.push(brand.name.toLowerCase());
-        if (brand.spell) {
-          brandsToRemove.push(brand.spell.toLowerCase());
-        }
-      }
-    } else {
-      // 如果品牌库未加载，记录警告但继续处理
-      console.warn('品牌库未加载，型号提取可能不准确');
-    }
-    
-    // 按长度降序排序，优先移除更长的品牌名（避免部分匹配问题）
-    brandsToRemove.sort((a, b) => b.length - a.length);
+    // 移除品牌
+    const brandsToRemove = this.getBrandsToRemove();
     
     for (const brand of brandsToRemove) {
       // 转义特殊字符
@@ -413,50 +700,101 @@ export class SimpleMatcher {
       // 对于中文品牌，不使用单词边界；对于英文品牌，使用单词边界
       const hasChinese = /[\u4e00-\u9fa5]/.test(brand);
       const brandRegex = hasChinese 
-        ? new RegExp(escapedBrand, 'gi')  // 中文：直接匹配
-        : new RegExp(`\\b${escapedBrand}\\b`, 'gi');  // 英文：使用单词边界
+        ? new RegExp(escapedBrand, 'gi')
+        : new RegExp(`\\b${escapedBrand}\\b`, 'gi');
       
       normalizedStr = normalizedStr.replace(brandRegex, ' ');
     }
     
-    normalizedStr = normalizedStr.replace(/\s+/g, ' ').trim();
-    
-    // 应用智能标准化（包含配置的特殊情况）
-    normalizedStr = this.normalizeModel(normalizedStr);
-    
-    // 优先级1: 平板特殊处理 - 提取 MatePad/iPad 等平板型号
-    // 对于平板，型号通常是 "MatePad" + 可选的版本/尺寸信息
-    // 改进：支持中文字符混合的情况（如 "MatePad鸿蒙"）和年份信息（如 "MatePad 2026"）
-    const tabletModelPattern = /\b(matepad|ipad|pad)(?:[a-z]*)?(?:[\u4e00-\u9fa5]*)?(?:\s*(?:(pro|air|mini|plus|ultra|lite|se|x|m|t|s)?(?:\s+(\d+))?)?)?/gi;
-    const tabletMatches = normalizedStr.match(tabletModelPattern);
-    if (tabletMatches && tabletMatches.length > 0) {
-      // 对于平板，返回完整的型号（包括 Pro/Air 等后缀）
-      let tabletModel = tabletMatches[0].toLowerCase().trim();
-      // 移除中文字符
-      tabletModel = tabletModel.replace(/[\u4e00-\u9fa5]/g, '').trim();
-      tabletModel = tabletModel.replace(/\s+/g, '');
-      
-      // 检查是否有年份信息（4位数字）
-      const yearPattern = /\b(\d{4})\b/g;
-      const yearMatches = normalizedStr.match(yearPattern);
-      if (yearMatches && yearMatches.length > 0) {
-        // 过滤掉容量相关的数字（如 8+128）
-        const validYears = yearMatches.filter(year => {
-          const num = parseInt(year);
-          return num >= 2000 && num <= 2100; // 合理的年份范围
-        });
-        if (validYears.length > 0) {
-          tabletModel += validYears[0]; // 添加年份信息
-        }
-      }
-      
-      // 只有当不是纯数字时才返回
-      if (!/^\d+$/.test(tabletModel) && tabletModel.length > 0) {
-        return tabletModel;
-      }
+    return normalizedStr.replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * 获取需要移除的品牌列表（带缓存优化）
+   */
+  private getBrandsToRemove(): string[] {
+    // 如果缓存存在，直接返回
+    if (this.brandsToRemoveCache) {
+      return this.brandsToRemoveCache;
     }
     
-    // 优先级2: 字母+字母格式
+    const brandsToRemove: string[] = [];
+    
+    if (this.brandList.length > 0) {
+      for (const brand of this.brandList) {
+        brandsToRemove.push(brand.name.toLowerCase());
+        if (brand.spell) {
+          brandsToRemove.push(brand.spell.toLowerCase());
+        }
+      }
+    } else {
+      console.warn('品牌库未加载，型号提取可能不准确');
+    }
+    
+    // 按长度降序排序，优先移除更长的品牌名，并缓存结果
+    this.brandsToRemoveCache = brandsToRemove.sort((a, b) => b.length - a.length);
+    return this.brandsToRemoveCache;
+  }
+
+  /**
+   * 提取平板型号（MatePad、iPad 等）
+   * 
+   * 支持格式：
+   * - MatePad Pro
+   * - iPad Air 2026
+   * - MatePad 11
+   */
+  private extractTabletModel(normalizedStr: string): string | null {
+    const tabletModelPattern = /\b(matepad|ipad|pad)(?:[a-z]*)?(?:[\u4e00-\u9fa5]*)?(?:\s*(?:(pro|air|mini|plus|ultra|lite|se|x|m|t|s)?(?:\s+(\d+))?)?)?/gi;
+    const tabletMatches = normalizedStr.match(tabletModelPattern);
+    
+    if (!tabletMatches || tabletMatches.length === 0) {
+      return null;
+    }
+    
+    // 提取型号并清理
+    let tabletModel = tabletMatches[0].toLowerCase().trim();
+    tabletModel = tabletModel.replace(/[\u4e00-\u9fa5]/g, '').trim();
+    tabletModel = tabletModel.replace(/\s+/g, '');
+    
+    // 检查是否有年份信息
+    const year = this.extractYearFromString(normalizedStr);
+    if (year) {
+      tabletModel += year;
+    }
+    
+    // 只有当不是纯数字时才返回
+    if (!/^\d+$/.test(tabletModel) && tabletModel.length > 0) {
+      return tabletModel;
+    }
+    
+    return null;
+  }
+
+  /**
+   * 从字符串中提取年份信息
+   */
+  private extractYearFromString(str: string): string | null {
+    const yearPattern = /\b(\d{4})\b/g;
+    const yearMatches = str.match(yearPattern);
+    
+    if (!yearMatches || yearMatches.length === 0) {
+      return null;
+    }
+    
+    // 过滤掉容量相关的数字（如 8+128）
+    const validYears = yearMatches.filter(year => {
+      const num = parseInt(year);
+      return num >= 2000 && num <= 2100;
+    });
+    
+    return validYears.length > 0 ? validYears[0] : null;
+  }
+
+  /**
+   * 提取字母+字母格式的型号（Watch GT、Band 5 等）
+   */
+  private extractWordModel(normalizedStr: string): string | null {
     const wordModelPattern2 = /\b([a-z])\s+(note|fold|flip|pad)\b/gi;
     const wordModelPattern1 = /\b(watch|band|buds|pad|fold|flip)\s+(gt|se|pro|max|plus|ultra|air|lite|x2|x3|x4|x5|s|\d+|[a-z]+\d*)(?:\s+(?:mini|pro|plus|ultra|air|lite|\d+))?\b/gi;
     
@@ -468,51 +806,75 @@ export class SimpleMatcher {
       return wordMatches[0].toLowerCase().replace(/\s+/g, '');
     }
     
-    // 优先级2: 复杂型号格式（支持 Pro+, Max+ 等带加号的型号）
-    // 改进：支持数字开头的型号（如 "14 ultra"）
+    return null;
+  }
+
+  /**
+   * 提取复杂型号（14 Pro Max+、Y300 Pro+ 等）
+   * 
+   * 支持格式：
+   * - 14 Pro Max+
+   * - Y300 Pro+
+   * - Mate 60 Pro
+   */
+  private extractComplexModel(normalizedStr: string): string | null {
     const complexModelPattern = /\b([a-z]*)\s*(\d+)\s*(pro|max|plus|ultra|mini|se|air|lite|note|turbo|r)(\+)?(\s+(mini|max|plus|ultra|pro))?\b/gi;
     const complexMatches = normalizedStr.match(complexModelPattern);
     
-    if (complexMatches && complexMatches.length > 0) {
-      const filtered = complexMatches.filter(m => {
-        const lower = m.toLowerCase();
-        return !lower.includes('gb') && !/\d+g$/i.test(lower);
-      });
-      
-      if (filtered.length > 0) {
-        return filtered.sort((a, b) => b.length - a.length)[0].toLowerCase().replace(/\s+/g, '');
-      }
+    if (!complexMatches || complexMatches.length === 0) {
+      return null;
     }
     
-    // 优先级3: 简单型号格式（改进：支持纯数字开头的型号和纯数字型号）
-    // 匹配模式：字母+数字+可选字母 或 数字+字母 或 纯数字（2-3位）
-    const simpleModelPattern = /(?:\b([a-z]+)(\d+)([a-z]*)\b|(?:^|\s)(\d+)([a-z]+)|(?:^|\s)(\d{2,3})(?:\s|$))/gi;
-    const simpleMatches = normalizedStr.match(simpleModelPattern);
+    const filtered = complexMatches.filter(m => {
+      const lower = m.toLowerCase();
+      return !lower.includes('gb') && !/\d+g$/i.test(lower);
+    });
     
-    if (simpleMatches && simpleMatches.length > 0) {
-      const filtered = simpleMatches.filter(m => {
-        const lower = m.toLowerCase().trim();
-        // 过滤掉网络制式、容量等
-        return !/^[345]g$/i.test(lower) && 
-               !lower.includes('gb') && 
-               !/^\d+g$/i.test(lower) &&
-               !/^\d+\+\d+$/i.test(lower); // 过滤掉容量格式如 4+128
-      });
-      
-      if (filtered.length > 0) {
-        const sorted = filtered.sort((a, b) => {
-          const aHasSuffix = /[a-z]\d+[a-z]+/i.test(a);
-          const bHasSuffix = /[a-z]\d+[a-z]+/i.test(b);
-          if (aHasSuffix && !bHasSuffix) return -1;
-          if (!aHasSuffix && bHasSuffix) return 1;
-          return b.length - a.length;
-        });
-        
-        return sorted[0].toLowerCase().trim().replace(/\s+/g, '');
-      }
+    if (filtered.length > 0) {
+      return filtered.sort((a, b) => b.length - a.length)[0].toLowerCase().replace(/\s+/g, '');
     }
     
     return null;
+  }
+
+  /**
+   * 提取简单型号（P50、14、K70 等）
+   * 
+   * 支持格式：
+   * - P50（字母+数字）
+   * - 14（纯数字）
+   * - K70（字母+数字）
+   */
+  private extractSimpleModel(normalizedStr: string): string | null {
+    const simpleModelPattern = /(?:\b([a-z]+)(\d+)([a-z]*)\b|(?:^|\s)(\d+)([a-z]+)|(?:^|\s)(\d{2,3})(?:\s|$))/gi;
+    const simpleMatches = normalizedStr.match(simpleModelPattern);
+    
+    if (!simpleMatches || simpleMatches.length === 0) {
+      return null;
+    }
+    
+    const filtered = simpleMatches.filter(m => {
+      const lower = m.toLowerCase().trim();
+      // 过滤掉网络制式、容量等
+      return !/^[345]g$/i.test(lower) && 
+             !lower.includes('gb') && 
+             !/^\d+g$/i.test(lower) &&
+             !/^\d+\+\d+$/i.test(lower);
+    });
+    
+    if (filtered.length === 0) {
+      return null;
+    }
+    
+    const sorted = filtered.sort((a, b) => {
+      const aHasSuffix = /[a-z]\d+[a-z]+/i.test(a);
+      const bHasSuffix = /[a-z]\d+[a-z]+/i.test(b);
+      if (aHasSuffix && !bHasSuffix) return -1;
+      if (!aHasSuffix && bHasSuffix) return 1;
+      return b.length - a.length;
+    });
+    
+    return sorted[0].toLowerCase().trim().replace(/\s+/g, '');
   }
 
   /**
@@ -555,68 +917,14 @@ export class SimpleMatcher {
   }
 
   /**
-   * 检查两个颜色是否为已知的变体对
-   */
-  private isColorVariant(color1: string, color2: string): boolean {
-    if (!color1 || !color2) return false;
-    
-    // 使用配置的颜色变体映射
-    if (this.colorVariantsMap.size > 0) {
-      const variants1 = this.colorVariantsMap.get(color1);
-      if (variants1 && variants1.includes(color2)) return true;
-      
-      const variants2 = this.colorVariantsMap.get(color2);
-      if (variants2 && variants2.includes(color1)) return true;
-    }
-    
-    return false;
-  }
-
-  /**
-   * 改进的颜色提取
+   * 改进的颜色提取（使用 ColorMatcher）
    */
   extractColorAdvanced(input: string): string | null {
-    // 方法1: 使用配置的颜色变体库
-    if (this.colorVariantsMap.size > 0) {
-      for (const [colorName, variants] of this.colorVariantsMap.entries()) {
-        if (input.includes(colorName)) {
-          return colorName;
-        }
-        for (const variant of variants) {
-          if (input.includes(variant)) {
-            return colorName; // 返回主颜色名
-          }
-        }
-      }
-    }
-    
-    // 方法2: 使用动态颜色列表
-    if (this.dynamicColors.length > 0) {
-      for (const color of this.dynamicColors) {
-        if (input.includes(color)) {
-          return color;
-        }
-      }
-    }
-    
-    // 方法3: 从字符串末尾提取
-    const lastWords = input.match(/[\u4e00-\u9fa5]{2,5}$/);
-    if (lastWords) {
-      const word = lastWords[0];
-      const excludeWords = [
-        '全网通', '网通', '版本', '标准', '套餐', '蓝牙版',
-        '活力版', '优享版', '尊享版', '标准版', '基础版'
-      ];
-      if (!excludeWords.includes(word)) {
-        return word;
-      }
-    }
-    
-    return null;
+    return this.colorMatcher.extractColor(input);
   }
 
   /**
-   * 改进的颜色匹配
+   * 改进的颜色匹配（使用 ColorMatcher）
    * 
    * 匹配优先级：
    * 1. 完全匹配（精确匹配）
@@ -624,16 +932,7 @@ export class SimpleMatcher {
    * 3. 基础颜色匹配（模糊匹配，同一基础颜色族）
    */
   isColorMatch(color1: string, color2: string): boolean {
-    if (!color1 || !color2) return false;
-    
-    // 优先级1: 完全匹配
-    if (color1 === color2) return true;
-    
-    // 优先级2: 颜色变体匹配
-    if (this.isColorVariant(color1, color2)) return true;
-    
-    // 优先级3: 基础颜色匹配
-    return this.isBasicColorMatch(color1, color2);
+    return this.colorMatcher.match(color1, color2).match;
   }
 
   /**
@@ -691,19 +990,19 @@ export class SimpleMatcher {
     );
     
     if (!hasGiftBoxKeyword && !hasSpecialVersion) {
-      return 3; // 标准版：优先级最高
+      return SPU_PRIORITIES.STANDARD; // 标准版：优先级最高
     }
     
     if (hasSpecialVersion) {
       for (const keyword of networkVersions) {
         const lowerKeyword = keyword.toLowerCase();
         if (lowerInput.includes(lowerKeyword) && lowerSPU.includes(lowerKeyword)) {
-          return 2; // 版本匹配的特殊版：优先级中等
+          return SPU_PRIORITIES.VERSION_MATCH; // 版本匹配的特殊版：优先级中等
         }
       }
     }
     
-    return 1; // 其他情况：优先级最低
+    return SPU_PRIORITIES.OTHER; // 其他情况：优先级最低
   }
 
   /**
@@ -830,9 +1129,9 @@ export class SimpleMatcher {
   }
 
   /**
-   * 查找最佳匹配的SPU
+   * 查找最佳匹配的SPU（使用品牌索引优化）
    */
-  findBestSPUMatch(input: string, spuList: SPUData[], threshold: number = 0.6): {
+  findBestSPUMatch(input: string, spuList: SPUData[], threshold: number = MATCH_THRESHOLDS.SPU): {
     spu: SPUData | null;
     similarity: number;
   } {
@@ -841,152 +1140,68 @@ export class SimpleMatcher {
     const inputModel = this.extractModel(inputSPUPart);
     const inputVersion = this.extractVersion(inputSPUPart);
     
+    // 性能优化：使用品牌索引缩小候选范围
+    let candidateSPUs: SPUData[];
+    if (inputBrand && this.spuIndexByBrand.size > 0) {
+      const lowerBrand = inputBrand.toLowerCase();
+      candidateSPUs = this.spuIndexByBrand.get(lowerBrand) || [];
+      
+      // 如果品牌索引中没有找到，尝试通过拼音匹配
+      if (candidateSPUs.length === 0) {
+        const brandInfo = this.brandList.find(b => b.name === inputBrand);
+        if (brandInfo && brandInfo.spell) {
+          candidateSPUs = this.spuIndexByBrand.get(brandInfo.spell.toLowerCase()) || [];
+        }
+      }
+      
+      if (candidateSPUs.length > 0) {
+        console.log(`✓ 使用品牌索引: ${inputBrand}, 候选SPU: ${candidateSPUs.length}/${spuList.length}`);
+      }
+    } else {
+      candidateSPUs = spuList;
+    }
+    
+    // 如果没有候选SPU，返回null
+    if (candidateSPUs.length === 0) {
+      return { spu: null, similarity: 0 };
+    }
+    
     let bestMatch: SPUData | null = null;
     let bestScore = 0;
     let bestPriority = 0;
     
-    // 第一阶段：有字母顺序全字匹配
-    for (const spu of spuList) {
-      if (this.shouldFilterSPU(input, spu.name)) {
-        continue;
-      }
-      
-      const spuSPUPart = this.extractSPUPart(spu.name);
-      // 优先使用 SPU 的 brand 字段，如果不存在则从名称中提取
-      const spuBrand = spu.brand || this.extractBrand(spuSPUPart);
-      const spuModel = this.extractModel(spuSPUPart);
-      const spuVersion = this.extractVersion(spuSPUPart);
-      
-      let score = 0;
-      
-      // 品牌匹配：需要考虑品牌的不同写法（如"红米"和"Redmi"）
-      const brandMatch = this.isBrandMatch(inputBrand, spuBrand);
-      
-      if (inputBrand && spuBrand && brandMatch &&
-          inputModel && spuModel && 
-          inputModel.replace(/\s+/g, '') === spuModel.replace(/\s+/g, '')) {
-        
-        score = 0.8;
-        
-        if (inputVersion && spuVersion) {
-          if (inputVersion.name === spuVersion.name) {
-            score = 1.0;
-          } else {
-            score = 0.6;
-          }
-        } else if (!inputVersion && !spuVersion) {
-          score = 1.0;
-        } else if (inputVersion && !spuVersion) {
-          score = 0.7;
-        } else if (!inputVersion && spuVersion) {
-          score = 0.9;
-        }
-        
-        const priority = this.getSPUPriority(input, spu.name);
-        
-        // 改进：计算关键词匹配数，作为额外的评分因素
-        let keywordMatchCount = 0;
-        const inputTokens = this.tokenize(input);
-        for (const token of inputTokens) {
-          if (token.length > 2 && spu.name.toLowerCase().includes(token)) {
-            keywordMatchCount++;
-          }
-        }
-        
-        // 关键词匹配数越多，分数越高（最多加 0.1 分，确保总分不超过 1.0）
-        const keywordBonus = Math.min(keywordMatchCount * 0.05, 0.1);
-        const finalScore = Math.min(score + keywordBonus, 1.0); // 确保不超过 1.0
-        
-        if (finalScore > bestScore || 
-            (finalScore === bestScore && priority > bestPriority) ||
-            (finalScore === bestScore && priority === bestPriority && keywordMatchCount > (bestMatch ? this.tokenize(bestMatch.name).filter(t => t.length > 2 && input.toLowerCase().includes(t)).length : 0))) {
-          bestScore = finalScore;
-          bestMatch = spu;
-          bestPriority = priority;
-        }
-      }
+    // 第一阶段：精确匹配（品牌+型号完全匹配）
+    const exactMatches = this.findExactSPUMatches(
+      input,
+      candidateSPUs, // 使用候选列表而不是完整列表
+      inputBrand,
+      inputModel,
+      inputVersion
+    );
+    
+    if (exactMatches.length > 0) {
+      const best = this.selectBestSPUMatch(exactMatches);
+      bestMatch = best.spu;
+      bestScore = best.score;
+      bestPriority = best.priority;
     }
     
-    if (bestMatch && bestScore >= threshold) {
-      // 改进：不要立即返回，继续检查第二阶段，看是否有更好的匹配
-      // 只有当分数非常高（>= 0.99）且没有其他候选项时，才立即返回
-      // 否则继续执行第二阶段，看是否有更好的匹配
-    }
-    
-    // 第二阶段：无顺序的分词匹配
-    // 重置最佳匹配（如果第一阶段没有找到足够好的匹配）
+    // 第二阶段：模糊匹配（如果第一阶段没有找到高分匹配）
     if (!bestMatch || bestScore < 0.99) {
-      let secondBestMatch: SPUData | null = null;
-      let secondBestScore = 0;
-      let secondBestPriority = 0;
+      const fuzzyMatches = this.findFuzzySPUMatches(
+        input,
+        candidateSPUs, // 使用候选列表而不是完整列表
+        inputBrand,
+        inputModel,
+        threshold
+      );
       
-      for (const spu of spuList) {
-        if (this.shouldFilterSPU(input, spu.name)) {
-          continue;
+      if (fuzzyMatches.length > 0) {
+        const best = this.selectBestSPUMatch(fuzzyMatches);
+        if (best.score > bestScore || !bestMatch) {
+          bestMatch = best.spu;
+          bestScore = best.score;
         }
-        
-        const spuSPUPart = this.extractSPUPart(spu.name);
-        // 优先使用 SPU 的 brand 字段，如果不存在则从名称中提取
-        const spuBrand = spu.brand || this.extractBrand(spuSPUPart);
-        const spuModel = this.extractModel(spuSPUPart);
-        
-        let score = 0;
-        
-        // 严格的品牌过滤：
-        // 1. 如果输入品牌和SPU品牌都识别出来了，必须匹配（考虑不同写法）
-        // 2. 如果输入品牌未识别，但SPU品牌识别出来了，跳过（避免误匹配）
-        const brandMatch = this.isBrandMatch(inputBrand, spuBrand);
-        
-        if (inputBrand && spuBrand && !brandMatch) {
-          continue;  // 品牌不匹配，跳过
-        }
-        
-        if (!inputBrand && spuBrand) {
-          // 输入品牌未识别，但SPU有品牌，降低优先级（可能是品牌库问题）
-          // 不直接跳过，但给予较低的分数
-          score = 0.3;  // 基础分数降低
-        }
-        
-        if (inputModel && spuModel) {
-          const modelScore = this.calculateTokenSimilarity(
-            this.tokenize(inputModel),
-            this.tokenize(spuModel)
-          );
-          
-          if (modelScore > 0.5) {
-            score = Math.max(score, 0.4 + modelScore * 0.6);
-            
-            if (score >= threshold) {
-              const priority = this.getSPUPriority(input, spu.name);
-              
-              // 改进：计算关键词匹配数，作为额外的评分因素
-              let keywordMatchCount = 0;
-              const inputTokens = this.tokenize(input);
-              for (const token of inputTokens) {
-                if (token.length > 2 && spu.name.toLowerCase().includes(token)) {
-                  keywordMatchCount++;
-                }
-              }
-              
-              // 关键词匹配数越多，分数越高（最多加 0.1 分，确保总分不超过 1.0）
-              const keywordBonus = Math.min(keywordMatchCount * 0.05, 0.1);
-              const finalScore = Math.min(score + keywordBonus, 1.0); // 确保不超过 1.0
-              
-              if (finalScore > secondBestScore || 
-                  (finalScore === secondBestScore && priority > secondBestPriority)) {
-                secondBestScore = finalScore;
-                secondBestMatch = spu;
-                secondBestPriority = priority;
-              }
-            }
-          }
-        }
-      }
-      
-      // 如果第二阶段找到了更好的匹配，使用第二阶段的结果
-      if (secondBestMatch && (secondBestScore > bestScore || !bestMatch)) {
-        bestMatch = secondBestMatch;
-        bestScore = secondBestScore;
       }
     }
     
@@ -998,20 +1213,208 @@ export class SimpleMatcher {
   }
 
   /**
-   * 改进的 SKU 匹配，考虑版本信息
+   * 第一阶段：查找精确匹配的 SPU（品牌+型号完全匹配）
+   */
+  private findExactSPUMatches(
+    input: string,
+    spuList: SPUData[],
+    inputBrand: string | null,
+    inputModel: string | null,
+    inputVersion: VersionInfo | null
+  ): Array<{ spu: SPUData; score: number; priority: number }> {
+    const matches: Array<{ spu: SPUData; score: number; priority: number }> = [];
+    
+    for (const spu of spuList) {
+      if (this.shouldFilterSPU(input, spu.name)) {
+        continue;
+      }
+      
+      const spuSPUPart = this.extractSPUPart(spu.name);
+      const spuBrand = spu.brand || this.extractBrand(spuSPUPart);
+      const spuModel = this.extractModel(spuSPUPart);
+      const spuVersion = this.extractVersion(spuSPUPart);
+      
+      // 品牌和型号必须完全匹配
+      const brandMatch = this.isBrandMatch(inputBrand, spuBrand);
+      const modelMatch = inputModel && spuModel && 
+                        inputModel.replace(/\s+/g, '') === spuModel.replace(/\s+/g, '');
+      
+      if (inputBrand && spuBrand && brandMatch && modelMatch) {
+        const score = this.calculateExactSPUScore(inputVersion, spuVersion);
+        const priority = this.getSPUPriority(input, spu.name);
+        const keywordBonus = this.calculateKeywordBonus(input, spu.name);
+        const finalScore = Math.min(score + keywordBonus, 1.0);
+        
+        matches.push({ spu, score: finalScore, priority });
+      }
+    }
+    
+    return matches;
+  }
+
+  /**
+   * 第二阶段：查找模糊匹配的 SPU（分词匹配）
+   */
+  private findFuzzySPUMatches(
+    input: string,
+    spuList: SPUData[],
+    inputBrand: string | null,
+    inputModel: string | null,
+    threshold: number
+  ): Array<{ spu: SPUData; score: number; priority: number }> {
+    const matches: Array<{ spu: SPUData; score: number; priority: number }> = [];
+    
+    for (const spu of spuList) {
+      if (this.shouldFilterSPU(input, spu.name)) {
+        continue;
+      }
+      
+      const spuSPUPart = this.extractSPUPart(spu.name);
+      const spuBrand = spu.brand || this.extractBrand(spuSPUPart);
+      const spuModel = this.extractModel(spuSPUPart);
+      
+      // 严格的品牌过滤
+      const brandMatch = this.isBrandMatch(inputBrand, spuBrand);
+      
+      if (inputBrand && spuBrand && !brandMatch) {
+        continue;
+      }
+      
+      let score = 0;
+      
+      if (!inputBrand && spuBrand) {
+        score = 0.3; // 输入品牌未识别，降低基础分数
+      }
+      
+      if (inputModel && spuModel) {
+        const modelScore = this.calculateTokenSimilarity(
+          this.tokenize(inputModel),
+          this.tokenize(spuModel)
+        );
+        
+        if (modelScore > MATCH_THRESHOLDS.MODEL_SIMILARITY) {
+          score = Math.max(score, SPU_MATCH_SCORES.FUZZY_BASE + modelScore * SPU_MATCH_SCORES.FUZZY_MODEL_WEIGHT);
+          
+          if (score >= threshold) {
+            const priority = this.getSPUPriority(input, spu.name);
+            const keywordBonus = this.calculateKeywordBonus(input, spu.name);
+            const finalScore = Math.min(score + keywordBonus, 1.0);
+            
+            matches.push({ spu, score: finalScore, priority });
+          }
+        }
+      }
+    }
+    
+    return matches;
+  }
+
+  /**
+   * 计算精确匹配的 SPU 分数（基于版本匹配）
+   */
+  private calculateExactSPUScore(
+    inputVersion: VersionInfo | null,
+    spuVersion: VersionInfo | null
+  ): number {
+    let score: number = SPU_MATCH_SCORES.BASE;
+    
+    if (inputVersion && spuVersion) {
+      if (inputVersion.name === spuVersion.name) {
+        score = SPU_MATCH_SCORES.VERSION_EXACT;
+      } else {
+        score = SPU_MATCH_SCORES.VERSION_MISMATCH;
+      }
+    } else if (!inputVersion && !spuVersion) {
+      score = SPU_MATCH_SCORES.NO_VERSION;
+    } else if (inputVersion && !spuVersion) {
+      score = SPU_MATCH_SCORES.INPUT_VERSION_ONLY;
+    } else if (!inputVersion && spuVersion) {
+      score = SPU_MATCH_SCORES.SPU_VERSION_ONLY;
+    }
+    
+    return score;
+  }
+
+  /**
+   * 计算关键词匹配加分
+   */
+  private calculateKeywordBonus(input: string, spuName: string): number {
+    let keywordMatchCount = 0;
+    const inputTokens = this.tokenize(input);
+    
+    for (const token of inputTokens) {
+      if (token.length > 2 && spuName.toLowerCase().includes(token)) {
+        keywordMatchCount++;
+      }
+    }
+    
+    return Math.min(
+      keywordMatchCount * SPU_MATCH_SCORES.KEYWORD_BONUS_PER_MATCH,
+      SPU_MATCH_SCORES.KEYWORD_BONUS_MAX
+    );
+  }
+
+  /**
+   * 从匹配列表中选择最佳 SPU
+   */
+  private selectBestSPUMatch(
+    matches: Array<{ spu: SPUData; score: number; priority: number }>
+  ): { spu: SPUData; score: number; priority: number } {
+    return matches.reduce((best, current) => {
+      // 优先选择分数更高的
+      if (current.score > best.score) {
+        return current;
+      }
+      
+      // 分数相同时，选择优先级更高的
+      if (current.score === best.score && current.priority > best.priority) {
+        return current;
+      }
+      
+      // 分数和优先级都相同时，选择关键词匹配更多的
+      if (current.score === best.score && current.priority === best.priority) {
+        const currentKeywords = this.tokenize(current.spu.name).length;
+        const bestKeywords = this.tokenize(best.spu.name).length;
+        if (currentKeywords > bestKeywords) {
+          return current;
+        }
+      }
+      
+      return best;
+    });
+  }
+
+  /**
+   * 统一的 SKU 匹配函数
    * 
    * 颜色匹配优先级：
    * 1. 完全匹配（100%分数）
    * 2. 颜色变体匹配（90%分数）
    * 3. 基础颜色匹配（50%分数）
+   * 
+   * @param input 输入字符串
+   * @param skuList SKU 列表
+   * @param options 匹配选项
+   * @returns 最佳匹配的 SKU 和相似度
    */
-  findBestSKUWithVersion(
+  findBestSKU(
     input: string,
     skuList: SKUData[],
-    inputVersion: VersionInfo | null
+    options?: {
+      inputVersion?: VersionInfo | null;
+      versionWeight?: number;
+      capacityWeight?: number;
+      colorWeight?: number;
+    }
   ): { sku: SKUData | null; similarity: number } {
     const inputCapacity = this.extractCapacity(input);
     const inputColor = this.extractColorAdvanced(input);
+    const inputVersion = options?.inputVersion;
+    
+    // 默认权重
+    const versionWeight = options?.versionWeight ?? 0.3;
+    const capacityWeight = options?.capacityWeight ?? 0.4;
+    const colorWeight = options?.colorWeight ?? 0.3;
     
     let bestMatch: SKUData | null = null;
     let bestScore = 0;
@@ -1024,43 +1427,35 @@ export class SimpleMatcher {
       let score = 0;
       let totalWeight = 0;
       
-      // 版本匹配（基础权重 30%）
+      // 版本匹配
       if (inputVersion || skuVersion) {
-        totalWeight += 0.3;
+        totalWeight += versionWeight;
         if (inputVersion && skuVersion) {
           if (inputVersion.name === skuVersion.name) {
-            score += 0.3;
+            score += versionWeight;
           } else if (inputVersion.priority === skuVersion.priority) {
-            score += 0.25;
+            score += versionWeight * 0.83; // 83% 的版本权重
           }
         } else if (!inputVersion && !skuVersion) {
-          score += 0.3;
+          score += versionWeight;
         }
       }
       
-      // 容量匹配（基础权重 40%）
+      // 容量匹配
       if (inputCapacity || skuCapacity) {
-        totalWeight += 0.4;
+        totalWeight += capacityWeight;
         if (inputCapacity && skuCapacity && inputCapacity === skuCapacity) {
-          score += 0.4;
+          score += capacityWeight;
         }
       }
       
-      // 颜色匹配（基础权重 30%）- 改进：区分完全匹配、变体匹配和基础匹配
+      // 颜色匹配 - 区分完全匹配、变体匹配和基础匹配
       if (inputColor || skuColor) {
-        totalWeight += 0.3;
+        totalWeight += colorWeight;
         if (inputColor && skuColor) {
-          // 优先级1: 完全匹配（100%分数）
-          if (inputColor === skuColor) {
-            score += 0.3;
-          }
-          // 优先级2: 颜色变体匹配（90%分数）
-          else if (this.isColorVariant(inputColor, skuColor)) {
-            score += 0.27;
-          }
-          // 优先级3: 基础颜色匹配（50%分数）
-          else if (this.isBasicColorMatch(inputColor, skuColor)) {
-            score += 0.15;
+          const colorMatchResult = this.colorMatcher.match(inputColor, skuColor);
+          if (colorMatchResult.match) {
+            score += colorWeight * colorMatchResult.score;
           }
         }
       }
@@ -1081,96 +1476,4 @@ export class SimpleMatcher {
     return { sku: bestMatch, similarity: bestScore };
   }
 
-  /**
-   * 基础颜色匹配（仅用于模糊匹配）
-   */
-  private isBasicColorMatch(color1: string, color2: string): boolean {
-    if (!color1 || !color2) return false;
-    
-    const basicColorMap: Record<string, string[]> = {
-      '黑': ['黑', '深', '曜', '玄', '纯', '简', '辰'],
-      '白': ['白', '零', '雪', '空', '格', '告'],
-      '蓝': ['蓝', '天', '星', '冰', '悠', '自', '薄'],
-      '红': ['红', '深'],
-      '绿': ['绿', '原', '玉'],
-      '紫': ['紫', '灵', '龙', '流', '极', '惬'],
-      '粉': ['粉', '玛', '晶', '梦', '桃', '酷'],
-      '金': ['金', '流', '祥', '柠'],
-      '银': ['银'],
-      '灰': ['灰'],
-      '棕': ['棕', '琥', '马', '旷'],
-      '青': ['青', '薄'],
-    };
-    
-    for (const [basicColor, variants] of Object.entries(basicColorMap)) {
-      const color1HasBasic = variants.some(v => color1.includes(v));
-      const color2HasBasic = variants.some(v => color2.includes(v));
-      
-      if (color1HasBasic && color2HasBasic) {
-        return true;
-      }
-    }
-    
-    return false;
-  }
-
-  /**
-   * 在SKU列表中查找最佳匹配（基于参数）
-   */
-  findBestSKUInList(input: string, skuList: SKUData[]): {
-    sku: SKUData | null;
-    similarity: number;
-  } {
-    const inputCapacity = this.extractCapacity(input);
-    const inputColor = this.extractColorAdvanced(input);
-    
-    let bestMatch: SKUData | null = null;
-    let bestScore = 0;
-    
-    for (const sku of skuList) {
-      const skuCapacity = this.extractCapacity(sku.name);
-      const skuColor = this.extractColorAdvanced(sku.name);
-      
-      let paramScore = 0;
-      let paramWeight = 0;
-      
-      if (inputCapacity && skuCapacity) {
-        paramWeight += 0.7;
-        if (inputCapacity === skuCapacity) {
-          paramScore += 0.7;
-        }
-      }
-      
-      if (inputColor && skuColor) {
-        paramWeight += 0.3;
-        if (inputColor === skuColor) {
-          paramScore += 0.3;
-        } else if (this.isColorVariant(inputColor, skuColor)) {
-          paramScore += 0.3;
-        } else if (
-          inputColor.length > 1 && skuColor.length > 1 && 
-          (inputColor.includes(skuColor) || skuColor.includes(inputColor))
-        ) {
-          paramScore += 0.2;
-        }
-      }
-      
-      if (paramWeight === 0) {
-        if (!bestMatch) {
-          bestMatch = sku;
-          bestScore = 0.8;
-        }
-        continue;
-      }
-      
-      const finalScore = paramScore / paramWeight;
-      
-      if (finalScore > bestScore) {
-        bestScore = finalScore;
-        bestMatch = sku;
-      }
-    }
-    
-    return { sku: bestMatch, similarity: bestScore };
-  }
 }

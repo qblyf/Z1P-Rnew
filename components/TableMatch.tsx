@@ -266,10 +266,10 @@ export function TableMatchComponent() {
           }
 
           // 第三阶段：SKU 匹配
-          const { sku: matchedSKU, similarity: skuSimilarity } = matcher.findBestSKUWithVersion(
+          const { sku: matchedSKU, similarity: skuSimilarity } = matcher.findBestSKU(
             trimmedLine,
             skuData,
-            inputVersion
+            { inputVersion }
           );
 
           if (matchedSKU) {

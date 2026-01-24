@@ -162,7 +162,7 @@ describe('SimpleMatcher - 颜色匹配', () => {
       },
     ];
 
-    const { sku } = matcher.findBestSKUWithVersion(input, skuList, null);
+    const { sku } = matcher.findBestSKU(input, skuList, { inputVersion: null });
     
     // 应该匹配到灵感紫（完全匹配），而不是告白
     expect(sku?.id).toBe(1);
@@ -189,7 +189,7 @@ describe('SimpleMatcher - 颜色匹配', () => {
       },
     ];
 
-    const { sku, similarity } = matcher.findBestSKUWithVersion(input, skuList, null);
+    const { sku, similarity } = matcher.findBestSKU(input, skuList, { inputVersion: null });
     
     // 没有灵感紫，应该匹配容量相同的任意一个
     // 但相似度应该较低（因为颜色不匹配）
