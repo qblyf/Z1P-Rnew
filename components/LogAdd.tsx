@@ -3,6 +3,7 @@ import { Form, Input, Button, DatePicker } from 'antd';
 import { addUpdateLog } from '@zsqk/z1-sdk/es/z1p/update-log';
 import { postAwait } from '../error';
 import { useState } from 'react';
+import { useTokenContext } from '../datahooks/auth';
 
 const { TextArea } = Input;
 const FormItem = Form.Item;
@@ -22,6 +23,7 @@ function AddLog(props: {
   updateList: () => void;
 }): JSX.Element {
   const { updateList, close } = props;
+  const { token } = useTokenContext();
 
   const [version, setVersion] = useState<string>();
   const [date, setDate] = useState<number>();
@@ -71,6 +73,9 @@ function AddLog(props: {
               if (!content) {
                 throw new Error('内容不能为空');
               }
+              if (!token) {
+                throw new Error('未登录，无法添加日志');
+              }
               // 新增系统更新日志
               await addUpdateLog(
                 {
@@ -80,7 +85,7 @@ function AddLog(props: {
                   version,
                 },
                 {
-                  auth: 'todo',
+                  auth: token,
                 }
               );
               await updateList();

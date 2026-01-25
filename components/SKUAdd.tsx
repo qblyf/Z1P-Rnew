@@ -226,7 +226,13 @@ export function SKUAdd(props: {
             if (image) {
               rest.thumbnail = image.url || '';
             }
-            // TODO: 如果 listPrice 无效
+            
+            // 验证官网价格式
+            const priceNum = Number(listPrice);
+            if (listPrice && (isNaN(priceNum) || priceNum < 0)) {
+              throw new Error('官网价格式无效，请输入有效的数字');
+            }
+            
             const skuID = await appendSKUInfo(
               { spuID: spu.spuID, ...selected },
               {

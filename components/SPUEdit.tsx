@@ -3,7 +3,9 @@ import {
   editSPUInfo,
   getSPUInfo,
   invalidateSPUInfo,
+  getSKUsInfo as getSKUsInfoAPI,
 } from '@zsqk/z1-sdk/es/z1p/product';
+import { getSKUsInfo } from '../data/product';
 import { paramsDetail } from '@zsqk/z1-sdk/es/z1p/params-value';
 import { EditSPUInfo } from '@zsqk/z1-sdk/es/z1p/product-types';
 import {
@@ -60,6 +62,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
   const [showSkuEditDrawer, setShowSkuEditDrawer] = useState(false);
   const [selectedSkuID, setSelectedSkuID] = useState<number | undefined>();
+  const [selectedSkuName, setSelectedSkuName] = useState<string>('');
   const [hasSetParams, setHasSetParams] = useState<boolean>(true); // 默认true避免闪烁
 
   // 当defaultTab变化时更新activeTab
@@ -285,9 +288,10 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                         <Button
                           danger
                           onClick={postAwait(async () => {
-                            // TODO: 完成功能
-                            alert('需要完成该功能');
+                            // Note: 启用功能需要后端 API 支持
+                            alert('启用功能开发中，请联系管理员');
                           })}
+                          disabled
                         >
                           启用
                         </Button>
@@ -296,8 +300,8 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                           danger
                           onClick={postAwait(
                             async () => {
-                              // TODO: 完成功能
-                              alert('需要完成该功能');
+                              // Note: 停用功能需要后端 API 支持
+                              alert('停用功能开发中，请联系管理员');
                             },
                             { confirmText: `停用 SPU 前请确认 SPU 下没有任何在用的 SKU.` }
                           )}
@@ -351,7 +355,8 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                         onClick={postAwait(
                           async () => {
                             await invalidateSPUInfo(spuID, { auth: token });
-                            // TODO: 更好的前端体验
+                            // Note: 移除后需要刷新页面以更新列表
+                            // 可以考虑添加自动刷新或返回列表页
                           },
                           { successText: '已经移除成功, 但前端可能需要刷新后才能生效.' }
                         )}
@@ -455,9 +460,33 @@ export default function SPUEdit(props: { defaultTab?: string }) {
               label: 'SKU编辑',
               children: (
                 <SKUManager 
-                  onWantEditSKU={(skuID) => {
+                  onWantEditSKU={async (skuID) => {
                     setSelectedSkuID(skuID);
                     setShowSkuEditDrawer(true);
+                    
+                    // 异步获取 SKU 名称 - 使用 API 直接获取，不使用缓存
+                    try {
+                      console.log('正在获取 SKU 名称, SKU ID:', skuID);
+                      const skuInfo = await getSKUsInfoAPI([skuID]);
+                      console.log('SKU 信息返回:', skuInfo);
+                      
+                      if (skuInfo && skuInfo.length > 0 && !('errInfo' in skuInfo[0])) {
+                        console.log('设置 SKU 名称:', skuInfo[0].name);
+                        setSelectedSkuName(skuInfo[0].name);
+                      } else {
+                        console.log('SKU 信息无效或包含错误');
+                      }
+                    } catch (error) {
+                      console.error('获取 SKU 名称失败:', error);
+                      // 如果获取失败，尝试从 preData 中获取
+                      if (preData?.skuIDs) {
+                        const sku = preData.skuIDs.find((s: any) => s.skuID === skuID);
+                        if (sku && 'name' in sku) {
+                          console.log('从 preData 获取 SKU 名称:', sku.name);
+                          setSelectedSkuName(sku.name as string);
+                        }
+                      }
+                    }
                   }}
                 />
               ),
@@ -482,16 +511,41 @@ export default function SPUEdit(props: { defaultTab?: string }) {
         {/* SKU 编辑 Drawer */}
         {selectedSkuID && (
           <Drawer
-            title="编辑 SKU"
+            title={selectedSkuName ? `编辑 SKU - ${selectedSkuName}` : '编辑 SKU (加载中...)'}
             placement="right"
             onClose={() => {
               setShowSkuEditDrawer(false);
               setSelectedSkuID(undefined);
+              setSelectedSkuName('');
             }}
             open={showSkuEditDrawer}
             width="33.33%"
+            afterOpenChange={(open) => {
+              // 当抽屉打开时，刷新 SKU 名称 - 使用 API 直接获取，不使用缓存
+              if (open && selectedSkuID) {
+                const refreshSkuName = async () => {
+                  try {
+                    console.log('刷新 SKU 名称, SKU ID:', selectedSkuID);
+                    const skuInfo = await getSKUsInfoAPI([selectedSkuID]);
+                    console.log('刷新后的 SKU 信息:', skuInfo);
+                    if (skuInfo && skuInfo.length > 0 && !('errInfo' in skuInfo[0])) {
+                      console.log('更新 SKU 名称为:', skuInfo[0].name);
+                      setSelectedSkuName(skuInfo[0].name);
+                    }
+                  } catch (error) {
+                    console.error('刷新 SKU 名称失败:', error);
+                  }
+                };
+                refreshSkuName();
+              }
+            }}
           >
-            <SKUEdit selectedSkuID={selectedSkuID} />
+            <SKUEdit 
+              selectedSkuID={selectedSkuID}
+              onNameChange={(name) => {
+                setSelectedSkuName(name);
+              }}
+            />
           </Drawer>
         )}
       </div>

@@ -87,19 +87,23 @@ function checkSPUNaming(spu: Pick<SPU, 'name' | 'brand'>, brandList: string[]): 
     });
   }
 
-  // 特殊品牌处理：Apple 品牌的产品使用 iPhone/iPad/MacBook 等开头
-  const appleProductPrefixes = ['iPhone', 'iPad', 'MacBook', 'iMac', 'Mac', 'AirPods', 'Apple Watch', 'Apple TV'];
+  // 特殊品牌处理：Apple 品牌的产品使用 iPhone/iPad/MacBook 等开头，或者使用"苹果"开头
+  const appleProductPrefixes = ['iPhone', 'iPad', 'MacBook', 'iMac', 'Mac', 'AirPods', 'Apple Watch', 'Apple TV', '苹果'];
   const isAppleBrand = brand.toLowerCase() === 'apple' || brand === '苹果';
   
-  // 特殊品牌处理：realme 品牌的产品使用"真我"开头
-  const realmeProductPrefixes = ['真我'];
+  // 特殊品牌处理：realme 品牌的产品使用"真我"或"realme"开头
+  const realmeProductPrefixes = ['真我', 'realme'];
   const isRealmeBrand = brand.toLowerCase() === 'realme';
+  
+  // 特殊品牌处理：华为品牌的产品可以使用"华为"或"华为智选"开头
+  const huaweiProductPrefixes = ['华为智选', '华为', 'HUAWEI'];
+  const isHuaweiBrand = brand === '华为' || brand.toLowerCase() === 'huawei';
   
   // 特殊品牌处理：荣耀品牌后面不需要空格
   const isHonorBrand = brand === '荣耀' || brand.toLowerCase() === 'honor';
   
   if (isAppleBrand) {
-    // Apple 品牌：检查是否以 Apple 产品系列名开头
+    // Apple 品牌：检查是否以 Apple 产品系列名或"苹果"开头
     const hasValidApplePrefix = appleProductPrefixes.some(prefix => name.startsWith(prefix));
     
     if (!hasValidApplePrefix) {
@@ -121,20 +125,51 @@ function checkSPUNaming(spu: Pick<SPU, 'name' | 'brand'>, brandList: string[]): 
       });
     }
   } else if (isRealmeBrand) {
-    // realme 品牌：检查是否以"真我"开头
+    // realme 品牌：检查是否以"真我"或"realme"开头
     const hasValidRealmePrefix = realmeProductPrefixes.some(prefix => name.startsWith(prefix));
     
     if (!hasValidRealmePrefix) {
       issues.push({
         type: 'brand_mismatch',
-        message: `realme 品牌产品名称应以"真我"开头`,
+        message: `realme 品牌产品名称应以"真我"或"realme"开头`,
         severity: 'error',
       });
       return issues;
     }
     
-    // realme 品牌特殊规则："真我"后不需要空格
-    // 不检查空格
+    // realme 品牌特殊规则：
+    // - "真我"后不需要空格
+    // - "realme"后需要空格（如果后面还有内容）
+    const matchedPrefix = realmeProductPrefixes.find(prefix => name.startsWith(prefix));
+    if (matchedPrefix === 'realme' && name.length > matchedPrefix.length && name[matchedPrefix.length] !== ' ') {
+      issues.push({
+        type: 'no_space',
+        message: `realme 后缺少空格`,
+        severity: 'error',
+      });
+    }
+  } else if (isHuaweiBrand) {
+    // 华为品牌：检查是否以"华为智选"、"华为"或"HUAWEI"开头
+    const hasValidHuaweiPrefix = huaweiProductPrefixes.some(prefix => name.startsWith(prefix));
+    
+    if (!hasValidHuaweiPrefix) {
+      issues.push({
+        type: 'brand_mismatch',
+        message: `华为品牌产品名称应以"华为"、"华为智选"或"HUAWEI"开头`,
+        severity: 'error',
+      });
+      return issues;
+    }
+    
+    // 检查品牌后是否有空格
+    const matchedPrefix = huaweiProductPrefixes.find(prefix => name.startsWith(prefix));
+    if (matchedPrefix && name.length > matchedPrefix.length && name[matchedPrefix.length] !== ' ') {
+      issues.push({
+        type: 'no_space',
+        message: `${matchedPrefix} 后缺少空格`,
+        severity: 'error',
+      });
+    }
   } else if (isHonorBrand) {
     // 荣耀品牌：检查品牌名是否在名称开头
     if (!name.startsWith(brand)) {
@@ -761,6 +796,7 @@ export default function () {
   const [list, setList] = useState<SPUWithIssues[]>();
   const [loading, setLoading] = useState(false);
   const [editingSpuID, setEditingSpuID] = useState<number | undefined>();
+  const [editingSpuName, setEditingSpuName] = useState<string>('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [batchBrandModalVisible, setBatchBrandModalVisible] = useState(false);
   const [batchEditVisible, setBatchEditVisible] = useState(false);
@@ -798,6 +834,11 @@ export default function () {
 
   // 打开编辑抽屉
   const handleEdit = (spuId: number) => {
+    // 从列表中找到对应的 SPU 并获取名称
+    const spu = list?.find(item => item.id === spuId);
+    if (spu) {
+      setEditingSpuName(spu.name);
+    }
     setEditingSpuID(spuId);
     setDrawerOpen(true);
   };
@@ -806,6 +847,7 @@ export default function () {
   const handleCloseDrawer = () => {
     setDrawerOpen(false);
     setEditingSpuID(undefined);
+    setEditingSpuName('');
   };
 
   // 重新加载数据
@@ -870,8 +912,9 @@ export default function () {
                   <li>✅ 使用官方名称大小写（如 <code>iPhone</code> 而不是 <code>iphone</code>）</li>
                   <li>✅ 不要有错别字</li>
                   <li>✅ 不要有"全网通"字样</li>
-                  <li>⚠️ <strong>特殊规则</strong>：Apple 品牌产品使用产品系列名开头（如 <code>iPhone 15 Pro</code>、<code>iPad Air</code>、<code>MacBook Pro</code>），而不是 "Apple" 开头</li>
-                  <li>⚠️ <strong>特殊规则</strong>：realme 品牌产品使用"真我"开头，后面不需要空格（如 <code>真我GT5 Pro</code>）</li>
+                  <li>⚠️ <strong>特殊规则</strong>：Apple 品牌产品使用产品系列名开头（如 <code>iPhone 15 Pro</code>、<code>iPad Air</code>、<code>MacBook Pro</code>），或使用"苹果"开头（如 <code>苹果 iPhone 15 Pro</code>）</li>
+                  <li>⚠️ <strong>特殊规则</strong>：华为品牌产品可以使用"华为"、"华为智选"或"HUAWEI"开头，后面需要空格（如 <code>华为 Mate 60 Pro</code>、<code>华为智选 智能手表</code>）</li>
+                  <li>⚠️ <strong>特殊规则</strong>：realme 品牌产品使用"真我"或"realme"开头，"真我"后不需要空格（如 <code>真我GT5 Pro</code>），"realme"后需要空格（如 <code>realme GT5 Pro</code>）</li>
                   <li>⚠️ <strong>特殊规则</strong>：荣耀品牌后面不需要空格（如 <code>荣耀Magic6 Pro</code>）</li>
                 </ul>
               </div>
@@ -1097,7 +1140,7 @@ export default function () {
 
         {/* SPU 编辑抽屉 */}
         <Drawer
-          title="编辑 SPU"
+          title={editingSpuName ? `编辑 SPU - ${editingSpuName}` : '编辑 SPU'}
           placement="right"
           onClose={handleCloseDrawer}
           open={drawerOpen}

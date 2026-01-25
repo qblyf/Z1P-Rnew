@@ -36,3 +36,13 @@ yarn-error.log*
 # sensitive configuration files
 z1clients.ts
 constant/oss-config.ts
+
+# backup files
+*.bak
+*.bak[0-9]
+*.bak[0-9][0-9]
+*.backup
+*~
+
+# TypeScript build info
+*.tsbuildinfo

@@ -2,7 +2,8 @@
 import { Drawer, message } from 'antd';
 import Head from 'next/head';
 import { useEffect, useMemo, useState } from 'react';
-import { orderSPUCate } from '@zsqk/z1-sdk/es/z1p/product';
+import { orderSPUCate, getSPUInfo, getSKUsInfo as getSKUsInfoAPI } from '@zsqk/z1-sdk/es/z1p/product';
+import { getSKUsInfo } from '../../data/product';
 import update from 'immutability-helper';
 
 import { HelpTooltip } from '../../components/HelpTooltip';
@@ -92,11 +93,51 @@ export function ProductManager() {
   const { spuCateList, setSPUCateList } = useSPUCateListContext();
   const { token } = useTokenContext();
   const [spuEditDefaultTab, setSpuEditDefaultTab] = useState<string>('basic');
+  const [editingSpuName, setEditingSpuName] = useState<string>('');
+  const [editingSkuName, setEditingSkuName] = useState<string>('');
 
   // 解决 SSR 问题
   useEffect(() => {
     // 组件挂载后的初始化
   }, []);
+
+  // 当 SPU ID 变化时，获取 SPU 名称
+  useEffect(() => {
+    if (mode === 'spu' && spuID) {
+      const fetchSpuName = async () => {
+        try {
+          const spu = await getSPUInfo(spuID);
+          setEditingSpuName(spu.name);
+        } catch (error) {
+          console.error('获取 SPU 名称失败:', error);
+          setEditingSpuName('');
+        }
+      };
+      fetchSpuName();
+    } else {
+      setEditingSpuName('');
+    }
+  }, [mode, spuID]);
+
+  // 当 SKU ID 变化时，获取 SKU 名称 - 使用 API 直接获取，不使用缓存
+  useEffect(() => {
+    if (mode === 'sku' && selectedSkuID) {
+      const fetchSkuName = async () => {
+        try {
+          const skuInfo = await getSKUsInfoAPI([selectedSkuID]);
+          if (skuInfo && skuInfo.length > 0 && !('errInfo' in skuInfo[0])) {
+            setEditingSkuName(skuInfo[0].name);
+          }
+        } catch (error) {
+          console.error('获取 SKU 名称失败:', error);
+          setEditingSkuName('');
+        }
+      };
+      fetchSkuName();
+    } else {
+      setEditingSkuName('');
+    }
+  }, [mode, selectedSkuID]);
 
   // SPU 分类内容 - 仅显示列表
   const spuCateContent = useMemo(() => {
@@ -212,7 +253,14 @@ export function ProductManager() {
       }
     }
     if (mode === 'sku') {
-      return selectedSkuID ? <SKUEdit selectedSkuID={selectedSkuID} /> : null;
+      return selectedSkuID ? (
+        <SKUEdit 
+          selectedSkuID={selectedSkuID}
+          onNameChange={(name) => {
+            setEditingSkuName(name);
+          }}
+        />
+      ) : null;
     }
     return null;
   }, [mode, spuCateID, spuID, preSPUCateID, selectedSkuID, spuEditDefaultTab]);
@@ -223,10 +271,13 @@ export function ProductManager() {
       return spuCateID ? '编辑 SPU 分类' : '新增 SPU 分类';
     }
     if (mode === 'spu') {
-      return spuID ? '编辑 SPU' : '新增 SPU';
+      if (spuID) {
+        return editingSpuName ? `编辑 SPU - ${editingSpuName}` : '编辑 SPU (加载中...)';
+      }
+      return '新增 SPU';
     }
     if (mode === 'sku') {
-      return '编辑 SKU';
+      return editingSkuName ? `编辑 SKU - ${editingSkuName}` : '编辑 SKU (加载中...)';
     }
     return '';
   };
@@ -257,6 +308,34 @@ export function ProductManager() {
         onClose={reset}
         open={isEditing}
         width={getDrawerWidth()}
+        afterOpenChange={(open) => {
+          // 当抽屉打开时，刷新 SPU/SKU 名称 - 使用 API 直接获取，不使用缓存
+          if (open) {
+            if (mode === 'spu' && spuID) {
+              const refreshSpuName = async () => {
+                try {
+                  const spu = await getSPUInfo(spuID);
+                  setEditingSpuName(spu.name);
+                } catch (error) {
+                  console.error('刷新 SPU 名称失败:', error);
+                }
+              };
+              refreshSpuName();
+            } else if (mode === 'sku' && selectedSkuID) {
+              const refreshSkuName = async () => {
+                try {
+                  const skuInfo = await getSKUsInfoAPI([selectedSkuID]);
+                  if (skuInfo && skuInfo.length > 0 && !('errInfo' in skuInfo[0])) {
+                    setEditingSkuName(skuInfo[0].name);
+                  }
+                } catch (error) {
+                  console.error('刷新 SKU 名称失败:', error);
+                }
+              };
+              refreshSkuName();
+            }
+          }
+        }}
       >
         {editContent}
       </Drawer>

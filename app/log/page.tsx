@@ -16,6 +16,7 @@ import PageWrap from '../../components/PageWrap';
 import LogAdd from '../../components/LogAdd';
 import LogEdit from '../../components/LogEdit';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTokenContext } from '../../datahooks/auth';
 
 function formatDate(v: number) {
   return moment(v * 1000).format('YYYY-M-D');
@@ -29,6 +30,7 @@ function formatDate(v: number) {
  */
 function Log(): JSX.Element {
   const { displayButton = true } = {};
+  const { token } = useTokenContext();
   const [addVisible, setAddVisible] = useState<boolean>(false);
   const [editVisible, setEditVisible] = useState<boolean>(false);
   const [logListAll, setLogListAll] = useState<UpdateLog[]>([]);
@@ -69,9 +71,13 @@ function Log(): JSX.Element {
           message.warning('没有找到日志信息');
           return;
         }
+        if (!token) {
+          message.error('未登录，无法删除');
+          return;
+        }
         // 删除系统更新日志
         deleteUpdateLog(log.id, {
-          auth: 'todo',
+          auth: token,
         })
           .then(getLogList)
           .then(close)
@@ -81,7 +87,6 @@ function Log(): JSX.Element {
   };
 
   return (
-    // TODO ppKey
     <PageWrap ppKey={'product-manage'}>
       <div
         style={{ marginLeft: '40px', marginTop: '35px', paddingBottom: '32px' }}

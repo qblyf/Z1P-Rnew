@@ -125,11 +125,12 @@ export default function SKUManager(props: {
 
   // 以下数据目的是不允许用户直接删除之前的规格,
   //   但允许用户删除自己刚创建的非正式规格.
-  // TODO: 目前是有局限的, 主要因为如果 SKU 新增了, 但是 SKU 新增时没有修改
-  //   preCombos 等数据, 如果用户没有什么操作触发 spuID 变化, 那么此时选择移除
-  //   相关 combo, 虽然已经是正式规格了, 但是因为不存在于 preCombos 中,
-  //   所以仍会允许用户删除. 这个优化涉及到多组件间状态共享,
-  //   因为用户刚正式新增的 SKU 一般不会移除, 所以不将此作为常见场景处理.
+  // 
+  // Note: 当前实现的局限性：
+  // 如果 SKU 新增后，preCombos 等数据未更新，且用户没有触发 spuID 变化，
+  // 那么新增的正式规格仍可能被删除（因为不在 preCombos 中）。
+  // 由于这种情况较少发生（用户一般不会立即删除刚创建的 SKU），
+  // 暂不作为常见场景处理。未来可考虑通过状态管理优化。
   const [preCombos, setPreCombos] = useState<string[]>([]);
   const [preSpecs, setPreSpecs] = useState<string[]>([]);
   const [preColors, setPreColors] = useState<string[]>([]);
@@ -1107,7 +1108,14 @@ function EditRelationshipSPUwithSKUs(props: {
     );
   }
 /**
- * @todo 放在合适的位置
+ * 获取指定分类的所有父级分类 ID
+ * 
+ * 递归向上查找，返回从根分类到当前分类的完整路径
+ * 
+ * @param list SPU 分类列表
+ * @param id 当前分类 ID
+ * @returns 分类 ID 数组，从根分类到当前分类
+ * 
  * @author Lian Zheren <lzr@go0356.com>
  */
 export function getAllPids(list: Pick<SPUCate, 'id' | 'pid'>[], id: number) {

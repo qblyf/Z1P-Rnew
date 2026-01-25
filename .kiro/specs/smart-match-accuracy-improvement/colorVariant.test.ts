@@ -265,7 +265,7 @@ describe('Color Variant Mapping - Task 3.2', () => {
     });
 
     test('should treat variants as equivalent to exact matches', () => {
-      // Simulating the scoring logic from findBestSKUInList
+      // Simulating the scoring logic from findBestSKU
       const inputColor = '雾凇蓝';
       const skuColor1 = '雾凇蓝'; // Exact match
       const skuColor2 = '雾松蓝'; // Variant match

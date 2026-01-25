@@ -1,0 +1,65 @@
+{
+  "note": "基础颜色族映射，用于模糊颜色匹配。同一颜色族内的颜色可以进行基础匹配（50%分数）。",
+  "colorFamilies": [
+    {
+      "family": "black",
+      "name": "黑色系",
+      "keywords": ["黑", "深", "曜", "玄", "纯", "简", "辰"]
+    },
+    {
+      "family": "white",
+      "name": "白色系",
+      "keywords": ["白", "零", "雪", "空", "格", "告"]
+    },
+    {
+      "family": "blue",
+      "name": "蓝色系",
+      "keywords": ["蓝", "天", "星", "冰", "悠", "自", "薄"]
+    },
+    {
+      "family": "red",
+      "name": "红色系",
+      "keywords": ["红", "深"]
+    },
+    {
+      "family": "green",
+      "name": "绿色系",
+      "keywords": ["绿", "原", "玉"]
+    },
+    {
+      "family": "purple",
+      "name": "紫色系",
+      "keywords": ["紫", "灵", "龙", "流", "极", "惬"]
+    },
+    {
+      "family": "pink",
+      "name": "粉色系",
+      "keywords": ["粉", "玛", "晶", "梦", "桃", "酷"]
+    },
+    {
+      "family": "gold",
+      "name": "金色系",
+      "keywords": ["金", "流", "祥", "柠"]
+    },
+    {
+      "family": "silver",
+      "name": "银色系",
+      "keywords": ["银"]
+    },
+    {
+      "family": "gray",
+      "name": "灰色系",
+      "keywords": ["灰"]
+    },
+    {
+      "family": "brown",
+      "name": "棕色系",
+      "keywords": ["棕", "琥", "马", "旷"]
+    },
+    {
+      "family": "cyan",
+      "name": "青色系",
+      "keywords": ["青", "薄"]
+    }
+  ]
+}

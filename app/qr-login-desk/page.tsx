@@ -135,12 +135,13 @@ function QrLoginDeskPage() {
       }
     }, 1000);
     
+    // 二维码 60 秒后过期
     t = window.setTimeout(() => {
       window.clearInterval(l);
       console.log('QR code expired');
       setIsTimeout(true);
       setShowDingtalkWarning(false);
-    }, 60000); // TODO: 调试成功后改为 60s 60000
+    }, 60000);
   };
 
   useEffect(() => {

@@ -184,7 +184,7 @@ function FileUpload(props: Props): JSX.Element {
   const batchUpload = useCallback(
     (files: File[]) => {
       const dir = restProps.dir || 'test/';
-      // TODO: 使用统一 UI 包裹
+      
       Promise.all(
         files.map(file => {
           return upload(

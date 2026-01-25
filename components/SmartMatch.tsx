@@ -1,27 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Loader2, CheckCircle, XCircle, Download, Settings } from 'lucide-react';
-import { Card, Input, Button, Table, Tag, Space, message, Spin, Checkbox, Dropdown } from 'antd';
+import { message, Spin } from 'antd';
 import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { SKUState, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { getBrandBaseList } from '@zsqk/z1-sdk/es/z1p/brand';
-import { SimpleMatcher, type MatchResult, type SPUData, type SKUData } from '../utils/smartMatcher';
+import { SimpleMatcher, type MatchResult } from '../utils/smartMatcher';
+import type { SPUData, SKUData, BrandData } from '../utils/types';
+import { SPU_MATCH_THRESHOLD } from '../utils/constants';
+import { InputPanel } from './SmartMatch/InputPanel';
+import { ResultPanel } from './SmartMatch/ResultPanel';
 
-interface BrandData {
-  name: string;
-  color: string;
-  spell?: string;
-  order?: number;
-}
-export function SmartMatchComponent() {
+export default function SmartMatch() {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingSPU, setLoadingSPU] = useState(true);
   const [results, setResults] = useState<MatchResult[]>([]);
   const [spuList, setSPUList] = useState<SPUData[]>([]);
-  const [brandList, setBrandList] = useState<BrandData[]>([]); // 品牌列表
-  const [colorList, setColorList] = useState<string[]>([]); // 动态颜色列表
+  const [brandList, setBrandList] = useState<BrandData[]>([]);
+  const [colorList, setColorList] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
@@ -33,9 +30,24 @@ export function SmartMatchComponent() {
     'matchedGtins',
     'statusAndSimilarity',
   ]);
-  const [columnDropdownVisible, setColumnDropdownVisible] = useState(false);
-  const [tempVisibleColumns, setTempVisibleColumns] = useState<string[]>(visibleColumns);
-  const matcher = new SimpleMatcher();
+  const [matcher] = useState(() => new SimpleMatcher());
+  const [matcherInitialized, setMatcherInitialized] = useState(false);
+
+  // 初始化 matcher（加载配置）
+  useEffect(() => {
+    const initMatcher = async () => {
+      try {
+        await matcher.initialize();
+        setMatcherInitialized(true);
+        console.log('✓ Matcher initialized');
+      } catch (error) {
+        console.error('Failed to initialize matcher:', error);
+        // 即使初始化失败，也允许继续使用（会使用默认值）
+        setMatcherInitialized(true);
+      }
+    };
+    initMatcher();
+  }, [matcher]);
 
   // 加载品牌数据
   useEffect(() => {
@@ -52,115 +64,130 @@ export function SmartMatchComponent() {
   }, []);
 
   // 加载所有SPU数据并从SKU规格中提取颜色、规格、组合
-  useEffect(() => {
-    const loadSPUData = async () => {
-      try {
-        setLoadingSPU(true);
+  // 注意：不再自动加载，改为手动触发，避免在预加载时触发
+  const loadSPUData = async () => {
+    try {
+      setLoadingSPU(true);
+      
+      console.log('=== 开始加载SPU和SKU规格数据 ===');
+      const startTime = Date.now();
+      
+      // 分批加载所有SPU数据（包含skuIDs）
+      const allSpuList = [];
+      const batchSize = 10000;
+      let offset = 0;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const spuList = await getSPUListNew(
+          {
+            states: [SPUState.在用],
+            limit: batchSize,
+            offset,
+            orderBy: [{ key: 'p."id"', sort: 'DESC' }],
+          },
+          ['id', 'name', 'brand', 'skuIDs']
+        );
         
-        console.log('=== 开始加载SPU和SKU规格数据 ===');
-        const startTime = Date.now();
+        allSpuList.push(...spuList);
+        console.log(`已加载 ${spuList.length} 个SPU，总计: ${allSpuList.length}`);
         
-        // 分批加载所有SPU数据（包含skuIDs）
-        const allSpuList = [];
-        const batchSize = 10000;
-        let offset = 0;
-        let hasMore = true;
-        
-        while (hasMore) {
-          const spuList = await getSPUListNew(
-            {
-              states: [SPUState.在用],
-              limit: batchSize,
-              offset,
-              orderBy: [{ key: 'p."id"', sort: 'DESC' }],
-            },
-            ['id', 'name', 'brand', 'skuIDs']
-          );
-          
-          allSpuList.push(...spuList);
-          console.log(`已加载 ${spuList.length} 个SPU，总计: ${allSpuList.length}`);
-          
-          if (spuList.length < batchSize) {
-            hasMore = false;
-          } else {
-            offset += batchSize;
-          }
+        if (spuList.length < batchSize) {
+          hasMore = false;
+        } else {
+          offset += batchSize;
         }
-        
-        setSPUList(allSpuList);
-        
-        // 统计颜色、规格和组合数据
-        // Requirements: 2.4.1, 3.2.1, 3.2.2
-        const colorMap = new Map<string, Set<number>>();
-        const specMap = new Map<string, Set<number>>();
-        const comboMap = new Map<string, Set<number>>();
-        
-        let processedSKUs = 0;
-        
-        for (const spu of allSpuList) {
-          const { id, skuIDs } = spu;
-          
-          if (!skuIDs || skuIDs.length === 0) {
-            continue;
-          }
-          
-          // 从 skuIDs 中提取颜色、规格和组合信息
-          for (const skuInfo of skuIDs) {
-            // 提取颜色
-            if ('color' in skuInfo && skuInfo.color) {
-              const color = skuInfo.color;
-              if (!colorMap.has(color)) {
-                colorMap.set(color, new Set());
-              }
-              colorMap.get(color)!.add(id);
-            }
-            
-            // 提取规格
-            if ('spec' in skuInfo && skuInfo.spec) {
-              const spec = skuInfo.spec;
-              if (!specMap.has(spec)) {
-                specMap.set(spec, new Set());
-              }
-              specMap.get(spec)!.add(id);
-            }
-            
-            // 提取组合
-            if ('combo' in skuInfo && skuInfo.combo) {
-              const combo = skuInfo.combo;
-              if (!comboMap.has(combo)) {
-                comboMap.set(combo, new Set());
-              }
-              comboMap.get(combo)!.add(id);
-            }
-            
-            processedSKUs++;
-          }
-        }
-        
-        // 转换为数组并按长度降序排序（优先匹配更长的颜色词）
-        const colors = Array.from(colorMap.keys()).sort((a, b) => b.length - a.length);
-        setColorList(colors);
-        
-        const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-        
-        console.log('=== 规格数据加载完成 ===');
-        console.log(`总SPU数量: ${allSpuList.length}`);
-        console.log(`处理SKU: ${processedSKUs} 个`);
-        console.log(`提取颜色: ${colors.length} 个`);
-        console.log(`提取规格: ${specMap.size} 个`);
-        console.log(`提取组合: ${comboMap.size} 个`);
-        console.log(`总耗时: ${totalTime}秒`);
-        console.log('颜色列表（按长度降序）:', colors.slice(0, 20), colors.length > 20 ? `... 还有 ${colors.length - 20} 个` : '');
-        
-        message.success(`已加载 ${allSpuList.length} 个SPU，提取 ${colors.length} 个颜色词（耗时${totalTime}秒）`);
-      } catch (error) {
-        message.error('加载SPU数据失败');
-        console.error(error);
-      } finally {
-        setLoadingSPU(false);
       }
-    };
-    loadSPUData();
+      
+      setSPUList(allSpuList);
+      
+      // 性能优化：建立品牌索引
+      matcher.buildSPUIndex(allSpuList);
+      
+      // 统计颜色、规格和组合数据
+      // Requirements: 2.4.1, 3.2.1, 3.2.2
+      const colorMap = new Map<string, Set<number>>();
+      const specMap = new Map<string, Set<number>>();
+      const comboMap = new Map<string, Set<number>>();
+      
+      let processedSKUs = 0;
+      
+      for (const spu of allSpuList) {
+        const { id, skuIDs } = spu;
+        
+        if (!skuIDs || skuIDs.length === 0) {
+          continue;
+        }
+        
+        // 从 skuIDs 中提取颜色、规格和组合信息
+        for (const skuInfo of skuIDs) {
+          // 提取颜色
+          if ('color' in skuInfo && skuInfo.color) {
+            const color = skuInfo.color;
+            if (!colorMap.has(color)) {
+              colorMap.set(color, new Set());
+            }
+            colorMap.get(color)!.add(id);
+          }
+          
+          // 提取规格
+          if ('spec' in skuInfo && skuInfo.spec) {
+            const spec = skuInfo.spec;
+            if (!specMap.has(spec)) {
+              specMap.set(spec, new Set());
+            }
+            specMap.get(spec)!.add(id);
+          }
+          
+          // 提取组合
+          if ('combo' in skuInfo && skuInfo.combo) {
+            const combo = skuInfo.combo;
+            if (!comboMap.has(combo)) {
+              comboMap.set(combo, new Set());
+            }
+            comboMap.get(combo)!.add(id);
+          }
+          
+          processedSKUs++;
+        }
+      }
+      
+      // 转换为数组并按长度降序排序（优先匹配更长的颜色词）
+      const colors = Array.from(colorMap.keys()).sort((a, b) => b.length - a.length);
+      setColorList(colors);
+      
+      const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+      
+      console.log('=== 规格数据加载完成 ===');
+      console.log(`总SPU数量: ${allSpuList.length}`);
+      console.log(`处理SKU: ${processedSKUs} 个`);
+      console.log(`提取颜色: ${colors.length} 个`);
+      console.log(`提取规格: ${specMap.size} 个`);
+      console.log(`提取组合: ${comboMap.size} 个`);
+      console.log(`总耗时: ${totalTime}秒`);
+      console.log('颜色列表（按长度降序）:', colors.slice(0, 20), colors.length > 20 ? `... 还有 ${colors.length - 20} 个` : '');
+      
+      message.success(`已加载 ${allSpuList.length} 个SPU，提取 ${colors.length} 个颜色词（耗时${totalTime}秒）`);
+    } catch (error) {
+      message.error('加载SPU数据失败');
+      console.error(error);
+    } finally {
+      setLoadingSPU(false);
+    }
+  };
+
+  // 只在首次真正需要时加载数据
+  useEffect(() => {
+    // 检查是否真正在智能匹配页面（而不是预加载）
+    if (typeof window !== 'undefined' && window.location.pathname === '/smart-match') {
+      // 延迟加载，确保页面已完全渲染
+      const timer = setTimeout(() => {
+        if (spuList.length === 0) {
+          loadSPUData();
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   const handleMatch = async () => {
@@ -174,6 +201,11 @@ export function SmartMatchComponent() {
       return;
     }
 
+    if (!matcherInitialized) {
+      message.warning('匹配器初始化中，请稍候');
+      return;
+    }
+
     setLoading(true);
     setResults([]); // 清空之前的结果
     setCurrentPage(1); // 重置到第一页
@@ -181,6 +213,10 @@ export function SmartMatchComponent() {
     // 设置动态颜色列表到 matcher
     matcher.setColorList(colorList);
     console.log('使用颜色列表:', colorList.length, '个颜色');
+    
+    // 设置品牌列表到 matcher
+    matcher.setBrandList(brandList);
+    console.log('使用品牌列表:', brandList.length, '个品牌');
     
     try {
       // 将输入按行分割
@@ -193,22 +229,20 @@ export function SmartMatchComponent() {
         // 添加：清理演示机标记
         trimmedLine = matcher.cleanDemoMarkers(trimmedLine);
         
-        // PHASE2-4: 改进的输入预处理
+        // 改进的输入预处理
         trimmedLine = matcher.preprocessInputAdvanced(trimmedLine);
         
-        // PHASE2-1: 检测产品类型
-        const productType = matcher.detectProductType(trimmedLine);
-        console.log('产品类型:', productType);
+        // 从输入中提取品牌（用于显示）
+        const inputBrand = matcher.extractBrand(trimmedLine);
         
-        // PHASE2-2: 提取版本信息
+        // 提取版本信息（用于 SKU 匹配）
         const inputVersion = matcher.extractVersion(trimmedLine);
-        console.log('版本信息:', inputVersion?.name || '无');
         
         // 第一阶段：匹配SPU
         const { spu: matchedSPU, similarity: spuSimilarity } = matcher.findBestSPUMatch(
           trimmedLine,
           spuList,
-          0.5 // SPU匹配阈值降低到50%
+          SPU_MATCH_THRESHOLD // 使用常量代替魔法数字
         );
         
         if (!matchedSPU) {
@@ -217,7 +251,7 @@ export function SmartMatchComponent() {
             inputName: trimmedLine,
             matchedSKU: null,
             matchedSPU: null,
-            matchedBrand: null,
+            matchedBrand: inputBrand || null,
             matchedVersion: null,
             matchedMemory: null,
             matchedColor: null,
@@ -233,7 +267,7 @@ export function SmartMatchComponent() {
           inputName: trimmedLine,
           matchedSKU: null,
           matchedSPU: matchedSPU.name,
-          matchedBrand: matchedSPU.brand || null,
+          matchedBrand: inputBrand || null,
           matchedVersion: null,
           matchedMemory: null,
           matchedColor: null,
@@ -244,7 +278,7 @@ export function SmartMatchComponent() {
         
         setResults(prev => [...prev, tempResult]);
         
-        console.log('匹配到SPU:', matchedSPU.name, 'ID:', matchedSPU.id);
+        console.log('匹配到SPU:', matchedSPU.name, 'ID:', matchedSPU.id, '输入品牌:', inputBrand);
         
         // 第二阶段：加载该SPU的所有SKU
         try {
@@ -273,6 +307,7 @@ export function SmartMatchComponent() {
               // 从 SKU 名称中提取规格信息
               const capacity = matcher.extractCapacity(sku.name);
               const color = matcher.extractColorAdvanced(sku.name);
+              const version = matcher.extractVersion(sku.name);
               
               return {
                 id: sku.id,
@@ -280,7 +315,7 @@ export function SmartMatchComponent() {
                 spuID: matchedSPU.id,
                 spuName: matchedSPU.name,
                 brand: matchedSPU.brand,
-                version: undefined, // SKU 中没有版本字段，可以从名称提取
+                version: version?.name || undefined, // 从 SKU 名称中提取版本
                 memory: capacity || undefined, // 使用容量作为内存
                 color: color || undefined,
                 gtins: sku.gtins || [],
@@ -302,11 +337,10 @@ export function SmartMatchComponent() {
           }
           
           // 第三阶段：在SKU中匹配参数（容量、颜色、版本）
-          // PHASE2-2: 使用改进的 SKU 匹配，考虑版本信息
-          const { sku: matchedSKU, similarity: skuSimilarity } = matcher.findBestSKUWithVersion(
+          const { sku: matchedSKU, similarity: skuSimilarity } = matcher.findBestSKU(
             trimmedLine,
             skuData,
-            inputVersion
+            { inputVersion }
           );
           
           if (matchedSKU) {
@@ -412,112 +446,16 @@ export function SmartMatchComponent() {
     message.success('导出成功');
   };
 
-  // 定义所有可用的列
-  const allColumns = [
-    {
-      title: '输入商品名称',
-      dataIndex: 'inputName',
-      key: 'inputName',
-      width: 250,
-      fixed: 'left' as const,
-    },
-    {
-      title: '匹配的SPU',
-      dataIndex: 'matchedSPU',
-      key: 'matchedSPU',
-      width: 200,
-      render: (text: string | null) => text || '-',
-    },
-    {
-      title: '规格标签',
-      key: 'specs',
-      width: 250,
-      render: (_: unknown, record: MatchResult) => {
-        if (record.status === 'spu-matched') {
-          return <span className="text-gray-400">正在匹配...</span>;
-        }
-        const specs = [];
-        if (record.matchedVersion) specs.push(<Tag key="version" color="blue">{record.matchedVersion}</Tag>);
-        if (record.matchedMemory) specs.push(<Tag key="memory" color="green">{record.matchedMemory}</Tag>);
-        if (record.matchedColor) specs.push(<Tag key="color" color="purple">{record.matchedColor}</Tag>);
-        return specs.length > 0 ? <Space size={4}>{specs}</Space> : '-';
-      },
-    },
-    {
-      title: '匹配的SKU',
-      dataIndex: 'matchedSKU',
-      key: 'matchedSKU',
-      width: 250,
-      render: (text: string | null, record: MatchResult) => {
-        if (record.status === 'spu-matched') {
-          return <span className="text-gray-400">正在匹配SKU...</span>;
-        }
-        return text || '-';
-      },
-    },
-    {
-      title: '品牌',
-      dataIndex: 'matchedBrand',
-      key: 'matchedBrand',
-      width: 120,
-      render: (text: string | null) => {
-        if (!text) return '-';
-        const brand = brandList.find(b => b.name === text);
-        return brand ? <Tag color={brand.color}>{brand.name}</Tag> : <Tag color="orange">{text}</Tag>;
-      },
-    },
-    {
-      title: '69码',
-      dataIndex: 'matchedGtins',
-      key: 'matchedGtins',
-      width: 200,
-      render: (gtins: string[]) => {
-        if (!gtins || gtins.length === 0) return '-';
-        return (
-          <div className="flex flex-col gap-1">
-            {gtins.map((gtin, idx) => (
-              <span key={idx} className="text-xs font-mono">{gtin}</span>
-            ))}
-          </div>
-        );
-      },
-    },
-    {
-      title: '状态/相似度',
-      key: 'statusAndSimilarity',
-      width: 140,
-      fixed: 'right' as const,
-      render: (_: unknown, record: MatchResult) => {
-        if (record.status === 'matched') {
-          return (
-            <Space direction="vertical" size={4}>
-              <Tag icon={<CheckCircle size={14} />} color="success">
-                已匹配
-              </Tag>
-              <Tag color={record.similarity >= 0.8 ? 'green' : record.similarity >= 0.6 ? 'orange' : 'red'}>
-                {(record.similarity * 100).toFixed(0)}%
-              </Tag>
-            </Space>
-          );
-        } else if (record.status === 'spu-matched') {
-          return (
-            <Tag icon={<Loader2 size={14} className="animate-spin" />} color="processing">
-              匹配中...
-            </Tag>
-          );
-        } else {
-          return (
-            <Tag icon={<XCircle size={14} />} color="error">
-              未匹配
-            </Tag>
-          );
-        }
-      },
-    },
-  ];
+  const handleClear = () => {
+    setInputText('');
+    setResults([]);
+    setCurrentPage(1);
+  };
 
-  // 根据 visibleColumns 过滤列
-  const columns = allColumns.filter(col => visibleColumns.includes(col.key));
+  const handlePageChange = (page: number, size: number) => {
+    setCurrentPage(page);
+    setPageSize(size);
+  };
 
   if (loadingSPU) {
     return (
@@ -531,261 +469,30 @@ export function SmartMatchComponent() {
     <div className="flex gap-4 h-[calc(100vh-140px)]">
       {/* 左侧：输入区域 */}
       <div className="w-1/3 flex flex-col">
-        <Card className="flex-1 flex flex-col" bodyStyle={{ padding: '16px', display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <div className="flex flex-col h-full">
-            <div className="mb-4 flex-1 flex flex-col">
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-slate-700">
-                  输入商品名称（每行一个）
-                </label>
-                <div className="text-sm text-slate-500">
-                  已加载 {spuList.length} 个SPU
-                </div>
-              </div>
-              <Input.TextArea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="请输入商品名称，每行一个&#10;例如：&#10;华为 Mate 60 Pro 12+256 雅川青&#10;苹果 iPhone 15 Pro Max 256GB 钛金色&#10;小米14 Ultra 16GB+512GB 黑色"
-                className="flex-1"
-                style={{ height: '100%', minHeight: '400px', resize: 'none' }}
-                disabled={loading}
-              />
-            </div>
-
-            <div className="mt-auto space-y-3">
-              <div className="text-sm text-slate-500">
-                支持批量输入，系统将先匹配SPU，再匹配对应的SKU参数（容量、颜色）
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => {
-                    setInputText('');
-                    setResults([]);
-                    setCurrentPage(1);
-                  }}
-                  disabled={loading}
-                  block
-                >
-                  清空
-                </Button>
-                <Button
-                  type="primary"
-                  icon={loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                  onClick={handleMatch}
-                  disabled={loading || !inputText.trim()}
-                  block
-                >
-                  {loading ? '匹配中...' : '开始匹配'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Card>
+        <InputPanel
+          inputText={inputText}
+          onInputChange={setInputText}
+          onMatch={handleMatch}
+          onClear={handleClear}
+          loading={loading}
+          spuCount={spuList.length}
+          disabled={!matcherInitialized}
+        />
       </div>
 
       {/* 右侧：结果区域 */}
       <div className="w-2/3 flex flex-col">
-        {results.length > 0 ? (
-          <Card 
-            className="flex-1 flex flex-col"
-            bodyStyle={{ padding: '16px', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
-            title={
-              <div className="flex justify-between items-center">
-                <div className="flex gap-4">
-                  <span>匹配结果</span>
-                  <div className="flex gap-2">
-                    <Tag color="blue">
-                      总计：{results.length} 条
-                    </Tag>
-                    <Tag color="success">
-                      已匹配：{results.filter(r => r.status === 'matched').length} 条
-                    </Tag>
-                    <Tag color="error">
-                      未匹配：{results.filter(r => r.status === 'unmatched').length} 条
-                    </Tag>
-                  </div>
-                </div>
-                <Space>
-                  <Dropdown
-                    open={columnDropdownVisible}
-                    onOpenChange={(visible) => {
-                      if (visible) {
-                        setTempVisibleColumns(visibleColumns);
-                      }
-                      setColumnDropdownVisible(visible);
-                    }}
-                    dropdownRender={() => (
-                      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3" style={{ minWidth: '200px' }}>
-                        <div className="mb-2 pb-2 border-b border-gray-200">
-                          <span className="text-sm font-medium text-gray-700">选择显示列</span>
-                        </div>
-                        <div className="space-y-2 mb-3">
-                          <Checkbox
-                            checked={tempVisibleColumns.includes('inputName')}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setTempVisibleColumns([...tempVisibleColumns, 'inputName']);
-                              } else {
-                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'inputName'));
-                              }
-                            }}
-                          >
-                            输入商品名称
-                          </Checkbox>
-                          <Checkbox
-                            checked={tempVisibleColumns.includes('matchedSPU')}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setTempVisibleColumns([...tempVisibleColumns, 'matchedSPU']);
-                              } else {
-                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'matchedSPU'));
-                              }
-                            }}
-                          >
-                            匹配的SPU
-                          </Checkbox>
-                          <Checkbox
-                            checked={tempVisibleColumns.includes('specs')}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setTempVisibleColumns([...tempVisibleColumns, 'specs']);
-                              } else {
-                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'specs'));
-                              }
-                            }}
-                          >
-                            规格标签
-                          </Checkbox>
-                          <Checkbox
-                            checked={tempVisibleColumns.includes('matchedSKU')}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setTempVisibleColumns([...tempVisibleColumns, 'matchedSKU']);
-                              } else {
-                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'matchedSKU'));
-                              }
-                            }}
-                          >
-                            匹配的SKU
-                          </Checkbox>
-                          <Checkbox
-                            checked={tempVisibleColumns.includes('matchedBrand')}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setTempVisibleColumns([...tempVisibleColumns, 'matchedBrand']);
-                              } else {
-                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'matchedBrand'));
-                              }
-                            }}
-                          >
-                            品牌
-                          </Checkbox>
-                          <Checkbox
-                            checked={tempVisibleColumns.includes('matchedGtins')}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setTempVisibleColumns([...tempVisibleColumns, 'matchedGtins']);
-                              } else {
-                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'matchedGtins'));
-                              }
-                            }}
-                          >
-                            69码
-                          </Checkbox>
-                          <Checkbox
-                            checked={tempVisibleColumns.includes('statusAndSimilarity')}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setTempVisibleColumns([...tempVisibleColumns, 'statusAndSimilarity']);
-                              } else {
-                                setTempVisibleColumns(tempVisibleColumns.filter(c => c !== 'statusAndSimilarity'));
-                              }
-                            }}
-                          >
-                            状态/相似度
-                          </Checkbox>
-                        </div>
-                        <div className="flex gap-2 pt-2 border-t border-gray-200">
-                          <Button
-                            size="small"
-                            onClick={() => {
-                              setTempVisibleColumns(visibleColumns);
-                              setColumnDropdownVisible(false);
-                            }}
-                            block
-                          >
-                            取消
-                          </Button>
-                          <Button
-                            type="primary"
-                            size="small"
-                            onClick={() => {
-                              setVisibleColumns(tempVisibleColumns);
-                              setColumnDropdownVisible(false);
-                              message.success('已更新显示列');
-                            }}
-                            block
-                          >
-                            确定
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                    trigger={['click']}
-                  >
-                    <Button icon={<Settings size={16} />} size="small">
-                      显示列
-                    </Button>
-                  </Dropdown>
-                  <Button
-                    icon={<Download size={16} />}
-                    onClick={exportResults}
-                    size="small"
-                  >
-                    导出CSV
-                  </Button>
-                </Space>
-              </div>
-            }
-          >
-            <div className="flex-1 overflow-hidden flex flex-col">
-              <div className="flex-1 overflow-auto">
-                <Table
-                  columns={columns}
-                  dataSource={results}
-                  rowKey={(record, index) => `${record.inputName}-${index}`}
-                  scroll={{ x: 'max-content', y: 'calc(100vh - 320px)' }}
-                  pagination={{
-                    current: currentPage,
-                    pageSize: pageSize,
-                    total: results.length,
-                    showSizeChanger: true,
-                    showQuickJumper: true,
-                    showTotal: (total) => `共 ${total} 条记录`,
-                    pageSizeOptions: ['10', '20', '50', '100'],
-                    onChange: (page, size) => {
-                      setCurrentPage(page);
-                      setPageSize(size);
-                    },
-                    onShowSizeChange: (current, size) => {
-                      setCurrentPage(1);
-                      setPageSize(size);
-                    },
-                  }}
-                />
-              </div>
-            </div>
-          </Card>
-        ) : (
-          <Card className="flex-1 flex items-center justify-center" bodyStyle={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-            <div className="text-center text-slate-400">
-              <Search size={48} className="mx-auto mb-4 opacity-50" />
-              <p className="text-lg">请在左侧输入商品名称并点击"开始匹配"</p>
-            </div>
-          </Card>
-        )}
+        <ResultPanel
+          results={results}
+          brandList={brandList}
+          visibleColumns={visibleColumns}
+          onVisibleColumnsChange={setVisibleColumns}
+          onExport={exportResults}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={handlePageChange}
+        />
       </div>
     </div>
   );
 }
-

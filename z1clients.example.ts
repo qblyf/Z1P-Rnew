@@ -1,7 +1,8 @@
 // 租户信息文件 (账套信息文件) - 示例文件
 // 请根据实际情况复制此文件为 z1clients.ts 并填入真实的配置信息
-// Tips: 历史上使用 client 这个词, 但因为太容易和客户端混淆, 所以现在改用 tenant 这个词.
-// TODO: 需要逐步将代码中的 client 改成 tenant.
+// 
+// Note: 历史上使用 client 这个词，但因为容易与客户端混淆，
+// 现在改用 tenant（租户）这个词。代码中的 client 会逐步重构为 tenant。
 
 import { Z1Tenant } from "../z1p-deno/tenants/z1tenant.type";
 

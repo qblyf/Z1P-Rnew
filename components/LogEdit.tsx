@@ -4,6 +4,7 @@ import { editUpdateLog } from '@zsqk/z1-sdk/es/z1p/update-log';
 import { postAwait } from '../error';
 import { useState } from 'react';
 import dayjs from 'dayjs';
+import { useTokenContext } from '../datahooks/auth';
 
 const { TextArea } = Input;
 const FormItem = Form.Item;
@@ -24,6 +25,7 @@ function EditLog(props: {
   updateList: () => void;
 }): JSX.Element {
   const { editLog, updateList, close } = props;
+  const { token } = useTokenContext();
 
   const [version, setVersion] = useState<string | undefined>(
     editLog ? editLog.version : undefined
@@ -80,6 +82,9 @@ function EditLog(props: {
               if (!content) {
                 throw new Error('内容不能为空');
               }
+              if (!token) {
+                throw new Error('未登录，无法编辑日志');
+              }
 
               const data = {
                 id: editLog.id,
@@ -90,7 +95,7 @@ function EditLog(props: {
 
               // 编辑系统更新日志
               await editUpdateLog(editLog.id, data, {
-                auth: 'todo',
+                auth: token,
               });
               await updateList();
               close();

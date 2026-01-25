@@ -7,8 +7,6 @@ import { useEffect, useState } from 'react';
 import pinyin from 'tiny-pinyin';
 
 import {
-  // TODO: 根据后端结果按需修改 state 数据
-  // useSPUCateListContext,
   useSPUCateListUpdate,
 } from '../datahooks/product';
 import SelectSPUCate from './SelectSPUCate';
@@ -32,8 +30,6 @@ export default function SPUCateAdd(props: { pid?: SPUCateID }) {
   const [remarks, setRemarks] = useState<string>('');
   const [icon, setIcon] = useState<UploadFile>();
 
-  // TODO: 根据后端结果按需修改 state 数据
-  // const { spuCateList, setSPUCateList } = useSPUCateListContext();
   const reUpdate = useSPUCateListUpdate();
 
   useEffect(() => {
@@ -146,14 +142,6 @@ export default function SPUCateAdd(props: { pid?: SPUCateID }) {
               setName('');
               setSpell('');
               setRemarks('');
-
-              // TODO: 根据后端结果按需修改 state 数据
-              // const i = spuCateList.findIndex((v) => v.id === spuCateID);
-              // setSPUCateList(
-              //   update(spuCateList, {
-              //     [i]: { $set: { ...spuCateList[i], ...input } },
-              //   })
-              // );
             })}
           >
             提交新增

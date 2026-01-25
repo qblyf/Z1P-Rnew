@@ -191,13 +191,6 @@ export default function SPUCateEdit() {
                 }
                 await editSPUCateInfo(spuCateID, input, { auth: token });
                 await reUpdate();
-                // TODO: 根据后端结果按需修改 state 数据
-                // const i = spuCateList.findIndex((v) => v.id === spuCateID);
-                // setSPUCateList(
-                //   update(spuCateList, {
-                //     [i]: { $set: { ...spuCateList[i], ...input } },
-                //   })
-                // );
               })}
             >
               提交修改
