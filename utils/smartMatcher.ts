@@ -989,9 +989,12 @@ export class SimpleMatcher {
    * 提取容量
    */
   extractCapacity(str: string): string | null {
+    // 先将全角加号转换为半角加号，以支持两种格式
+    const normalizedStr = str.replace(/＋/g, '+');
+    
     // 匹配括号内的容量
     const bracketPattern = /\((\d+)\s*(?:gb)?\s*\+\s*(\d+)\s*(?:gb)?\)?/gi;
-    let match = str.match(bracketPattern);
+    let match = normalizedStr.match(bracketPattern);
     
     if (match && match.length > 0) {
       const nums = match[0].match(/\d+/g);
@@ -1002,7 +1005,7 @@ export class SimpleMatcher {
     
     // 匹配不在括号内的容量
     const capacityPattern = /(\d+)\s*(?:gb)?\s*\+\s*(\d+)\s*(?:gb)?/gi;
-    match = str.match(capacityPattern);
+    match = normalizedStr.match(capacityPattern);
     
     if (match && match.length > 0) {
       const nums = match[0].match(/\d+/g);
@@ -1013,7 +1016,7 @@ export class SimpleMatcher {
     
     // 匹配单个容量
     const singlePattern = /(\d+)\s*gb/gi;
-    const singleMatch = str.match(singlePattern);
+    const singleMatch = normalizedStr.match(singlePattern);
     if (singleMatch && singleMatch.length > 0) {
       const num = singleMatch[0].match(/\d+/);
       if (num) {
