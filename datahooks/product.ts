@@ -103,7 +103,7 @@ function useSPUList() {
               },
           ['id', 'name', 'brand', 'series', 'generation', 'order']
         );
-        setSpuList(d);
+        setSpuList(d as any);
         setSpuID(undefined);
       })();
     });
