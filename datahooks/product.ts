@@ -1,5 +1,5 @@
-import { SPUCateID, SpuID } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { getSPUCateBaseList, getSPUList } from '@zsqk/z1-sdk/es/z1p/product';
+import { SPUCateID, SpuID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
+import { getSPUCateBaseList, getSPUListNew } from '@zsqk/z1-sdk/es/z1p/product';
 import constate from 'constate';
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import { getAwait, lessAwait } from '../error';
@@ -74,7 +74,7 @@ export const [SpuIDProvider, useSpuIDContext] = constate(useSpuID);
  */
 function useSPUList() {
   const [spuList, setSpuList] = useState<
-    Awaited<ReturnType<typeof getSPUList>>
+    Awaited<ReturnType<typeof getSPUListNew>>
   >([]);
   const [isPending, startTransition] = useTransition();
 
@@ -85,15 +85,23 @@ function useSPUList() {
     // 使用startTransition标记为低优先级更新，不阻塞用户交互
     startTransition(() => {
       lessAwait(async () => {
-        // 如果 spuCateID 为空，获取所有 SPU；否则获取指定分类的 SPU
-        const d = spuCateID 
-          ? await getSPUList({ spuCateIDs: [spuCateID] })
-          : await getSPUList({});
+        // 使用 getSPUListNew 并按 order 字段降序排序
+        const d = await getSPUListNew(
+          spuCateID 
+            ? { lastCateIDs: [spuCateID], states: [SPUState.在用] }
+            : { states: [SPUState.在用] },
+          {
+            limit: 10000,
+            offset: 0,
+            orderBy: [{ key: 'p."order"', sort: 'DESC' }],
+          },
+          ['id', 'name', 'brand', 'series', 'generation', 'order']
+        );
         setSpuList(d);
         setSpuID(undefined);
       })();
     });
-  }, [spuCateID]);
+  }, [spuCateID, setSpuID]);
 
   return { spuList, setSpuList, isPending };
 }

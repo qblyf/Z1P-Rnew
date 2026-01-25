@@ -1,8 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { SkuID } from '@zsqk/z1-sdk/es/z1p/alltypes';
+import { SkuID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { Alert, Col, Row, Table, Tag, Input, Button, Tooltip } from 'antd';
 import { BarcodeOutlined } from '@ant-design/icons';
-import { getSPUList, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
+import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
 import { useSpuIDContext, useSPUCateIDContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
@@ -61,7 +61,11 @@ export default function SKUList(props: {
           }));
         } else if (spuCateID) {
           // 其次：如果选择了商品分类，获取该分类下所有 SPU 的 SKU
-          const spus = await getSPUList({ spuCateIDs: [spuCateID] });
+          const spus = await getSPUListNew(
+            { lastCateIDs: [spuCateID], states: [SPUState.在用] },
+            { limit: 10000, offset: 0, orderBy: [{ key: 'p."order"', sort: 'DESC' }] },
+            ['id', 'name', 'brand', 'skuIDs']
+          );
           for (const spu of spus) {
             if (spu.skuIDs && Array.isArray(spu.skuIDs)) {
               const skusWithSpuName = spu.skuIDs.map(sku => ({
@@ -74,7 +78,11 @@ export default function SKUList(props: {
           }
         } else {
           // 最后：如果都没选择，获取所有 SPU 的 SKU
-          const spus = await getSPUList({});
+          const spus = await getSPUListNew(
+            { states: [SPUState.在用] },
+            { limit: 10000, offset: 0, orderBy: [{ key: 'p."order"', sort: 'DESC' }] },
+            ['id', 'name', 'brand', 'skuIDs']
+          );
           for (const spu of spus) {
             if (spu.skuIDs && Array.isArray(spu.skuIDs)) {
               const skusWithSpuName = spu.skuIDs.map(sku => ({
