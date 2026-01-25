@@ -56,6 +56,7 @@ export interface VersionInfo {
   name: string;
   keywords: string[];
   priority: number;
+  originalString?: string; // 原始输入中的版本字符串（如"全网通5G版"）
 }
 
 // ==================== 配置常量 ====================
@@ -537,8 +538,12 @@ export class SimpleMatcher {
    * 特殊处理：
    * - mini/max/plus/ultra/air/lite/se/pro 都是型号的一部分，不识别为版本
    * - 这些词通常出现在型号中（如 iPhone 15 Pro Max, Watch GT 3 Pro 等）
+   * 
+   * @param input 输入字符串
+   * @param extractOriginal 是否提取原始字符串（包含"版"字等）
+   * @returns 版本信息对象，包含标准化名称和原始字符串
    */
-  extractVersion(input: string): VersionInfo | null {
+  extractVersion(input: string, extractOriginal: boolean = false): VersionInfo | null {
     const lowerInput = input.toLowerCase();
     
     // 优先检查网络制式版本
@@ -546,12 +551,29 @@ export class SimpleMatcher {
     const sortedNetworkVersions = [...this.networkVersions].sort((a, b) => b.length - a.length);
     
     for (const networkVersion of sortedNetworkVersions) {
-      if (lowerInput.includes(networkVersion.toLowerCase())) {
-        // 找到匹配的网络版本，创建一个 VersionInfo 对象
+      const lowerVersion = networkVersion.toLowerCase();
+      const index = lowerInput.indexOf(lowerVersion);
+      
+      if (index !== -1) {
+        // 找到匹配的网络版本
+        let originalString = networkVersion;
+        
+        // 如果需要提取原始字符串，检查是否有"版"字后缀
+        if (extractOriginal) {
+          const endIndex = index + lowerVersion.length;
+          // 检查后面是否紧跟"版"字
+          if (endIndex < input.length && input[endIndex] === '版') {
+            originalString = input.substring(index, endIndex + 1);
+          } else {
+            originalString = input.substring(index, endIndex);
+          }
+        }
+        
         return {
           name: networkVersion,
           keywords: [networkVersion],
           priority: 10, // 网络版本优先级高于产品版本
+          originalString, // 添加原始字符串
         };
       }
     }
@@ -568,8 +590,20 @@ export class SimpleMatcher {
           continue;
         }
         
-        if (lowerInput.includes(lowerKeyword)) {
-          return versionInfo;
+        const index = lowerInput.indexOf(lowerKeyword);
+        if (index !== -1) {
+          let originalString = versionInfo.name;
+          
+          // 如果需要提取原始字符串
+          if (extractOriginal) {
+            const endIndex = index + lowerKeyword.length;
+            originalString = input.substring(index, endIndex);
+          }
+          
+          return {
+            ...versionInfo,
+            originalString, // 添加原始字符串
+          };
         }
       }
     }

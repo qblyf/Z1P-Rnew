@@ -236,7 +236,8 @@ export default function SmartMatch() {
         const inputBrand = matcher.extractBrand(trimmedLine);
         
         // 提取版本信息（用于 SKU 匹配）
-        const inputVersion = matcher.extractVersion(trimmedLine);
+        // extractOriginal=true 表示提取原始字符串（如"全网通5G版"）
+        const inputVersion = matcher.extractVersion(trimmedLine, true);
         
         // 第一阶段：匹配SPU
         const { spu: matchedSPU, similarity: spuSimilarity } = matcher.findBestSPUMatch(
@@ -361,13 +362,15 @@ export default function SmartMatch() {
             const inputCapacity = matcher.extractCapacity(trimmedLine);
             const inputColor = matcher.extractColorAdvanced(trimmedLine);
             
+            // 使用原始版本字符串（如"全网通5G版"）而不是标准化名称（如"全网通5G"）
+            const displayVersion = inputVersion?.originalString || inputVersion?.name || null;
+            
             // 更新为完全匹配
-            // 注意：不显示版本信息，因为 "Pro" 等通常是 SPU 型号的一部分，不是 SKU 版本属性
             setResults(prev => prev.map((r, idx) => 
               idx === prev.length - 1 ? {
                 ...r,
                 matchedSKU: matchedSKU.name || null,
-                matchedVersion: null,  // 不显示版本，避免显示 SPU 型号信息
+                matchedVersion: displayVersion,
                 matchedMemory: inputCapacity || null,
                 matchedColor: inputColor || null,
                 matchedGtins: matchedSKU.gtins || [],
