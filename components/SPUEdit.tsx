@@ -345,7 +345,16 @@ export default function SPUEdit(props: { defaultTab?: string }) {
 
                           // 请求成功后 按需修改 上下文 数据
                           const i = spuList.findIndex(v => v.id === spuID);
-                          setSpuList(update(spuList, { [i]: { $set: newData } }));
+                          // 只更新 spuList 需要的字段
+                          const updatedSpu = {
+                            id: spuID,
+                            name: newData.name,
+                            brand: newData.brand,
+                            series: newData.series,
+                            generation: newData.generation,
+                            order: newData.order,
+                          };
+                          setSpuList(update(spuList, { [i]: { $set: updatedSpu as any } }) as any);
                         })}
                       >
                         提交修改
@@ -446,7 +455,16 @@ export default function SPUEdit(props: { defaultTab?: string }) {
 
                         // 请求成功后 按需修改 上下文 数据
                         const i = spuList.findIndex(v => v.id === spuID);
-                        setSpuList(update(spuList, { [i]: { $set: newData } }));
+                        // 只更新 spuList 需要的字段
+                        const updatedSpu = {
+                          id: spuID,
+                          name: newData.name,
+                          brand: newData.brand,
+                          series: newData.series,
+                          generation: newData.generation,
+                          order: newData.order,
+                        };
+                        setSpuList(update(spuList, { [i]: { $set: updatedSpu as any } }) as any);
                       })}
                     >
                       提交修改
