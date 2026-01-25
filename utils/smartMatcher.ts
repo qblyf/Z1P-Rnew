@@ -1565,6 +1565,12 @@ export class SimpleMatcher {
 
   /**
    * 从匹配列表中选择最佳 SPU
+   * 
+   * 选择优先级（从高到低）：
+   * 1. 分数更高
+   * 2. 优先级更高（标准版 > 版本匹配 > 其他）
+   * 3. 更简洁的SPU名称（不包含Pro、Max等后缀）
+   * 4. 关键词匹配更多
    */
   private selectBestSPUMatch(
     matches: Array<{ spu: SPUData; score: number; priority: number }>
@@ -1580,17 +1586,48 @@ export class SimpleMatcher {
         return current;
       }
       
-      // 分数和优先级都相同时，选择关键词匹配更多的
+      // 分数和优先级都相同时，选择更简洁的SPU名称
+      // 这样可以优先匹配标准版而不是Pro/Max等特殊版本
       if (current.score === best.score && current.priority === best.priority) {
-        const currentKeywords = this.tokenize(current.spu.name).length;
-        const bestKeywords = this.tokenize(best.spu.name).length;
-        if (currentKeywords > bestKeywords) {
+        const currentHasSuffix = this.hasSPUSuffix(current.spu.name);
+        const bestHasSuffix = this.hasSPUSuffix(best.spu.name);
+        
+        // 如果当前SPU没有后缀但最佳SPU有后缀，选择当前SPU
+        if (!currentHasSuffix && bestHasSuffix) {
           return current;
+        }
+        
+        // 如果都有后缀或都没有后缀，选择关键词匹配更多的
+        if (currentHasSuffix === bestHasSuffix) {
+          const currentKeywords = this.tokenize(current.spu.name).length;
+          const bestKeywords = this.tokenize(best.spu.name).length;
+          if (currentKeywords > bestKeywords) {
+            return current;
+          }
         }
       }
       
       return best;
     });
+  }
+
+  /**
+   * 检查SPU名称是否包含特殊后缀（Pro、Max、Plus、Ultra等）
+   * 用于在分数相同时优先选择更简洁的版本
+   */
+  private hasSPUSuffix(spuName: string): boolean {
+    const suffixes = ['Pro', 'Max', 'Plus', 'Ultra', 'Mini', 'SE', 'Air', 'Lite', 'Note', 'Turbo'];
+    const lowerName = spuName.toLowerCase();
+    
+    for (const suffix of suffixes) {
+      // 检查后缀是否在名称末尾（使用单词边界）
+      const regex = new RegExp(`\\b${suffix.toLowerCase()}\\b`, 'i');
+      if (regex.test(lowerName)) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   /**
