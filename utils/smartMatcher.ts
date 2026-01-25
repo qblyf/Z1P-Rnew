@@ -939,19 +939,28 @@ export class SimpleMatcher {
   }
 
   /**
-   * 提取字母+字母格式的型号（Watch GT、Band 5、X Fold5 等）
+   * 提取字母+字母格式的型号（Watch GT、Band 5、X Fold5、Watch 十周年款 等）
    */
   private extractWordModel(normalizedStr: string): string | null {
-    // Pattern 2: 单字母 + 关键词 + 可选数字（如 X Fold5, Z Flip3）
-    const wordModelPattern2 = /\b([a-z])\s+(note|fold|flip|pad)(?:\s+(\d+))?\b/gi;
+    // Pattern 1: watch/band/buds + 英文后缀或数字
     const wordModelPattern1 = /\b(watch|band|buds|pad|fold|flip)\s+(gt|se|pro|max|plus|ultra|air|lite|x2|x3|x4|x5|s|\d+|[a-z]+\d*)(?:\s+(?:mini|pro|plus|ultra|air|lite|\d+))?\b/gi;
     
-    const wordMatches2 = normalizedStr.match(wordModelPattern2);
+    // Pattern 2: 单字母 + 关键词 + 可选数字（如 X Fold5, Z Flip3）
+    const wordModelPattern2 = /\b([a-z])\s+(note|fold|flip|pad)(?:\s+(\d+))?\b/gi;
+    
+    // Pattern 3: watch/band + 中文后缀（如 "watch十周年款"、"watch 十周年款"）
+    // 注意：不使用 \b，因为它在中英文边界不起作用
+    const wordModelPattern3 = /(watch|band|buds)\s*([\u4e00-\u9fa5]+款?)/gi;
+    
     const wordMatches1 = normalizedStr.match(wordModelPattern1);
-    const wordMatches = [...(wordMatches2 || []), ...(wordMatches1 || [])];
+    const wordMatches2 = normalizedStr.match(wordModelPattern2);
+    const wordMatches3 = normalizedStr.match(wordModelPattern3);
+    const wordMatches = [...(wordMatches1 || []), ...(wordMatches2 || []), ...(wordMatches3 || [])];
     
     if (wordMatches && wordMatches.length > 0) {
-      return wordMatches[0].toLowerCase().replace(/\s+/g, '');
+      // 优先返回最长的匹配（更具体）
+      const sorted = wordMatches.sort((a, b) => b.length - a.length);
+      return sorted[0].toLowerCase().replace(/\s+/g, '');
     }
     
     return null;
