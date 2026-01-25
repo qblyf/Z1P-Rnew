@@ -358,6 +358,10 @@ export class SimpleMatcher {
   // 性能优化：SPU 品牌索引
   private spuIndexByBrand: Map<string, SPUData[]> = new Map();
   
+  // 动态型号索引：从实际 SPU 数据中提取的型号
+  private modelIndex: Set<string> = new Set();
+  private modelByBrand: Map<string, Set<string>> = new Map();
+  
   /**
    * 初始化配置（异步）
    * 在使用 matcher 前应该调用此方法
@@ -423,9 +427,11 @@ export class SimpleMatcher {
   }
 
   /**
-   * 建立 SPU 品牌索引（性能优化）
+   * 建立 SPU 品牌索引和型号索引（性能优化）
    * 
    * 将 SPU 按品牌分组，加速查找
+   * 同时从实际 SPU 数据中提取型号，构建型号索引
+   * 
    * 时间复杂度：O(n)，n = SPU 总数
    * 空间复杂度：O(n)
    * 
@@ -433,9 +439,12 @@ export class SimpleMatcher {
    */
   buildSPUIndex(spuList: SPUData[]) {
     this.spuIndexByBrand.clear();
+    this.modelIndex.clear();
+    this.modelByBrand.clear();
     
     let indexedCount = 0;
     let noBrandCount = 0;
+    let modelCount = 0;
     
     for (const spu of spuList) {
       const brand = spu.brand || this.extractBrand(spu.name);
@@ -466,7 +475,7 @@ export class SimpleMatcher {
         }
       }
       
-      // 为每个键添加索引
+      // 为每个键添加品牌索引
       for (const key of keys) {
         if (!this.spuIndexByBrand.has(key)) {
           this.spuIndexByBrand.set(key, []);
@@ -474,14 +483,82 @@ export class SimpleMatcher {
         this.spuIndexByBrand.get(key)!.push(spu);
       }
       
+      // 提取型号并添加到型号索引
+      const model = this.extractModelFromSPU(spu.name, brand);
+      if (model) {
+        this.modelIndex.add(model);
+        modelCount++;
+        
+        // 按品牌分组型号
+        for (const key of keys) {
+          if (!this.modelByBrand.has(key)) {
+            this.modelByBrand.set(key, new Set());
+          }
+          this.modelByBrand.get(key)!.add(model);
+        }
+      }
+      
       indexedCount++;
     }
     
     console.log(`✓ SPU index built: ${this.spuIndexByBrand.size} brands, ${indexedCount} SPUs indexed, ${noBrandCount} SPUs without brand`);
+    console.log(`✓ Model index built: ${this.modelIndex.size} unique models from ${modelCount} SPUs`);
     
     // 输出品牌索引的前10个品牌（用于调试）
     const brandKeys = Array.from(this.spuIndexByBrand.keys()).slice(0, 10);
     console.log(`  品牌索引示例: ${brandKeys.join(', ')}${this.spuIndexByBrand.size > 10 ? '...' : ''}`);
+    
+    // 输出型号索引的前10个型号（用于调试）
+    const modelKeys = Array.from(this.modelIndex).slice(0, 10);
+    console.log(`  型号索引示例: ${modelKeys.join(', ')}${this.modelIndex.size > 10 ? '...' : ''}`);
+  }
+
+  /**
+   * 从 SPU 名称中提取型号
+   * 这个方法用于构建型号索引，从实际数据中学习型号模式
+   * 
+   * @param spuName SPU 名称
+   * @param brand 品牌名称
+   * @returns 提取的型号（标准化后）
+   */
+  private extractModelFromSPU(spuName: string, brand: string): string | null {
+    // 移除品牌名
+    let normalized = spuName.toLowerCase();
+    normalized = normalized.replace(brand.toLowerCase(), '').trim();
+    
+    // 移除常见的描述词
+    const descriptors = [
+      '智能手机', '手机', '智能手表', '手表', '平板电脑', '平板', '笔记本电脑', '笔记本',
+      '无线耳机', '耳机', '手环', '智能', '款', '版', '英寸', 'mm', 'gb', 'tb',
+      '钛合金', '陶瓷', '素皮', '皮革', '玻璃', '金属', '塑料',
+      '蓝牙', 'wifi', '5g', '4g', '3g', '全网通', 'esim',
+      '年', '月', '日', '新品', '上市', '发布'
+    ];
+    
+    for (const desc of descriptors) {
+      normalized = normalized.replace(new RegExp(desc, 'gi'), ' ');
+    }
+    
+    // 移除容量信息
+    normalized = normalized.replace(/\d+\s*\+\s*\d+/g, ' ');
+    normalized = normalized.replace(/\d+\s*(gb|tb)/gi, ' ');
+    
+    // 移除颜色信息（简单处理，移除常见颜色词）
+    const colors = ['黑', '白', '蓝', '红', '绿', '紫', '粉', '金', '银', '灰', '棕', '青', '橙', '黄'];
+    for (const color of colors) {
+      normalized = normalized.replace(new RegExp(`${color}[\\u4e00-\\u9fa5]*`, 'g'), ' ');
+    }
+    
+    // 清理空格
+    normalized = normalized.replace(/\s+/g, ' ').trim();
+    
+    // 如果剩余内容太短或太长，返回 null
+    if (normalized.length < 2 || normalized.length > 50) {
+      return null;
+    }
+    
+    // 移除所有空格，返回标准化的型号
+    return normalized.replace(/\s+/g, '');
   }
 
   /**
@@ -771,16 +848,26 @@ export class SimpleMatcher {
    * 提取型号（多层次匹配）
    * 
    * 匹配优先级：
+   * 0. 动态型号索引（从实际 SPU 数据中学习）
    * 1. 平板型号（MatePad、iPad 等）
    * 2. 字母+字母格式（Watch GT、Band 5 等）
    * 3. 复杂型号（14 Pro Max+、Y300 Pro+ 等）
    * 4. 简单型号（P50、14 等）
    */
-  extractModel(str: string): string | null {
+  extractModel(str: string, brand?: string | null): string | null {
     let lowerStr = str.toLowerCase();
     
     // 预处理：移除括号和品牌
     let normalizedStr = this.preprocessModelString(lowerStr);
+    
+    // 优先级0: 使用动态型号索引进行精确匹配
+    if (this.modelIndex.size > 0) {
+      const dynamicModel = this.extractModelFromIndex(normalizedStr, brand);
+      if (dynamicModel) {
+        console.log(`[动态匹配] 从型号索引中找到: "${dynamicModel}"`);
+        return dynamicModel;
+      }
+    }
     
     // ⚠️ 重要：先尝试提取简单型号（在 normalizeModel 之前）
     // 因为 normalizeModel 会在字母和数字之间添加空格，导致 "y50" 变成 "y 50"
@@ -807,6 +894,48 @@ export class SimpleMatcher {
     // 降级：尝试从标准化后的字符串提取
     const simpleModel = this.extractSimpleModel(normalizedStr);
     if (simpleModel) return simpleModel;
+    
+    return null;
+  }
+
+  /**
+   * 从动态型号索引中提取型号
+   * 使用最长公共子串匹配，找到最相似的型号
+   * 
+   * @param normalizedStr 标准化后的字符串
+   * @param brand 品牌名称（可选，用于缩小搜索范围）
+   * @returns 匹配的型号
+   */
+  private extractModelFromIndex(normalizedStr: string, brand?: string | null): string | null {
+    // 如果提供了品牌，优先在该品牌的型号中搜索
+    let modelsToSearch: Set<string>;
+    
+    if (brand && this.modelByBrand.has(brand.toLowerCase())) {
+      modelsToSearch = this.modelByBrand.get(brand.toLowerCase())!;
+    } else {
+      modelsToSearch = this.modelIndex;
+    }
+    
+    let bestMatch: string | null = null;
+    let bestScore = 0;
+    
+    // 遍历所有型号，找到最佳匹配
+    for (const model of modelsToSearch) {
+      // 检查是否包含该型号
+      if (normalizedStr.includes(model)) {
+        // 计算匹配分数（型号长度越长，分数越高）
+        const score = model.length;
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = model;
+        }
+      }
+    }
+    
+    // 只有当匹配分数足够高时才返回（至少3个字符）
+    if (bestScore >= 3) {
+      return bestMatch;
+    }
     
     return null;
   }
@@ -1332,7 +1461,7 @@ export class SimpleMatcher {
   } {
     const inputSPUPart = this.extractSPUPart(input);
     const inputBrand = this.extractBrand(inputSPUPart);
-    const inputModel = this.extractModel(inputSPUPart);
+    const inputModel = this.extractModel(inputSPUPart, inputBrand);
     const inputVersion = this.extractVersion(inputSPUPart);
     
     console.log(`[匹配调试] 输入: "${input}"`);
@@ -1471,7 +1600,7 @@ export class SimpleMatcher {
       
       const spuSPUPart = this.extractSPUPart(spu.name);
       const spuBrand = spu.brand || this.extractBrand(spuSPUPart);
-      const spuModel = this.extractModel(spuSPUPart);
+      const spuModel = this.extractModel(spuSPUPart, spuBrand);
       const spuVersion = this.extractVersion(spuSPUPart);
       
       // 调试：对于包含"15"的SPU，输出详细信息
@@ -1532,7 +1661,7 @@ export class SimpleMatcher {
       
       const spuSPUPart = this.extractSPUPart(spu.name);
       const spuBrand = spu.brand || this.extractBrand(spuSPUPart);
-      const spuModel = this.extractModel(spuSPUPart);
+      const spuModel = this.extractModel(spuSPUPart, spuBrand);
       
       // 严格的品牌过滤 - 关键修复
       const brandMatch = this.isBrandMatch(inputBrand, spuBrand);
