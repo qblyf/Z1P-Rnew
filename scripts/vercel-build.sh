@@ -18,8 +18,11 @@ setup_ssh() {
 
     # 如果提供了 SSH 私钥，配置它
     if [ -n "$SSH_PRIVATE_KEY" ]; then
+        # 同时创建两个文件名，兼容不同的配置
         echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/for-mid-deploy
+        chmod 600 ~/.ssh/for-mid-deploy
         echo "✅ SSH 私钥已配置"
     fi
 
@@ -31,8 +34,21 @@ setup_ssh() {
     else
         # 添加 GitHub 到 known_hosts
         ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+        ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>/dev/null || true
         echo "✅ GitHub 已添加到 known_hosts"
     fi
+
+    # 配置 SSH config 文件
+    cat > ~/.ssh/config <<EOF
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/for-mid-deploy
+    IdentitiesOnly yes
+    StrictHostKeyChecking no
+EOF
+    chmod 600 ~/.ssh/config
+    echo "✅ SSH config 已配置"
 
     # 配置 git 使用 SSH
     git config --global url."git@github.com:".insteadOf "https://github.com/"
