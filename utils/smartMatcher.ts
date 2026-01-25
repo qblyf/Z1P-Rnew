@@ -1081,10 +1081,14 @@ export class SimpleMatcher {
     // 注意：不使用 \b，因为它在中英文边界不起作用
     const wordModelPattern3 = /(watch|band|buds)\s*([\u4e00-\u9fa5]+款?)/gi;
     
+    // Pattern 4: watch/band + 型号代码（如 "RTS-AL00"、"LTN-AL00"）
+    const wordModelPattern4 = /(watch|band|buds)\s+([a-z]{3}-[a-z]{2}\d{2})/gi;
+    
     const wordMatches1 = normalizedStr.match(wordModelPattern1);
     const wordMatches2 = normalizedStr.match(wordModelPattern2);
     const wordMatches3 = normalizedStr.match(wordModelPattern3);
-    const wordMatches = [...(wordMatches1 || []), ...(wordMatches2 || []), ...(wordMatches3 || [])];
+    const wordMatches4 = normalizedStr.match(wordModelPattern4);
+    const wordMatches = [...(wordMatches1 || []), ...(wordMatches2 || []), ...(wordMatches3 || []), ...(wordMatches4 || [])];
     
     if (wordMatches && wordMatches.length > 0) {
       // 优先返回最长的匹配（更具体）
@@ -1275,7 +1279,7 @@ export class SimpleMatcher {
     const accessoryKeywords = this.filterKeywords?.accessoryKeywords || [
       '充电器', '充电线', '数据线', '耳机', '保护壳', '保护套', '保护膜',
       '贴膜', '钢化膜', '支架', '转接头', '适配器', '电源',
-      '原装', '配件', '套餐'
+      '原装', '配件', '套餐', '底座', '充电底座', '无线充电'
     ];
     
     const hasAccessoryKeywordInInput = accessoryKeywords.some(keyword => 
@@ -1630,9 +1634,10 @@ export class SimpleMatcher {
         const score = this.calculateExactSPUScore(inputVersion, spuVersion);
         const priority = this.getSPUPriority(input, spu.name);
         const keywordBonus = this.calculateKeywordBonus(input, spu.name);
-        const finalScore = Math.min(score + keywordBonus, 1.0);
+        const modelDetailBonus = this.calculateModelDetailBonus(inputModel, spuModel);
+        const finalScore = Math.min(score + keywordBonus + modelDetailBonus, 1.0);
         
-        console.log(`[精确匹配] ✓ 找到匹配: "${spu.name}", 分数: ${finalScore.toFixed(2)}`);
+        console.log(`[精确匹配] ✓ 找到匹配: "${spu.name}", 基础分: ${score.toFixed(2)}, 关键词加分: ${keywordBonus.toFixed(2)}, 型号详细度加分: ${modelDetailBonus.toFixed(2)}, 最终分数: ${finalScore.toFixed(2)}`);
         matches.push({ spu, score: finalScore, priority });
       }
     }
@@ -1709,10 +1714,11 @@ export class SimpleMatcher {
   }
 
   /**
-   * 计算精确匹配的 SPU 分数（基于版本匹配）
+   * 计算精确匹配的 SPU 分数（基于版本匹配和型号详细度）
    * 
-   * 改进：当输入没有版本但SPU有版本时，给予更高的分数
-   * 原因：用户输入通常省略版本信息，不应该因此大幅降低匹配分数
+   * 改进：
+   * 1. 当输入没有版本但SPU有版本时，给予更高的分数
+   * 2. 根据型号的详细程度调整分数（如包含型号代码、特殊标识等）
    */
   private calculateExactSPUScore(
     inputVersion: VersionInfo | null,
@@ -1737,6 +1743,42 @@ export class SimpleMatcher {
     }
     
     return score;
+  }
+  
+  /**
+   * 计算型号详细度加分
+   * 如果输入包含更详细的型号信息（如型号代码、特殊标识），给予加分
+   */
+  private calculateModelDetailBonus(inputModel: string | null, spuModel: string | null): number {
+    if (!inputModel || !spuModel) return 0;
+    
+    const lowerInput = inputModel.toLowerCase();
+    const lowerSPU = spuModel.toLowerCase();
+    
+    let bonus = 0;
+    
+    // 如果输入包含型号代码（如 RTS-AL00），且SPU也包含，给予加分
+    const modelCodePattern = /[a-z]{3}-[a-z]{2}\d{2}/i;
+    const inputHasCode = modelCodePattern.test(lowerInput);
+    const spuHasCode = modelCodePattern.test(lowerSPU);
+    
+    if (inputHasCode && spuHasCode) {
+      const inputCode = lowerInput.match(modelCodePattern)?.[0];
+      const spuCode = lowerSPU.match(modelCodePattern)?.[0];
+      if (inputCode === spuCode) {
+        bonus += 0.1; // 型号代码完全匹配，加10分
+      }
+    }
+    
+    // 如果输入包含特殊标识（如"十周年款"），且SPU也包含，给予加分
+    const specialKeywords = ['十周年', '周年', '纪念版', '限量版', '特别版'];
+    for (const keyword of specialKeywords) {
+      if (lowerInput.includes(keyword) && lowerSPU.includes(keyword)) {
+        bonus += 0.05; // 特殊标识匹配，加5分
+      }
+    }
+    
+    return Math.min(bonus, 0.15); // 最多加15分
   }
 
   /**
