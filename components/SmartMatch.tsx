@@ -322,14 +322,19 @@ export function SmartMatchComponent() {
               skuName: matchedSKU.name
             });
             
+            // 改进：从输入中提取规格信息，而不是从 SKU 名称中提取
+            // 这样可以保证规格标签显示的是用户输入的内容
+            const inputCapacity = matcher.extractCapacity(trimmedLine);
+            const inputColor = matcher.extractColorAdvanced(trimmedLine);
+            
             // 更新为完全匹配
             setResults(prev => prev.map((r, idx) => 
               idx === prev.length - 1 ? {
                 ...r,
                 matchedSKU: matchedSKU.name || null,
-                matchedVersion: matchedSKU.version || null,
-                matchedMemory: matchedSKU.memory || null,
-                matchedColor: matchedSKU.color || null,
+                matchedVersion: inputVersion?.name || null,
+                matchedMemory: inputCapacity || null,
+                matchedColor: inputColor || null,
                 matchedGtins: matchedSKU.gtins || [],
                 similarity: finalSimilarity,
                 status: 'matched' as const,
