@@ -20,7 +20,7 @@
     "@zsqk/somefn": "npm:@jsr/zsqk__somefn@^0.0.3",
     "@zsqk/z1-sdk": "github:zsqk/z1-mid-build",
     "ali-oss": "^6.20.0",
-    "antd": "^5.19.0",
+    "antd": "^5.29.3",
     "constate": "^3.3.2",
     "crypto-js": "^4.1.1",
     "dingtalk-jsapi": "^3.0.9",
@@ -28,14 +28,14 @@
     "lodash": "^4.17.21",
     "lucide-react": "^0.344.0",
     "moment": "^2.29.4",
-    "next": "^14.2.25",
+    "next": "^14.2.35",
     "qrcode.react": "^3.1.0",
     "react": "^18.3.1",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.3.1",
     "styled-jsx": "^5.0.2",
-    "swr": "^2.2.5",
+    "swr": "^2.3.8",
     "tiny-pinyin": "github:iugo/pinyin#master",
     "xlsx": "^0.18.5"
   },
@@ -60,6 +60,6 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "ts-jest": "^29.4.6",
-    "typescript": "^5.5.3"
+    "typescript": "^5.9.3"
   }
 }

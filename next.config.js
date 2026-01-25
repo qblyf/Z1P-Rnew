@@ -23,6 +23,12 @@ const nextConfig = {
       },
     ];
     
+    // 在服务端渲染时，将 dingtalk-jsapi 标记为外部依赖，避免 'self is not defined' 错误
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push('dingtalk-jsapi');
+    }
+    
     // 优化构建缓存
     // Note: Removed buildDependencies.config as __filename is not available in ES modules
     config.cache = {
