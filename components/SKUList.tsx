@@ -62,8 +62,13 @@ export default function SKUList(props: {
         } else if (spuCateID) {
           // 其次：如果选择了商品分类，获取该分类下所有 SPU 的 SKU
           const spus = await getSPUListNew(
-            { lastCateIDs: [spuCateID], states: [SPUState.在用] },
-            { limit: 10000, offset: 0, orderBy: [{ key: 'p."order"', sort: 'DESC' }] },
+            { 
+              lastCateIDs: [spuCateID], 
+              states: [SPUState.在用],
+              limit: 10000, 
+              offset: 0, 
+              orderBy: [{ key: 'p."order"', sort: 'DESC' }]
+            },
             ['id', 'name', 'brand', 'skuIDs']
           );
           for (const spu of spus) {
@@ -79,8 +84,12 @@ export default function SKUList(props: {
         } else {
           // 最后：如果都没选择，获取所有 SPU 的 SKU
           const spus = await getSPUListNew(
-            { states: [SPUState.在用] },
-            { limit: 10000, offset: 0, orderBy: [{ key: 'p."order"', sort: 'DESC' }] },
+            { 
+              states: [SPUState.在用],
+              limit: 10000, 
+              offset: 0, 
+              orderBy: [{ key: 'p."order"', sort: 'DESC' }]
+            },
             ['id', 'name', 'brand', 'skuIDs']
           );
           for (const spu of spus) {
