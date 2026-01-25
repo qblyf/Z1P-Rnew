@@ -319,9 +319,17 @@ export default function SPUAdd() {
                 { auth: token }
               );
               init();
-              // update spu list
+              // update spu list - 只添加 spuList 需要的字段
+              const newSpu = { 
+                id, 
+                name: input.name,
+                brand: input.brand,
+                series: input.series,
+                generation: input.generation,
+                order: Number(order)
+              };
               setSpuList(
-                update(spuList, { $push: [{ ...info, id, skuIDs: [] }] })
+                update(spuList, { $push: [newSpu as any] }) as any
               );
             })}
           >
