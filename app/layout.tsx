@@ -1,5 +1,10 @@
 'use client';
 
+// 强制所有页面使用动态渲染，避免静态生成时的 SSR 错误
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+export const revalidate = 0;
+
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/lib/locale/zh_CN';
 import { init } from '@zsqk/z1-sdk/es/z1p/util';
