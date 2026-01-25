@@ -46,12 +46,12 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   
-  // 实验性功能：在预渲染错误时继续构建
-  // 这允许构建在遇到 SSR 错误时继续进行，因为页面在运行时仍然可以正常工作
+  // 禁用静态页面生成 - 所有页面都使用 SSR
+  // 这避免了预渲染时的浏览器 API 错误
   experimental: {
-    // 允许在静态生成失败时回退到客户端渲染
-    fallbackNodePolyfills: false,
+    isrMemoryCacheSize: 0,
   },
+
   
   // 生成配置：在遇到错误时不中断构建
   // 这对于使用浏览器专用 API 的页面很有用
