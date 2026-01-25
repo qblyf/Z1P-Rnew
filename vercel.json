@@ -1,4 +1,5 @@
 {
   "ignoreCommand": "git diff --quiet HEAD^ HEAD ./",
-  "buildCommand": "bash scripts/vercel-build.sh"
+  "installCommand": "bash scripts/vercel-build.sh install",
+  "buildCommand": "bash scripts/vercel-build.sh build"
 }
