@@ -362,11 +362,12 @@ export default function SmartMatch() {
             const inputColor = matcher.extractColorAdvanced(trimmedLine);
             
             // 更新为完全匹配
+            // 注意：不显示版本信息，因为 "Pro" 等通常是 SPU 型号的一部分，不是 SKU 版本属性
             setResults(prev => prev.map((r, idx) => 
               idx === prev.length - 1 ? {
                 ...r,
                 matchedSKU: matchedSKU.name || null,
-                matchedVersion: inputVersion?.name || null,
+                matchedVersion: null,  // 不显示版本，避免显示 SPU 型号信息
                 matchedMemory: inputCapacity || null,
                 matchedColor: inputColor || null,
                 matchedGtins: matchedSKU.gtins || [],
