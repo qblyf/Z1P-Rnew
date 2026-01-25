@@ -876,15 +876,19 @@ export class SimpleMatcher {
   }
 
   /**
-   * 提取平板型号（MatePad、iPad 等）
+   * 提取平板型号（MatePad、iPad、Pad 等）
    * 
    * 支持格式：
    * - MatePad Pro
    * - iPad Air 2026
    * - MatePad 11
+   * - Pad 4 Pro
+   * - Pad4Pro (连写)
    */
   private extractTabletModel(normalizedStr: string): string | null {
-    const tabletModelPattern = /\b(matepad|ipad|pad)(?:[a-z]*)?(?:[\u4e00-\u9fa5]*)?(?:\s*(?:(pro|air|mini|plus|ultra|lite|se|x|m|t|s)?(?:\s+(\d+))?)?)?/gi;
+    // 改进的正则表达式，支持连写和空格分隔
+    // 匹配: pad, pad4, pad 4, pad4pro, pad 4 pro, pad4 pro 等
+    const tabletModelPattern = /\b(matepad|ipad|pad)\s*(\d+)?\s*(pro|air|mini|plus|ultra|lite|se|x|m|t|s)?\b/gi;
     const tabletMatches = normalizedStr.match(tabletModelPattern);
     
     if (!tabletMatches || tabletMatches.length === 0) {
@@ -893,7 +897,11 @@ export class SimpleMatcher {
     
     // 提取型号并清理
     let tabletModel = tabletMatches[0].toLowerCase().trim();
+    
+    // 移除中文字符
     tabletModel = tabletModel.replace(/[\u4e00-\u9fa5]/g, '').trim();
+    
+    // 标准化空格（移除所有空格）
     tabletModel = tabletModel.replace(/\s+/g, '');
     
     // 检查是否有年份信息
@@ -1098,7 +1106,22 @@ export class SimpleMatcher {
       return true;
     }
     
-    // 规则2: 版本互斥过滤
+    // 规则2: 赠品/定制/限定过滤
+    const giftKeywords = ['赠品', '定制', '限定', '立牌', '周边', '手办', '摆件'];
+    const hasGiftKeywordInInput = giftKeywords.some(keyword => 
+      lowerInput.includes(keyword)
+    );
+    const hasGiftKeywordInSPU = giftKeywords.some(keyword => 
+      lowerSPU.includes(keyword)
+    );
+    
+    // 如果输入不包含赠品关键词，但 SPU 包含赠品关键词，则过滤
+    if (!hasGiftKeywordInInput && hasGiftKeywordInSPU) {
+      console.log(`[过滤] SPU "${spuName}" 被过滤 - 包含赠品/定制关键词`);
+      return true;
+    }
+    
+    // 规则3: 版本互斥过滤
     const hasBluetooth = lowerInput.includes('蓝牙版');
     const hasESIM = lowerInput.includes('esim版') || lowerInput.includes('esim版');
     
@@ -1110,7 +1133,7 @@ export class SimpleMatcher {
       return true;
     }
     
-    // 规则3: 配件过滤（使用配置或默认值）
+    // 规则4: 配件过滤（使用配置或默认值）
     const accessoryKeywords = this.filterKeywords?.accessoryKeywords || [
       '充电器', '充电线', '数据线', '耳机', '保护壳', '保护套', '保护膜',
       '贴膜', '钢化膜', '支架', '转接头', '适配器', '电源',
