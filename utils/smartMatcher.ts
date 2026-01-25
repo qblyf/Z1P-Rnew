@@ -535,8 +535,8 @@ export class SimpleMatcher {
    * 2. 产品版本（标准版、活力版等）
    * 
    * 特殊处理：
-   * - "Pro" 如果是型号的一部分（如 Reno Pro, Y300 Pro），则不识别为版本
-   * - "Pro" 如果后面跟着 mini/max/plus 等，则是型号的一部分，不是版本
+   * - mini/max/plus/ultra/air/lite/se/pro 都是型号的一部分，不识别为版本
+   * - 这些词通常出现在型号中（如 iPhone 15 Pro Max, Watch GT 3 Pro 等）
    */
   extractVersion(input: string): VersionInfo | null {
     const lowerInput = input.toLowerCase();
@@ -561,27 +561,11 @@ export class SimpleMatcher {
       for (const keyword of versionInfo.keywords) {
         const lowerKeyword = keyword.toLowerCase();
         
-        // 特殊处理：如果是 "pro"，检查是否是型号的一部分
-        if (lowerKeyword === 'pro' || lowerKeyword === 'pro版') {
-          // 检查 "pro" 是否是型号的一部分
-          // 情况1: "pro" 后面跟着型号后缀（mini, max, plus, ultra 等）
-          const proSuffixPattern = /\bpro\s*(mini|max|plus|ultra|air|lite|se)\b/i;
-          if (proSuffixPattern.test(input)) {
-            continue;
-          }
-          
-          // 情况2: "pro" 前面跟着型号名称（如 reno pro, y300 pro, find pro 等）
-          // 常见的型号名称：reno, y300, find, oppo, vivo, xiaomi 等
-          const proModelPattern = /\b(reno|y\d+|find|note|a\d+|f\d+|k\d+|s\d+|x\d+|pad|watch|band|buds|fold|flip)\s+pro\b/i;
-          if (proModelPattern.test(input)) {
-            continue;
-          }
-          
-          // 情况3: "pro" 单独出现在型号中（如 "reno15pro"）
-          const proInModelPattern = /\b[a-z]+\d+pro\b/i;
-          if (proInModelPattern.test(input)) {
-            continue;
-          }
+        // 特殊处理：这些词都是型号的一部分，不识别为版本
+        const modelSuffixes = ['pro', 'mini', 'max', 'plus', 'ultra', 'air', 'lite', 'se'];
+        if (modelSuffixes.includes(lowerKeyword)) {
+          // 这些词都是型号的一部分，直接跳过
+          continue;
         }
         
         if (lowerInput.includes(lowerKeyword)) {
