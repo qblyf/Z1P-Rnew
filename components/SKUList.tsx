@@ -1,8 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { SkuID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { Alert, Col, Row, Table, Tag, Input, Button, Tooltip } from 'antd';
-import { BarcodeOutlined } from '@ant-design/icons';
-import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
+import { Alert, Col, Row, Table, Tag, Input, Button } from 'antd';
+import { getSPUListNew, getSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
 import { useSpuIDContext, useSPUCateIDContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
@@ -108,41 +107,8 @@ export default function SKUList(props: {
           }
         }
         
-        // 批量获取SKU详细信息（包含listPrice、gtins等）
-        // 分批请求，避免 URL 过长
-        if (skus.length > 0) {
-          const skuIds = skus.map(sku => sku.skuID);
-          const batchSize = 50; // 每批最多 50 个 ID
-          const allSkuDetails: any[] = [];
-          
-          console.log(`总共 ${skuIds.length} 个 SKU，分 ${Math.ceil(skuIds.length / batchSize)} 批请求`);
-          
-          for (let i = 0; i < skuIds.length; i += batchSize) {
-            const batch = skuIds.slice(i, i + batchSize);
-            console.log(`请求第 ${Math.floor(i / batchSize) + 1} 批，包含 ${batch.length} 个 SKU`);
-            try {
-              const batchDetails = await getSKUsInfo(batch);
-              allSkuDetails.push(...batchDetails);
-            } catch (err) {
-              console.error(`第 ${Math.floor(i / batchSize) + 1} 批请求失败:`, err);
-            }
-          }
-          
-          // 合并详细信息到SKU列表
-          skus = skus.map(sku => {
-            const detail = allSkuDetails.find(d => d.id === sku.skuID);
-            if (detail && !('errInfo' in detail)) {
-              return {
-                ...sku,
-                listPrice: detail.listPrice,
-                gtins: detail.gtins,
-                name: detail.name,
-              };
-            }
-            return sku;
-          });
-        }
-        
+        // 不再预加载所有 SKU 详情，只保存基本信息
+        // SKU 详情（listPrice、gtins 等）将在需要时按需加载
         setSkuList(skus);
         setSelectedSkuID(undefined);
       } catch (err) {
@@ -271,23 +237,10 @@ export default function SKUList(props: {
               // 组合 SPU 名称和 SKU 规格
               const fullName = v.spuName ? `${v.spuName} ${skuName}` : skuName;
               
-              // 格式化官网价
-              const listPrice = v.listPrice ? `¥${(v.listPrice / 100).toFixed(2)}` : '-';
-              
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                   <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {fullName}
-                  </div>
-                  <div style={{ flexShrink: 0, display: 'flex', gap: '4px', alignItems: 'center' }}>
-                    {v.gtins && v.gtins.length > 0 && (
-                      <Tooltip title={v.gtins.join(', ')}>
-                        <BarcodeOutlined style={{ cursor: 'pointer', color: '#1890ff' }} />
-                      </Tooltip>
-                    )}
-                    <span style={{ fontSize: '12px', color: '#666', minWidth: '60px', textAlign: 'right' }}>
-                      {listPrice}
-                    </span>
                   </div>
                 </div>
               );
