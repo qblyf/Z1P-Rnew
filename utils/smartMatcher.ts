@@ -1378,11 +1378,12 @@ export class SimpleMatcher {
       return fullNetworkFiveGMatch[1].trim();
     }
     
-    // 规则2: 检查单独的 "5G"
-    const fiveGPattern = /(.+?)\s*5g(?:版)?\b/i;
-    const fiveGMatch = str.match(fiveGPattern);
-    if (fiveGMatch) {
-      return fiveGMatch[1].trim();
+    // 规则2: 检查网络制式（5G、4G、3G 等）
+    // 这些都是 SKU 级别的属性，不属于 SPU
+    const networkPattern = /(.+?)\s*(?:5g|4g|3g|2g)(?:版)?\b/i;
+    const networkMatch = str.match(networkPattern);
+    if (networkMatch) {
+      return networkMatch[1].trim();
     }
     
     // 规则3: 如果找到容量（改进：支持 4+128 格式）
