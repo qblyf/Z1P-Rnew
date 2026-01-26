@@ -1699,16 +1699,26 @@ export class SimpleMatcher {
     // 收集所有提取的型号（用于调试）
     const extractedModels = new Set<string>();
     
+    // 调试：输出前10个候选SPU
+    console.log(`[精确匹配] 前10个候选SPU:`);
+    spuList.slice(0, 10).forEach((spu, index) => {
+      console.log(`  ${index + 1}. "${spu.name}" (ID: ${spu.id}, 品牌: ${spu.brand || '未设置'})`);
+    });
+    
     for (const spu of spuList) {
       checkedCount++;
       
-      // 调试：对于包含"15"的SPU，输出检查信息
-      if (spu.name.includes('15')) {
-        console.log(`[精确匹配] 检查SPU: "${spu.name}"`);
+      // 调试：对于包含"15"或"R"的SPU，输出检查信息
+      const lowerName = spu.name.toLowerCase();
+      if (lowerName.includes('15') || lowerName.includes('r')) {
+        console.log(`[精确匹配] 检查SPU: "${spu.name}" (ID: ${spu.id})`);
       }
       
       if (this.shouldFilterSPU(input, spu.name)) {
         filteredCount++;
+        if (lowerName.includes('15') || lowerName.includes('r')) {
+          console.log(`[精确匹配] SPU被过滤`);
+        }
         continue;
       }
       
