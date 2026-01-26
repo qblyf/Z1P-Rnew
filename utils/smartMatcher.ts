@@ -1607,20 +1607,30 @@ export class SimpleMatcher {
       const spuModel = this.extractModel(spuSPUPart, spuBrand);
       const spuVersion = this.extractVersion(spuSPUPart);
       
-      // 调试：对于包含"15"的SPU，输出详细信息
-      if (spu.name.includes('15') && spu.name.includes('R')) {
-        const spuModelNormalized = spuModel?.toLowerCase().replace(/\s+/g, '');
+      // 调试：对于包含"s50"的SPU，输出详细信息
+      if (spu.name.toLowerCase().includes('s50')) {
+        const normalizeForComparison = (model: string) => model.toLowerCase().replace(/[\s\-_]/g, '');
+        const spuModelNormalized = spuModel ? normalizeForComparison(spuModel) : 'null';
+        const inputModelNormalized = inputModel ? normalizeForComparison(inputModel) : 'null';
         console.log(`[精确匹配] 检查SPU: "${spu.name}"`);
         console.log(`  SPU部分: "${spuSPUPart}"`);
         console.log(`  SPU品牌: "${spuBrand}"`);
         console.log(`  SPU型号: "${spuModel}" -> "${spuModelNormalized}"`);
+        console.log(`  输入型号: "${inputModel}" -> "${inputModelNormalized}"`);
+        console.log(`  型号匹配: ${spuModelNormalized === inputModelNormalized}`);
         console.log(`  SPU版本: ${spuVersion ? `"${spuVersion.name}"` : 'null'}`);
       }
       
       // 品牌和型号必须完全匹配
       const brandMatch = this.isBrandMatch(inputBrand, spuBrand);
+      
+      // 标准化型号进行比较：移除所有空格和特殊字符
+      const normalizeForComparison = (model: string) => {
+        return model.toLowerCase().replace(/[\s\-_]/g, '');
+      };
+      
       const modelMatch = inputModel && spuModel && 
-                        inputModel.toLowerCase().replace(/\s+/g, '') === spuModel.toLowerCase().replace(/\s+/g, '');
+                        normalizeForComparison(inputModel) === normalizeForComparison(spuModel);
       
       if (!brandMatch) {
         brandMismatchCount++;
