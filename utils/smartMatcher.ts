@@ -544,10 +544,12 @@ export class SimpleMatcher {
     normalized = normalized.replace(/\d+\s*\+\s*\d+/g, ' ');
     normalized = normalized.replace(/\d+\s*(gb|tb)/gi, ' ');
     
-    // 移除颜色信息（简单处理，移除常见颜色词）
+    // 移除颜色信息（改进：移除颜色词及其前后的中文字符）
+    // 例如："星岩黑" -> 全部移除，而不是只移除 "黑"
     const colors = ['黑', '白', '蓝', '红', '绿', '紫', '粉', '金', '银', '灰', '棕', '青', '橙', '黄'];
     for (const color of colors) {
-      normalized = normalized.replace(new RegExp(`${color}[\\u4e00-\\u9fa5]*`, 'g'), ' ');
+      // 匹配：颜色词前面的中文字符 + 颜色词 + 颜色词后面的中文字符
+      normalized = normalized.replace(new RegExp(`[\\u4e00-\\u9fa5]*${color}[\\u4e00-\\u9fa5]*`, 'g'), ' ');
     }
     
     // 清理空格
