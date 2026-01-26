@@ -194,7 +194,12 @@ function QrLoginDeskPage() {
       <div className="w-full max-w-md">
         {/* 头部 */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-full mb-4">
+          <div 
+            className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4"
+            style={{
+              background: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)'
+            }}
+          >
             <span className="text-white font-bold text-2xl">Z1</span>
           </div>
           <h1 className="text-3xl font-bold text-slate-800 mb-2">Z1 平台</h1>
