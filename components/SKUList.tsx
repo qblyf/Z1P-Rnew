@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { SkuID, SKUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { Alert, Col, Row, Table, Tag, Input, Button } from 'antd';
-import { getSKUList, getSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
+import { getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
 import { useSpuIDContext, useSPUCateIDContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
@@ -52,43 +52,30 @@ export default function SKUList(props: {
       setLoading(true);
       console.log('开始加载 SKU 列表...');
       try {
-        // 使用 getSKUList API 获取 SKU 列表
-        const skus = await getSKUList(
+        // 使用 getSKUListJoinSPU API 一次性获取 SKU 和 SPU 关联数据
+        const skus = await getSKUListJoinSPU(
           {
             states: [SKUState.在用],
             limit: 10000,
             offset: 0,
-            orderBy: { key: 'id', sort: 'DESC' },
+            orderBy: { key: 'p.id', sort: 'DESC' },
           },
-          ['id', 'name', 'state', 'spuID']
+          {
+            sku: ['id', 'name', 'state'],
+            spu: ['brand', 'spuName'],
+          }
         );
         
-        // 获取每个 SKU 对应的 SPU 信息
-        const skuWithSpuInfo = await Promise.all(
-          skus.map(async (sku) => {
-            try {
-              const spuInfo = await getSPUInfo(sku.spuID);
-              return {
-                skuID: sku.id,
-                name: sku.name,
-                state: sku.state,
-                spuName: spuInfo.name,
-                brand: spuInfo.brand,
-              };
-            } catch (err) {
-              console.error(`获取 SPU ${sku.spuID} 信息失败:`, err);
-              return {
-                skuID: sku.id,
-                name: sku.name,
-                state: sku.state,
-                spuName: '',
-                brand: '',
-              };
-            }
-          })
-        );
+        // 转换数据格式
+        const formattedSkus = skus.map((sku: any) => ({
+          skuID: sku.id,
+          name: sku.name,
+          state: sku.state,
+          spuName: sku.spuName || '',
+          brand: sku.brand || '',
+        }));
         
-        setSkuList(skuWithSpuInfo);
+        setSkuList(formattedSkus);
         setSelectedSkuID(undefined);
       } catch (err) {
         console.error('获取 SKU 列表失败:', err);
