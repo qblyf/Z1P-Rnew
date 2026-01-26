@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { SkuID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { Alert, Col, Row, Table, Tag, Input, Button } from 'antd';
-import { getSPUListNew, getSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
+import { getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
 import { useSpuIDContext, useSPUCateIDContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
@@ -52,64 +52,32 @@ export default function SKUList(props: {
       setLoading(true);
       console.log('开始加载 SKU 列表...');
       try {
-        let skus: any[] = [];
-        
-        if (spuID) {
-          // SPU 选择优先级最高：如果选择了 SPU，只获取该 SPU 的 SKU
-          const spu = await getSPUInfo(spuID);
-          skus = (spu.skuIDs || []).map(sku => ({
-            ...sku,
-            spuName: spu.name,
-            brand: spu.brand,
-          }));
-        } else if (spuCateID) {
-          // 其次：如果选择了商品分类，获取该分类下所有 SPU 的 SKU
-          const spus = await getSPUListNew(
-            { 
-              lastCateIDs: [spuCateID], 
-              states: [SPUState.在用],
-              limit: 10000, 
-              offset: 0, 
-              orderBy: [{ key: 'p."order"', sort: 'DESC' }]
-            },
-            ['id', 'name', 'brand', 'skuIDs']
-          );
-          for (const spu of spus) {
-            if (spu.skuIDs && Array.isArray(spu.skuIDs)) {
-              const skusWithSpuName = spu.skuIDs.map(sku => ({
-                ...sku,
-                spuName: spu.name,
-                brand: spu.brand,
-              }));
-              skus = skus.concat(skusWithSpuName);
-            }
+        // 使用 getSKUListJoinSPU API 直接获取 SKU 列表
+        const skus = await getSKUListJoinSPU(
+          {
+            states: [0], // 0 表示在用状态
+            limit: 10000,
+            offset: 0,
+            orderBy: { key: 'p.id', sort: 'DESC' },
+          },
+          {
+            sku: ['id', 'combo', 'spec', 'color', 'state'],
+            spu: ['spuName', 'brand'],
           }
-        } else {
-          // 最后：如果都没选择，获取所有 SPU 的 SKU
-          const spus = await getSPUListNew(
-            { 
-              states: [SPUState.在用],
-              limit: 10000, 
-              offset: 0, 
-              orderBy: [{ key: 'p."order"', sort: 'DESC' }]
-            },
-            ['id', 'name', 'brand', 'skuIDs']
-          );
-          for (const spu of spus) {
-            if (spu.skuIDs && Array.isArray(spu.skuIDs)) {
-              const skusWithSpuName = spu.skuIDs.map(sku => ({
-                ...sku,
-                spuName: spu.name,
-                brand: spu.brand,
-              }));
-              skus = skus.concat(skusWithSpuName);
-            }
-          }
-        }
+        );
         
-        // 不再预加载所有 SKU 详情，只保存基本信息
-        // SKU 详情（listPrice、gtins 等）将在需要时按需加载
-        setSkuList(skus);
+        // 转换数据格式以匹配原有的结构
+        const formattedSkus = skus.map(sku => ({
+          skuID: sku.id,
+          combo: sku.combo,
+          spec: sku.spec,
+          color: sku.color,
+          state: sku.state,
+          spuName: sku.spuName,
+          brand: sku.brand,
+        }));
+        
+        setSkuList(formattedSkus);
         setSelectedSkuID(undefined);
       } catch (err) {
         console.error('获取 SKU 列表失败:', err);
