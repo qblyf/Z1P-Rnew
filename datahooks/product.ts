@@ -81,7 +81,7 @@ function useSPUList() {
   const { spuCateID } = useSPUCateIDContext();
   const { setSpuID } = useSpuIDContext();
 
-  useEffect(() => {
+  const update = useCallback(() => {
     // 使用startTransition标记为低优先级更新，不阻塞用户交互
     startTransition(() => {
       lessAwait(async () => {
@@ -108,6 +108,10 @@ function useSPUList() {
       })();
     });
   }, [spuCateID, setSpuID]);
+
+  useEffect(() => {
+    update();
+  }, [update]);
 
   return { spuList, setSpuList, isPending };
 }
