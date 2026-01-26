@@ -513,6 +513,11 @@ export class SimpleMatcher {
           }
           this.modelByBrand.get(key)!.add(model);
         }
+      } else {
+        // 调试：记录型号提取失败的SPU
+        if (spu.name.includes('15R') || spu.name.includes('15r')) {
+          console.warn(`⚠️  型号提取失败: "${spu.name}" (品牌: ${brand})`);
+        }
       }
       
       indexedCount++;
