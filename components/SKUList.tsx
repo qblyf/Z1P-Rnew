@@ -109,13 +109,28 @@ export default function SKUList(props: {
         }
         
         // 批量获取SKU详细信息（包含listPrice、gtins等）
+        // 分批请求，避免 URL 过长
         if (skus.length > 0) {
           const skuIds = skus.map(sku => sku.skuID);
-          const skuDetails = await getSKUsInfo(skuIds);
+          const batchSize = 50; // 每批最多 50 个 ID
+          const allSkuDetails: any[] = [];
+          
+          console.log(`总共 ${skuIds.length} 个 SKU，分 ${Math.ceil(skuIds.length / batchSize)} 批请求`);
+          
+          for (let i = 0; i < skuIds.length; i += batchSize) {
+            const batch = skuIds.slice(i, i + batchSize);
+            console.log(`请求第 ${Math.floor(i / batchSize) + 1} 批，包含 ${batch.length} 个 SKU`);
+            try {
+              const batchDetails = await getSKUsInfo(batch);
+              allSkuDetails.push(...batchDetails);
+            } catch (err) {
+              console.error(`第 ${Math.floor(i / batchSize) + 1} 批请求失败:`, err);
+            }
+          }
           
           // 合并详细信息到SKU列表
           skus = skus.map(sku => {
-            const detail = skuDetails.find(d => d.id === sku.skuID);
+            const detail = allSkuDetails.find(d => d.id === sku.skuID);
             if (detail && !('errInfo' in detail)) {
               return {
                 ...sku,
