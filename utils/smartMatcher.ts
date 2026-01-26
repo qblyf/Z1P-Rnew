@@ -458,20 +458,37 @@ export class SimpleMatcher {
       const keys = [brand.toLowerCase()];
       
       // 正向查找：如果品牌是中文，添加其拼音
-      const brandInfo = this.brandList.find(b => b.name === brand);
+      // 使用大小写不敏感的匹配
+      const brandInfo = this.brandList.find(b => 
+        b.name.toLowerCase() === brand.toLowerCase()
+      );
       if (brandInfo && brandInfo.spell) {
         const spellKey = brandInfo.spell.toLowerCase();
         if (!keys.includes(spellKey)) {
           keys.push(spellKey);
         }
+        // 同时添加中文品牌名（标准化后的）
+        const chineseKey = brandInfo.name.toLowerCase();
+        if (!keys.includes(chineseKey)) {
+          keys.push(chineseKey);
+        }
       }
       
       // 反向查找：如果品牌是拼音，添加对应的中文品牌名
-      const brandInfoBySpell = this.brandList.find(b => b.spell?.toLowerCase() === brand.toLowerCase());
+      const brandInfoBySpell = this.brandList.find(b => 
+        b.spell?.toLowerCase() === brand.toLowerCase()
+      );
       if (brandInfoBySpell && brandInfoBySpell.name) {
         const chineseKey = brandInfoBySpell.name.toLowerCase();
         if (!keys.includes(chineseKey)) {
           keys.push(chineseKey);
+        }
+        // 同时添加拼音（标准化后的）
+        if (brandInfoBySpell.spell) {
+          const spellKey = brandInfoBySpell.spell.toLowerCase();
+          if (!keys.includes(spellKey)) {
+            keys.push(spellKey);
+          }
         }
       }
       
