@@ -885,6 +885,12 @@ export class SimpleMatcher {
     // 预处理：移除括号和品牌
     let normalizedStr = this.preprocessModelString(lowerStr);
     
+    // 调试：对于包含"15r"的字符串，输出预处理结果
+    if (lowerStr.includes('15r')) {
+      console.log(`[extractModel] 输入: "${str}"`);
+      console.log(`[extractModel] 预处理后: "${normalizedStr}" (长度: ${normalizedStr.length})`);
+    }
+    
     // 优先级0: 使用动态型号索引进行精确匹配
     if (this.modelIndex.size > 0) {
       const dynamicModel = this.extractModelFromIndex(normalizedStr, brand);
@@ -897,6 +903,11 @@ export class SimpleMatcher {
     // ⚠️ 重要：先尝试提取简单型号（在 normalizeModel 之前）
     // 因为 normalizeModel 会在字母和数字之间添加空格，导致 "y50" 变成 "y 50"
     const simpleModelBeforeNormalize = this.extractSimpleModel(normalizedStr);
+    
+    // 调试：对于包含"15r"的字符串，输出简单型号提取结果
+    if (lowerStr.includes('15r')) {
+      console.log(`[extractModel] 简单型号提取: ${simpleModelBeforeNormalize ? `"${simpleModelBeforeNormalize}"` : 'null'}`);
+    }
     
     // 应用智能标准化（用于复杂型号匹配）
     normalizedStr = this.normalizeModel(normalizedStr);
@@ -919,6 +930,11 @@ export class SimpleMatcher {
     // 降级：尝试从标准化后的字符串提取
     const simpleModel = this.extractSimpleModel(normalizedStr);
     if (simpleModel) return simpleModel;
+    
+    // 调试：对于包含"15r"的字符串，输出提取失败信息
+    if (lowerStr.includes('15r')) {
+      console.log(`[extractModel] ❌ 型号提取失败`);
+    }
     
     return null;
   }
