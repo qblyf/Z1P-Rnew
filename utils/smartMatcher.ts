@@ -1728,6 +1728,25 @@ export class SimpleMatcher {
       console.log(`  1. 数据库中是否存在该型号的产品`);
       console.log(`  2. 产品名称格式是否不同（如"Note 15R"而不是"15R"）`);
       console.log(`  3. 型号提取逻辑是否需要调整`);
+      
+      // 额外调试：输出型号提取失败的SPU名称（前10个）
+      if (modelExtractionFailedCount > 0) {
+        console.log(`[精确匹配] 🔍 型号提取失败的SPU示例（共${modelExtractionFailedCount}个）:`);
+        let failedCount = 0;
+        for (const spu of spuList) {
+          if (this.shouldFilterSPU(input, spu.name)) continue;
+          
+          const spuSPUPart = this.extractSPUPart(spu.name);
+          const spuBrand = spu.brand || this.extractBrand(spuSPUPart);
+          const spuModel = this.extractModel(spuSPUPart, spuBrand);
+          
+          if (!spuModel) {
+            console.log(`  - "${spu.name}" (品牌: ${spu.brand || '未设置'})`);
+            failedCount++;
+            if (failedCount >= 10) break;
+          }
+        }
+      }
     }
     
     return matches;
