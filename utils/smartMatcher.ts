@@ -885,9 +885,10 @@ export class SimpleMatcher {
     // 预处理：移除括号和品牌
     let normalizedStr = this.preprocessModelString(lowerStr);
     
-    // 调试：对于包含"15r"的字符串，输出预处理结果
-    if (lowerStr.includes('15r')) {
+    // 调试：对于包含"15"的字符串，输出预处理结果
+    if (lowerStr.includes('15')) {
       console.log(`[extractModel] 输入: "${str}"`);
+      console.log(`[extractModel] 小写后: "${lowerStr}"`);
       console.log(`[extractModel] 预处理后: "${normalizedStr}" (长度: ${normalizedStr.length})`);
     }
     
@@ -904,8 +905,8 @@ export class SimpleMatcher {
     // 因为 normalizeModel 会在字母和数字之间添加空格，导致 "y50" 变成 "y 50"
     const simpleModelBeforeNormalize = this.extractSimpleModel(normalizedStr);
     
-    // 调试：对于包含"15r"的字符串，输出简单型号提取结果
-    if (lowerStr.includes('15r')) {
+    // 调试：对于包含"15"的字符串，输出简单型号提取结果
+    if (lowerStr.includes('15')) {
       console.log(`[extractModel] 简单型号提取: ${simpleModelBeforeNormalize ? `"${simpleModelBeforeNormalize}"` : 'null'}`);
     }
     
@@ -931,8 +932,8 @@ export class SimpleMatcher {
     const simpleModel = this.extractSimpleModel(normalizedStr);
     if (simpleModel) return simpleModel;
     
-    // 调试：对于包含"15r"的字符串，输出提取失败信息
-    if (lowerStr.includes('15r')) {
+    // 调试：对于包含"15"的字符串，输出提取失败信息
+    if (lowerStr.includes('15')) {
       console.log(`[extractModel] ❌ 型号提取失败`);
     }
     
@@ -970,8 +971,8 @@ export class SimpleMatcher {
     // 标准化输入字符串：移除所有空格和特殊字符
     const normalizedInput = normalizedStr.replace(/[\s\-_]/g, '').toLowerCase();
     
-    // 调试：对于包含"15r"的输入，输出详细信息
-    if (normalizedInput.includes('15r')) {
+    // 调试：对于包含"15"的输入，输出详细信息
+    if (normalizedInput.includes('15')) {
       console.log(`[动态索引匹配] 输入: "${normalizedStr}" -> "${normalizedInput}"`);
       console.log(`[动态索引匹配] 品牌: "${brand}", 候选型号数: ${modelsToSearch.size}`);
       console.log(`[动态索引匹配] 候选型号: ${Array.from(modelsToSearch).slice(0, 10).join(', ')}${modelsToSearch.size > 10 ? '...' : ''}`);
@@ -991,10 +992,13 @@ export class SimpleMatcher {
         // 计算完整性分数：型号覆盖了输入的多少内容
         const completeness = normalizedModel.length / normalizedInput.length;
         
-        // 调试：对于"15r"相关的匹配，输出详细信息
-        if (normalizedInput.includes('15r') && normalizedModel === '15r') {
-          console.log(`[动态索引匹配] 找到匹配: "${model}" (标准化: "${normalizedModel}")`);
-          console.log(`[动态索引匹配] 完整性: ${completeness.toFixed(2)} (${normalizedModel.length}/${normalizedInput.length})`);
+        // 调试：对于"15"相关的匹配，输出详细信息
+        if (normalizedInput.includes('15') && normalizedModel.includes('15')) {
+          console.log(`[动态索引匹配] 检查型号: "${model}" (标准化: "${normalizedModel}")`);
+          console.log(`[动态索引匹配] 是否包含: ${normalizedInput.includes(normalizedModel)}`);
+          if (normalizedInput.includes(normalizedModel)) {
+            console.log(`[动态索引匹配] 完整性: ${completeness.toFixed(2)} (${normalizedModel.length}/${normalizedInput.length})`);
+          }
         }
         
         // 优先选择完整性更高的
@@ -1013,16 +1017,16 @@ export class SimpleMatcher {
     
     // 只有当匹配分数足够高时才返回（至少覆盖50%的输入）
     if (bestCompleteness >= 0.5 && bestMatch) {
-      // 调试：对于"15r"相关的匹配，输出结果
-      if (normalizedInput.includes('15r')) {
+      // 调试：对于"15"相关的匹配，输出结果
+      if (normalizedInput.includes('15')) {
         console.log(`[动态索引匹配] 最佳匹配: "${bestMatch}", 完整性: ${bestCompleteness.toFixed(2)}`);
       }
       return bestMatch;
     }
     
-    // 调试：对于"15r"相关的匹配失败，输出原因
-    if (normalizedInput.includes('15r')) {
-      console.log(`[动态索引匹配] ❌ 匹配失败: 完整性 ${bestCompleteness.toFixed(2)} < 0.5`);
+    // 调试：对于"15"相关的匹配失败，输出原因
+    if (normalizedInput.includes('15')) {
+      console.log(`[动态索引匹配] ❌ 匹配失败: 完整性 ${bestCompleteness.toFixed(2)} < 0.5 或 bestMatch=${bestMatch}`);
     }
     
     return null;
