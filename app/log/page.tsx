@@ -215,7 +215,7 @@ function Log(): JSX.Element {
         destroyOnClose
         open={addVisible}
         onClose={() => setAddVisible(false)}
-        width={450}
+        width={typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 450}
       >
         <LogAdd close={() => setAddVisible(false)} updateList={getLogList} />
       </Drawer>
@@ -224,7 +224,7 @@ function Log(): JSX.Element {
         destroyOnClose
         open={editVisible}
         onClose={() => setEditVisible(false)}
-        width={450}
+        width={typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 450}
       >
         <LogEdit
           close={() => setEditVisible(false)}

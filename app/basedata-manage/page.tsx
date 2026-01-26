@@ -366,7 +366,7 @@ function BrandManage() {
           </Space>
         }
         placement="right"
-        width={420}
+        width={typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 420}
         open={drawerOpen}
         onClose={handleDrawerClose}
         styles={{

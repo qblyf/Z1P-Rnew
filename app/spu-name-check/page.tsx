@@ -1144,7 +1144,7 @@ export default function () {
           placement="right"
           onClose={handleCloseDrawer}
           open={drawerOpen}
-          width="66%"
+          width={typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : '66%'}
           destroyOnClose
         >
           {editingSpuID && (

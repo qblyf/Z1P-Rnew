@@ -285,7 +285,9 @@ export function ProductManager() {
   // 获取响应式 Drawer 宽度
   const getDrawerWidth = () => {
     if (typeof window === 'undefined') return '33.33%';
-    return '33.33%';
+    // 在手机上使用 100% 宽度，在桌面上使用 33.33%
+    const isMobile = window.innerWidth < 768;
+    return isMobile ? '100%' : '33.33%';
   };
 
   return (

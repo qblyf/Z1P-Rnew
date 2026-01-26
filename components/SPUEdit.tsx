@@ -537,7 +537,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
               setSelectedSkuName('');
             }}
             open={showSkuEditDrawer}
-            width="33.33%"
+            width={typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : '33.33%'}
             afterOpenChange={(open) => {
               // 当抽屉打开时，刷新 SKU 名称 - 使用 API 直接获取，不使用缓存
               if (open && selectedSkuID) {
