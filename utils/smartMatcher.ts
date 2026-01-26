@@ -882,22 +882,34 @@ export class SimpleMatcher {
   extractModel(str: string, brand?: string | null): string | null {
     let lowerStr = str.toLowerCase();
     
+    // 特殊调试：对于 "15r" 相关的输入
+    const is15R = lowerStr.includes('15') && lowerStr.includes('r') && !lowerStr.includes('note');
+    
     // 预处理：移除括号和品牌
     let normalizedStr = this.preprocessModelString(lowerStr);
     
     // 调试：对于包含"15"的字符串，输出预处理结果
-    if (lowerStr.includes('15')) {
-      console.log(`[extractModel] 输入: "${str}"`);
-      console.log(`[extractModel] 小写后: "${lowerStr}"`);
-      console.log(`[extractModel] 预处理后: "${normalizedStr}" (长度: ${normalizedStr.length})`);
+    if (is15R) {
+      console.log(`\n[extractModel-15R] ========== 开始提取型号 ==========`);
+      console.log(`[extractModel-15R] 输入: "${str}"`);
+      console.log(`[extractModel-15R] 品牌: "${brand}"`);
+      console.log(`[extractModel-15R] 小写后: "${lowerStr}"`);
+      console.log(`[extractModel-15R] 预处理后: "${normalizedStr}" (长度: ${normalizedStr.length})`);
     }
     
     // 优先级0: 使用动态型号索引进行精确匹配
     if (this.modelIndex.size > 0) {
       const dynamicModel = this.extractModelFromIndex(normalizedStr, brand);
       if (dynamicModel) {
-        console.log(`[动态匹配] 从型号索引中找到: "${dynamicModel}"`);
+        if (is15R) {
+          console.log(`[extractModel-15R] ✅ 从型号索引中找到: "${dynamicModel}"`);
+          console.log(`[extractModel-15R] ========== 提取成功 ==========\n`);
+        } else {
+          console.log(`[动态匹配] 从型号索引中找到: "${dynamicModel}"`);
+        }
         return dynamicModel;
+      } else if (is15R) {
+        console.log(`[extractModel-15R] ❌ 型号索引中未找到匹配`);
       }
     }
     
@@ -906,35 +918,78 @@ export class SimpleMatcher {
     const simpleModelBeforeNormalize = this.extractSimpleModel(normalizedStr);
     
     // 调试：对于包含"15"的字符串，输出简单型号提取结果
-    if (lowerStr.includes('15')) {
-      console.log(`[extractModel] 简单型号提取: ${simpleModelBeforeNormalize ? `"${simpleModelBeforeNormalize}"` : 'null'}`);
+    if (is15R) {
+      console.log(`[extractModel-15R] 简单型号提取(标准化前): ${simpleModelBeforeNormalize ? `"${simpleModelBeforeNormalize}"` : 'null'}`);
     }
     
     // 应用智能标准化（用于复杂型号匹配）
     normalizedStr = this.normalizeModel(normalizedStr);
     
+    if (is15R) {
+      console.log(`[extractModel-15R] 智能标准化后: "${normalizedStr}"`);
+    }
+    
     // 优先级1: 平板型号
     const tabletModel = this.extractTabletModel(normalizedStr);
-    if (tabletModel) return tabletModel;
+    if (tabletModel) {
+      if (is15R) {
+        console.log(`[extractModel-15R] ✅ 平板型号匹配: "${tabletModel}"`);
+        console.log(`[extractModel-15R] ========== 提取成功 ==========\n`);
+      }
+      return tabletModel;
+    } else if (is15R) {
+      console.log(`[extractModel-15R] 平板型号匹配: null`);
+    }
     
     // 优先级2: 字母+字母格式（Watch GT、Band 5 等）
     const wordModel = this.extractWordModel(normalizedStr);
-    if (wordModel) return wordModel;
+    if (wordModel) {
+      if (is15R) {
+        console.log(`[extractModel-15R] ✅ 字母型号匹配: "${wordModel}"`);
+        console.log(`[extractModel-15R] ========== 提取成功 ==========\n`);
+      }
+      return wordModel;
+    } else if (is15R) {
+      console.log(`[extractModel-15R] 字母型号匹配: null`);
+    }
     
     // 优先级3: 复杂型号（14 Pro Max+、Y300 Pro+ 等）
     const complexModel = this.extractComplexModel(normalizedStr);
-    if (complexModel) return complexModel;
+    if (complexModel) {
+      if (is15R) {
+        console.log(`[extractModel-15R] ✅ 复杂型号匹配: "${complexModel}"`);
+        console.log(`[extractModel-15R] ========== 提取成功 ==========\n`);
+      }
+      return complexModel;
+    } else if (is15R) {
+      console.log(`[extractModel-15R] 复杂型号匹配: null`);
+    }
     
     // 优先级4: 简单型号（优先使用标准化前的结果）
-    if (simpleModelBeforeNormalize) return simpleModelBeforeNormalize;
+    if (simpleModelBeforeNormalize) {
+      if (is15R) {
+        console.log(`[extractModel-15R] ✅ 简单型号匹配(标准化前): "${simpleModelBeforeNormalize}"`);
+        console.log(`[extractModel-15R] ========== 提取成功 ==========\n`);
+      }
+      return simpleModelBeforeNormalize;
+    }
     
     // 降级：尝试从标准化后的字符串提取
     const simpleModel = this.extractSimpleModel(normalizedStr);
-    if (simpleModel) return simpleModel;
+    if (simpleModel) {
+      if (is15R) {
+        console.log(`[extractModel-15R] ✅ 简单型号匹配(标准化后): "${simpleModel}"`);
+        console.log(`[extractModel-15R] ========== 提取成功 ==========\n`);
+      }
+      return simpleModel;
+    } else if (is15R) {
+      console.log(`[extractModel-15R] 简单型号匹配(标准化后): null`);
+    }
     
     // 调试：对于包含"15"的字符串，输出提取失败信息
-    if (lowerStr.includes('15')) {
-      console.log(`[extractModel] ❌ 型号提取失败`);
+    if (is15R) {
+      console.log(`[extractModel-15R] ❌ 所有提取方法都失败`);
+      console.log(`[extractModel-15R] ========== 提取失败 ==========\n`);
     }
     
     return null;
@@ -1747,21 +1802,38 @@ export class SimpleMatcher {
       
       // 调试：对于包含"15"或"R"的SPU，输出检查信息
       const lowerName = spu.name.toLowerCase();
-      if (lowerName.includes('15') || lowerName.includes('r')) {
-        console.log(`[精确匹配] 检查SPU: "${spu.name}" (ID: ${spu.id})`);
+      const is15R = lowerName.includes('15') && lowerName.includes('r') && !lowerName.includes('note');
+      
+      if (is15R) {
+        console.log(`\n[精确匹配-15R] ========== 开始检查SPU: "${spu.name}" (ID: ${spu.id}) ==========`);
       }
       
       if (this.shouldFilterSPU(input, spu.name)) {
         filteredCount++;
-        if (lowerName.includes('15') || lowerName.includes('r')) {
-          console.log(`[精确匹配] SPU被过滤`);
+        if (is15R) {
+          console.log(`[精确匹配-15R] ❌ SPU被过滤`);
         }
         continue;
       }
       
       const spuSPUPart = this.extractSPUPart(spu.name);
+      if (is15R) {
+        console.log(`[精确匹配-15R] SPU部分: "${spu.name}" -> "${spuSPUPart}"`);
+      }
+      
       const spuBrand = spu.brand || this.extractBrand(spuSPUPart);
+      if (is15R) {
+        console.log(`[精确匹配-15R] 品牌: spu.brand="${spu.brand}", 提取="${this.extractBrand(spuSPUPart)}", 最终="${spuBrand}"`);
+      }
+      
       const spuModel = this.extractModel(spuSPUPart, spuBrand);
+      if (is15R) {
+        console.log(`[精确匹配-15R] 型号提取: extractModel("${spuSPUPart}", "${spuBrand}") = ${spuModel ? `"${spuModel}"` : 'null'}`);
+        if (!spuModel) {
+          console.log(`[精确匹配-15R] ❌ 型号提取失败！`);
+        }
+      }
+      
       const spuVersion = this.extractVersion(spuSPUPart);
       
       // 收集提取的型号
@@ -1769,6 +1841,10 @@ export class SimpleMatcher {
         extractedModels.add(spuModel);
       } else {
         modelExtractionFailedCount++;
+      }
+      
+      if (is15R) {
+        console.log(`[精确匹配-15R] SPU版本: ${spuVersion ? `"${spuVersion.name}"` : 'null'}`);
       }
       
       // 调试：对于包含"s50"的SPU，输出详细信息
@@ -1788,6 +1864,10 @@ export class SimpleMatcher {
       // 品牌和型号必须完全匹配
       const brandMatch = this.isBrandMatch(inputBrand, spuBrand);
       
+      if (is15R) {
+        console.log(`[精确匹配-15R] 品牌匹配: isBrandMatch("${inputBrand}", "${spuBrand}") = ${brandMatch}`);
+      }
+      
       // 标准化型号进行比较：移除所有空格和特殊字符
       const normalizeForComparison = (model: string) => {
         return model.toLowerCase().replace(/[\s\-_]/g, '');
@@ -1795,6 +1875,13 @@ export class SimpleMatcher {
       
       const modelMatch = inputModel && spuModel && 
                         normalizeForComparison(inputModel) === normalizeForComparison(spuModel);
+      
+      if (is15R) {
+        console.log(`[精确匹配-15R] 型号匹配: "${inputModel}" vs "${spuModel}"`);
+        console.log(`[精确匹配-15R] 标准化: "${inputModel ? normalizeForComparison(inputModel) : 'null'}" vs "${spuModel ? normalizeForComparison(spuModel) : 'null'}"`);
+        console.log(`[精确匹配-15R] 匹配结果: ${modelMatch}`);
+        console.log(`[精确匹配-15R] ========== 结束检查 ==========\n`);
+      }
       
       if (!brandMatch) {
         brandMismatchCount++;
