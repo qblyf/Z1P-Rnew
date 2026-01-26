@@ -7,6 +7,7 @@ import { useBrandListContext } from '../datahooks/brand';
 import { useSpuIDContext, useSPUCateIDContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
 import { lessAwait } from '../error';
+import { Z1P_ENDPOINT } from '../constants';
 
 /**
  * [组件] SKU 列表
@@ -128,6 +129,11 @@ export default function SKUList(props: {
         setSelectedSkuID(undefined);
       } catch (err) {
         console.error('获取 SKU 列表失败:', err);
+        console.error('错误详情:', {
+          message: err instanceof Error ? err.message : String(err),
+          stack: err instanceof Error ? err.stack : undefined,
+          endpoint: Z1P_ENDPOINT,
+        });
       } finally {
         setLoading(false);
       }
