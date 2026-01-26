@@ -1703,16 +1703,6 @@ export class SimpleMatcher {
     const matches: Array<{ spu: SPUData; score: number; priority: number }> = [];
     
     for (const spu of spuList) {
-      // 调试：对于包含"充电"或"底座"的SPU，输出详细信息
-      if (spu.name.includes('充电') || spu.name.includes('底座')) {
-        console.log(`[模糊匹配-调试] 检查配件SPU: "${spu.name}"`);
-        const shouldFilter = this.shouldFilterSPU(input, spu.name);
-        console.log(`  shouldFilterSPU结果: ${shouldFilter}`);
-        if (shouldFilter) {
-          console.log(`  → 已过滤`);
-        }
-      }
-      
       if (this.shouldFilterSPU(input, spu.name)) {
         continue;
       }
