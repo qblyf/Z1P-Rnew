@@ -1702,6 +1702,11 @@ export class SimpleMatcher {
     for (const spu of spuList) {
       checkedCount++;
       
+      // 调试：对于包含"15"的SPU，输出检查信息
+      if (spu.name.includes('15')) {
+        console.log(`[精确匹配] 检查SPU: "${spu.name}"`);
+      }
+      
       if (this.shouldFilterSPU(input, spu.name)) {
         filteredCount++;
         continue;
