@@ -187,7 +187,19 @@ function QrLoginMobilePage() {
                 <Button
                   type="primary"
                   size="large"
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 border-0 h-12 text-base font-medium"
+                  className="w-full h-12 text-base font-medium"
+                  style={{ 
+                    backgroundColor: '#059669',
+                    borderColor: '#059669',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#047857';
+                    e.currentTarget.style.borderColor = '#047857';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#059669';
+                    e.currentTarget.style.borderColor = '#059669';
+                  }}
                   onClick={async () => {
                     setStatus('正在登录中');
                     setIsLoading(true);
