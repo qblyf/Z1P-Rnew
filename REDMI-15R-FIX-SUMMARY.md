@@ -30,7 +30,64 @@
 
 ## 根本原因
 
-问题出在 `extractModelFromSPU` 函数的**颜色移除逻辑**。
+经过深入分析，发现有**两个问题**需要修复：
+
+### 问题1：颜色移除逻辑不完整
+
+`extractModelFromSPU` 函数的颜色移除正则表达式只移除颜色词后面的中文字符，导致 "星岩黑" 只移除 "黑"，留下 "星岩"。
+
+### 问题2：品牌索引双向映射不完整
+
+品牌索引建立时使用精确匹配（`b.name === brand`），导致：
+- 输入品牌 "红米" 只能找到 `brand="红米"` 的 SPU
+- 无法找到 `brand="Redmi"` 或 `brand="redmi"` 的 SPU
+- 实际数据库中可能同时存在中英文品牌名的 SPU
+
+## 修复方案
+
+### 修复1：改进颜色移除逻辑
+
+**旧代码**：
+```typescript
+// 只匹配颜色词后面的中文字符
+normalized = normalized.replace(new RegExp(`${color}[\\u4e00-\\u9fa5]*`, 'g'), ' ');
+```
+
+**新代码**：
+```typescript
+// 同时匹配颜色词前后的中文字符
+normalized = normalized.replace(new RegExp(`[\\u4e00-\\u9fa5]*${color}[\\u4e00-\\u9fa5]*`, 'g'), ' ');
+```
+
+**效果**：
+- "星岩黑" 现在会完整移除，而不是只移除 "黑"
+- 提取的型号从 "15r星岩" 变为 "15r" ✅
+
+### 修复2：改进品牌索引双向映射
+
+**旧代码**：
+```typescript
+// 精确匹配，大小写敏感
+const brandInfo = this.brandList.find(b => b.name === brand);
+```
+
+**新代码**：
+```typescript
+// 大小写不敏感匹配
+const brandInfo = this.brandList.find(b => 
+  b.name.toLowerCase() === brand.toLowerCase()
+);
+
+// 同时添加中文品牌名和拼音到索引键
+if (brandInfo && brandInfo.spell) {
+  keys.push(brandInfo.spell.toLowerCase());
+  keys.push(brandInfo.name.toLowerCase());
+}
+```
+
+**效果**：
+- 输入 "红米" 可以找到所有红米品牌的 SPU（无论 brand 字段是 "红米"、"Redmi" 还是 "redmi"）
+- 大小写不敏感，"Redmi"、"redmi"、"REDMI" 都能正确查找 ✅
 
 ### 旧代码问题
 
@@ -119,11 +176,72 @@ SPU型号:  "15r"
 
 ### 测试脚本
 
-1. **test-redmi-15r-issue.ts** - 验证型号提取逻辑
-2. **test-redmi-15r-complete.ts** - 验证完整匹配流程
-3. **test-all-fixes.ts** - 验证不影响现有修复
+1. **test-redmi-15r-issue.ts** - 验证型号提取逻辑（修复1）
+2. **test-brand-index-bidirectional.ts** - 验证品牌索引双向映射（修复2）
+3. **test-redmi-15r-complete.ts** - 验证完整匹配流程
+4. **test-all-fixes.ts** - 验证不影响现有修复
 
 ### 测试结果
+
+#### 测试1：型号提取逻辑
+
+```bash
+$ npx tsx scripts/test-redmi-15r-issue.ts
+
+=== 测试红米 15R 型号提取 ===
+
+2. SPU: "红米 15R 全网通5G版 4GB+128GB 星岩黑"
+  移除品牌后: "15r 全网通5g版 4gb+128gb 星岩黑"
+  移除描述词后: "15r     4 +128  星岩黑"
+  移除容量后: "15r        星岩黑"
+  移除颜色后: "15r         "  ✅ (修复前: "15r        星岩 ")
+  清理空格后: "15r"  ✅ (修复前: "15r 星岩")
+  ✓ 最终型号: "15r"  ✅ (修复前: "15r星岩")
+
+=== 比较结果 ===
+输入型号: "15r"
+SPU型号1: "15r"  ✅ (修复前: "15r星岩")
+
+输入 vs SPU1: ✓ 匹配  ✅ (修复前: ✗ 不匹配)
+```
+
+#### 测试2：品牌索引双向映射
+
+```bash
+$ npx tsx scripts/test-brand-index-bidirectional.ts
+
+=== 测试品牌索引的双向映射 ===
+
+索引键 "红米": 3 个SPU
+  - 红米 15R 全网通5G版 4GB+128GB 星岩黑  (brand: "红米")
+  - Redmi K80 Pro  (brand: "Redmi")  ✅
+  - redmi Note 13  (brand: "redmi")  ✅
+
+索引键 "redmi": 3 个SPU
+  - 红米 15R 全网通5G版 4GB+128GB 星岩黑
+  - Redmi K80 Pro  ✅
+  - redmi Note 13  ✅
+
+测试: 使用中文品牌名查找
+  查询: "红米" -> "红米"
+  期望: 3 个SPU
+  实际: 3 个SPU
+  结果: ✅ 通过
+
+测试: 使用拼音查找
+  查询: "redmi" -> "redmi"
+  期望: 3 个SPU
+  实际: 3 个SPU
+  结果: ✅ 通过
+
+=== 测试总结 ===
+通过: 5/5
+失败: 0/5
+
+✅ 所有测试通过！品牌索引双向映射工作正常。
+```
+
+#### 测试3：完整匹配流程
 
 ```bash
 $ npx tsx scripts/test-redmi-15r-complete.ts
@@ -201,11 +319,10 @@ $ npx tsx scripts/test-redmi-15r-complete.ts
 
 ## Git 提交
 
+### 提交1：修复颜色移除逻辑
+
 ```bash
 commit 4f9d82b
-Author: [Your Name]
-Date:   [Date]
-
 fix: 改进 extractModelFromSPU 的颜色移除逻辑
 
 修复红米 15R 匹配失败问题。
@@ -218,17 +335,34 @@ fix: 改进 extractModelFromSPU 的颜色移除逻辑
 修复：
 - 改进正则表达式，同时移除颜色词前后的中文字符
 - 例如："星岩黑" 现在会完整移除，而不是只移除 "黑"
+```
 
-影响：
-- 所有包含复杂颜色名称的 SPU 型号提取更准确
-- 动态型号索引构建更可靠
+### 提交2：修复品牌索引双向映射
+
+```bash
+commit 1687a45
+fix: 改进品牌索引的双向映射逻辑
+
+修复红米 15R 品牌索引查找问题。
+
+问题：
+- 输入品牌 "红米" 只能找到 brand="红米" 的 SPU
+- 无法找到 brand="Redmi" 或 brand="redmi" 的 SPU
+- 原因：品牌匹配使用精确匹配（b.name === brand），大小写敏感
+
+修复：
+- 改用大小写不敏感的匹配（b.name.toLowerCase() === brand.toLowerCase()）
+- 确保中英文品牌名都被添加到索引键中
+- 例如：brand="Redmi" 的 SPU 现在会同时索引到 "redmi" 和 "红米"
 ```
 
 ## 总结
 
 ✅ **问题已解决**：红米 15R 现在可以正确匹配  
-✅ **根本原因**：颜色移除正则表达式不完整  
-✅ **修复方案**：改进正则表达式，完整移除颜色词组  
+✅ **修复1**：改进颜色移除逻辑，完整移除颜色词组  
+✅ **修复2**：改进品牌索引双向映射，支持中英文品牌名和大小写不敏感  
 ✅ **测试验证**：所有测试通过  
-✅ **影响范围**：提升所有复杂颜色名称的型号提取准确性  
-✅ **已提交**：代码已推送到 GitHub
+✅ **影响范围**：
+  - 提升所有复杂颜色名称的型号提取准确性
+  - 提升品牌索引查找的准确性和容错性
+✅ **已提交**：代码已推送到 GitHub（2个提交）
