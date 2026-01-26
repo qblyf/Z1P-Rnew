@@ -954,6 +954,13 @@ export class SimpleMatcher {
     // 标准化输入字符串：移除所有空格和特殊字符
     const normalizedInput = normalizedStr.replace(/[\s\-_]/g, '').toLowerCase();
     
+    // 调试：对于包含"15r"的输入，输出详细信息
+    if (normalizedInput.includes('15r')) {
+      console.log(`[动态索引匹配] 输入: "${normalizedStr}" -> "${normalizedInput}"`);
+      console.log(`[动态索引匹配] 品牌: "${brand}", 候选型号数: ${modelsToSearch.size}`);
+      console.log(`[动态索引匹配] 候选型号: ${Array.from(modelsToSearch).slice(0, 10).join(', ')}${modelsToSearch.size > 10 ? '...' : ''}`);
+    }
+    
     let bestMatch: string | null = null;
     let bestCompleteness = 0; // 完整性分数（匹配的字符数占输入的比例）
     let bestLength = Infinity; // 在完整性相同的情况下，选择更短的
@@ -967,6 +974,12 @@ export class SimpleMatcher {
       if (normalizedInput.includes(normalizedModel)) {
         // 计算完整性分数：型号覆盖了输入的多少内容
         const completeness = normalizedModel.length / normalizedInput.length;
+        
+        // 调试：对于"15r"相关的匹配，输出详细信息
+        if (normalizedInput.includes('15r') && normalizedModel === '15r') {
+          console.log(`[动态索引匹配] 找到匹配: "${model}" (标准化: "${normalizedModel}")`);
+          console.log(`[动态索引匹配] 完整性: ${completeness.toFixed(2)} (${normalizedModel.length}/${normalizedInput.length})`);
+        }
         
         // 优先选择完整性更高的
         if (completeness > bestCompleteness) {
@@ -984,7 +997,16 @@ export class SimpleMatcher {
     
     // 只有当匹配分数足够高时才返回（至少覆盖50%的输入）
     if (bestCompleteness >= 0.5 && bestMatch) {
+      // 调试：对于"15r"相关的匹配，输出结果
+      if (normalizedInput.includes('15r')) {
+        console.log(`[动态索引匹配] 最佳匹配: "${bestMatch}", 完整性: ${bestCompleteness.toFixed(2)}`);
+      }
       return bestMatch;
+    }
+    
+    // 调试：对于"15r"相关的匹配失败，输出原因
+    if (normalizedInput.includes('15r')) {
+      console.log(`[动态索引匹配] ❌ 匹配失败: 完整性 ${bestCompleteness.toFixed(2)} < 0.5`);
     }
     
     return null;
