@@ -1779,7 +1779,10 @@ export class SimpleMatcher {
     } else if (!inputVersion && !spuVersion) {
       score = SPU_MATCH_SCORES.NO_VERSION;
     } else if (inputVersion && !spuVersion) {
-      score = SPU_MATCH_SCORES.INPUT_VERSION_ONLY;
+      // 改进：提高分数从 0.7 到 0.95
+      // 用户输入通常包含版本信息（如 4G、5G），但 SPU 名称通常比较简洁不包含
+      // 这是正常情况，不应该大幅降低分数
+      score = 0.95;
     } else if (!inputVersion && spuVersion) {
       // 改进：提高分数从 0.9 到 0.95
       // 用户输入通常省略版本信息，这是正常情况
