@@ -1647,6 +1647,10 @@ export class SimpleMatcher {
     let filteredCount = 0;
     let brandMismatchCount = 0;
     let modelMismatchCount = 0;
+    let modelExtractionFailedCount = 0;
+    
+    // 收集所有提取的型号（用于调试）
+    const extractedModels = new Set<string>();
     
     for (const spu of spuList) {
       checkedCount++;
@@ -1660,6 +1664,13 @@ export class SimpleMatcher {
       const spuBrand = spu.brand || this.extractBrand(spuSPUPart);
       const spuModel = this.extractModel(spuSPUPart, spuBrand);
       const spuVersion = this.extractVersion(spuSPUPart);
+      
+      // 收集提取的型号
+      if (spuModel) {
+        extractedModels.add(spuModel);
+      } else {
+        modelExtractionFailedCount++;
+      }
       
       // 调试：对于包含"s50"的SPU，输出详细信息
       if (spu.name.toLowerCase().includes('s50')) {
@@ -1706,7 +1717,18 @@ export class SimpleMatcher {
       }
     }
     
-    console.log(`[精确匹配] 统计: 检查${checkedCount}个, 过滤${filteredCount}个, 品牌不匹配${brandMismatchCount}个, 型号不匹配${modelMismatchCount}个`);
+    console.log(`[精确匹配] 统计: 检查${checkedCount}个, 过滤${filteredCount}个, 品牌不匹配${brandMismatchCount}个, 型号不匹配${modelMismatchCount}个, 型号提取失败${modelExtractionFailedCount}个`);
+    
+    // 如果没有找到匹配，输出所有提取的型号（帮助调试）
+    if (matches.length === 0 && extractedModels.size > 0) {
+      const modelList = Array.from(extractedModels).sort();
+      console.log(`[精确匹配] ❌ 未找到匹配。候选SPU中提取的型号列表（共${modelList.length}个）:`);
+      console.log(`  ${modelList.slice(0, 20).join(', ')}${modelList.length > 20 ? ` ... 还有${modelList.length - 20}个` : ''}`);
+      console.log(`[精确匹配] 💡 提示: 输入型号"${inputModel}"不在上述列表中，请检查：`);
+      console.log(`  1. 数据库中是否存在该型号的产品`);
+      console.log(`  2. 产品名称格式是否不同（如"Note 15R"而不是"15R"）`);
+      console.log(`  3. 型号提取逻辑是否需要调整`);
+    }
     
     return matches;
   }
