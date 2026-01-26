@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { SkuID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
+import { SkuID, SKUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { Alert, Col, Row, Table, Tag, Input, Button } from 'antd';
-import { getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
+import { getSKUList, getSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
 import { useSpuIDContext, useSPUCateIDContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
@@ -52,30 +52,43 @@ export default function SKUList(props: {
       setLoading(true);
       console.log('开始加载 SKU 列表...');
       try {
-        // 使用 getSKUListJoinSPU API 直接获取 SKU 列表
-        const skus = await getSKUListJoinSPU(
+        // 使用 getSKUList API 获取 SKU 列表
+        const skus = await getSKUList(
           {
-            states: [0], // 0 表示在用状态
+            states: [SKUState.在用],
             limit: 10000,
             offset: 0,
-            orderBy: { key: 'p.id', sort: 'DESC' },
+            orderBy: { key: 'id', sort: 'DESC' },
           },
-          {
-            sku: ['id', 'name', 'state'],
-            spu: ['spuName', 'brand'],
-          }
+          ['id', 'name', 'state', 'spuID']
         );
         
-        // 转换数据格式以匹配原有的结构
-        const formattedSkus = skus.map(sku => ({
-          skuID: sku.id,
-          name: sku.name,
-          state: sku.state,
-          spuName: sku.spuName,
-          brand: sku.brand,
-        }));
+        // 获取每个 SKU 对应的 SPU 信息
+        const skuWithSpuInfo = await Promise.all(
+          skus.map(async (sku) => {
+            try {
+              const spuInfo = await getSPUInfo(sku.spuID);
+              return {
+                skuID: sku.id,
+                name: sku.name,
+                state: sku.state,
+                spuName: spuInfo.name,
+                brand: spuInfo.brand,
+              };
+            } catch (err) {
+              console.error(`获取 SPU ${sku.spuID} 信息失败:`, err);
+              return {
+                skuID: sku.id,
+                name: sku.name,
+                state: sku.state,
+                spuName: '',
+                brand: '',
+              };
+            }
+          })
+        );
         
-        setSkuList(formattedSkus);
+        setSkuList(skuWithSpuInfo);
         setSelectedSkuID(undefined);
       } catch (err) {
         console.error('获取 SKU 列表失败:', err);
@@ -86,15 +99,6 @@ export default function SKUList(props: {
           hasToken: !!token,
           tokenLength: token?.length,
         });
-        
-        // 检查是否是网络错误
-        if (err instanceof TypeError && err.message === 'Failed to fetch') {
-          console.error('这是一个网络错误，可能的原因：');
-          console.error('1. CORS 跨域问题');
-          console.error('2. API 服务器不可达');
-          console.error('3. 请求被浏览器拦截');
-          console.error('请打开浏览器的 Network 标签查看具体的请求失败原因');
-        }
       } finally {
         setLoading(false);
       }
