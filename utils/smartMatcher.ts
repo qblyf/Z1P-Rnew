@@ -900,7 +900,17 @@ export class SimpleMatcher {
 
   /**
    * 从动态型号索引中提取型号
-   * 使用最长公共子串匹配，找到最相似的型号
+   * 
+   * 匹配策略：
+   * 1. 完整性优先：优先选择能完整匹配输入的型号
+   * 2. 精简性其次：在完整匹配的情况下，选择更精简（更短）的型号
+   * 
+   * 例如：
+   * - 输入: "s50 pro mini"
+   * - 候选: ["s50", "s50promini"]
+   * - "s50" 只匹配了部分（不完整）
+   * - "s50promini" 完整匹配了所有内容
+   * - 应该选择 "s50promini"
    * 
    * @param normalizedStr 标准化后的字符串
    * @param brand 品牌名称（可选，用于缩小搜索范围）
@@ -916,24 +926,39 @@ export class SimpleMatcher {
       modelsToSearch = this.modelIndex;
     }
     
+    // 标准化输入字符串：移除所有空格和特殊字符
+    const normalizedInput = normalizedStr.replace(/[\s\-_]/g, '').toLowerCase();
+    
     let bestMatch: string | null = null;
-    let bestScore = 0;
+    let bestCompleteness = 0; // 完整性分数（匹配的字符数占输入的比例）
+    let bestLength = Infinity; // 在完整性相同的情况下，选择更短的
     
     // 遍历所有型号，找到最佳匹配
     for (const model of modelsToSearch) {
-      // 检查是否包含该型号
-      if (normalizedStr.includes(model)) {
-        // 计算匹配分数（型号长度越长，分数越高）
-        const score = model.length;
-        if (score > bestScore) {
-          bestScore = score;
+      // 标准化型号：移除所有空格和特殊字符
+      const normalizedModel = model.replace(/[\s\-_]/g, '').toLowerCase();
+      
+      // 检查输入是否包含该型号
+      if (normalizedInput.includes(normalizedModel)) {
+        // 计算完整性分数：型号覆盖了输入的多少内容
+        const completeness = normalizedModel.length / normalizedInput.length;
+        
+        // 优先选择完整性更高的
+        if (completeness > bestCompleteness) {
+          bestCompleteness = completeness;
+          bestLength = normalizedModel.length;
+          bestMatch = model;
+        } 
+        // 如果完整性相同，选择更精简的（更短的）
+        else if (completeness === bestCompleteness && normalizedModel.length < bestLength) {
+          bestLength = normalizedModel.length;
           bestMatch = model;
         }
       }
     }
     
-    // 只有当匹配分数足够高时才返回（至少3个字符）
-    if (bestScore >= 3) {
+    // 只有当匹配分数足够高时才返回（至少覆盖50%的输入）
+    if (bestCompleteness >= 0.5 && bestMatch) {
       return bestMatch;
     }
     
