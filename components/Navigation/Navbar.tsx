@@ -15,14 +15,24 @@ export function Navbar() {
     <nav className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
       <div className="max-w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg flex items-center justify-center">
+          {/* Logo and Title */}
+          <Link href="/" className="flex items-center gap-3 flex-shrink-0">
+            <div 
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)'
+              }}
+            >
               <span className="text-white font-bold text-sm">Z1</span>
             </div>
-            <span className="hidden sm:inline text-lg font-bold text-slate-800">
-              Z1 平台
-            </span>
+            <div className="hidden sm:block">
+              <div className="text-lg font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
+                Z1 平台数据管理系统
+              </div>
+              <div className="text-xs text-slate-600 -mt-0.5">
+                企业级数据管理和分析平台
+              </div>
+            </div>
           </Link>
 
           {/* Desktop Menu */}

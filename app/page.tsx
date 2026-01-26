@@ -178,16 +178,6 @@ function ClientPage() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      {/* 页面头部 */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
-            Z1 平台数据管理系统
-          </h1>
-          <p className="text-slate-600 mt-1">企业级数据管理和分析平台</p>
-        </div>
-      </div>
-
       {/* 主要内容 */}
       <main className="max-w-7xl mx-auto px-6 py-12">
         {/* 功能卡片网格 */}
