@@ -962,8 +962,45 @@ export class SimpleMatcher {
     // 如果提供了品牌，优先在该品牌的型号中搜索
     let modelsToSearch: Set<string>;
     
-    if (brand && this.modelByBrand.has(brand.toLowerCase())) {
-      modelsToSearch = this.modelByBrand.get(brand.toLowerCase())!;
+    if (brand && this.modelByBrand.size > 0) {
+      // 关键修复：搜索品牌的所有变体（中文和拼音）
+      const brandKeys = [brand.toLowerCase()];
+      
+      // 添加品牌的拼音变体
+      const brandInfo = this.brandList.find(b => 
+        b.name.toLowerCase() === brand.toLowerCase()
+      );
+      if (brandInfo && brandInfo.spell) {
+        const spellKey = brandInfo.spell.toLowerCase();
+        if (!brandKeys.includes(spellKey)) {
+          brandKeys.push(spellKey);
+        }
+      }
+      
+      // 添加品牌的中文变体（如果输入是拼音）
+      const brandInfoBySpell = this.brandList.find(b => 
+        b.spell?.toLowerCase() === brand.toLowerCase()
+      );
+      if (brandInfoBySpell && brandInfoBySpell.name) {
+        const chineseKey = brandInfoBySpell.name.toLowerCase();
+        if (!brandKeys.includes(chineseKey)) {
+          brandKeys.push(chineseKey);
+        }
+      }
+      
+      // 合并所有品牌变体的型号
+      modelsToSearch = new Set<string>();
+      for (const key of brandKeys) {
+        const models = this.modelByBrand.get(key);
+        if (models) {
+          models.forEach(model => modelsToSearch.add(model));
+        }
+      }
+      
+      // 如果没有找到任何型号，回退到全局索引
+      if (modelsToSearch.size === 0) {
+        modelsToSearch = this.modelIndex;
+      }
     } else {
       modelsToSearch = this.modelIndex;
     }
