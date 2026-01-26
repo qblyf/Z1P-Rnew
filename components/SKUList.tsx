@@ -61,7 +61,7 @@ export default function SKUList(props: {
             orderBy: { key: 'p.id', sort: 'DESC' },
           },
           {
-            sku: ['id', 'combo', 'spec', 'color', 'state'],
+            sku: ['id', 'name', 'state'],
             spu: ['spuName', 'brand'],
           }
         );
@@ -69,9 +69,7 @@ export default function SKUList(props: {
         // 转换数据格式以匹配原有的结构
         const formattedSkus = skus.map(sku => ({
           skuID: sku.id,
-          combo: sku.combo,
-          spec: sku.spec,
-          color: sku.color,
+          name: sku.name,
           state: sku.state,
           spuName: sku.spuName,
           brand: sku.brand,
@@ -110,10 +108,8 @@ export default function SKUList(props: {
     }
     const ret = skuList.filter(sku => {
       const name = sku.name || '';
-      const spec = sku.spec || '';
-      const color = sku.color || '';
-      const combo = sku.combo || '';
-      const searchStr = `${name}${spec}${color}${combo}`.replaceAll(/\s/g, '').toLowerCase();
+      const spuName = sku.spuName || '';
+      const searchStr = `${spuName}${name}`.replaceAll(/\s/g, '').toLowerCase();
       return searchStr.includes(s);
     });
     return ret;
@@ -195,15 +191,8 @@ export default function SKUList(props: {
           {
             key: 'd',
             render: (_v, v) => {
-              // 生成 SKU 名称 - 只显示值，不显示属性字段名
-              const skuNameParts: string[] = [];
-              if (v.combo) skuNameParts.push(v.combo);
-              if (v.spec) skuNameParts.push(v.spec);
-              if (v.color) skuNameParts.push(v.color);
-              const skuName = skuNameParts.length > 0 ? skuNameParts.join(' ') : `SKU ${v.id}`;
-              
-              // 组合 SPU 名称和 SKU 规格
-              const fullName = v.spuName ? `${v.spuName} ${skuName}` : skuName;
+              // 组合 SPU 名称和 SKU 名称
+              const fullName = v.spuName ? `${v.spuName} ${v.name}` : v.name;
               
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
