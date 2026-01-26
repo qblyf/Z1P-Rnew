@@ -1612,21 +1612,42 @@ export class SimpleMatcher {
         console.log(`[extractSPUPart-15R] 未找到版本关键词，尝试颜色提取`);
       }
       
-      const color = this.extractColorAdvanced(str);
+      // 🔥 关键修复：先移除品牌名，再提取颜色
+      // 避免把品牌名中的颜色字（如"红米"中的"红"）误识别为颜色
+      let spuPartWithoutBrand = spuPart;
+      const brand = this.extractBrand(spuPart);
+      if (brand) {
+        // 移除品牌名（大小写不敏感）
+        const brandRegex = new RegExp(brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        spuPartWithoutBrand = spuPart.replace(brandRegex, '').trim();
+        if (is15R) {
+          console.log(`[extractSPUPart-15R] 提取品牌: "${brand}"`);
+          console.log(`[extractSPUPart-15R] 移除品牌后: "${spuPartWithoutBrand}"`);
+        }
+      }
+      
+      // 从移除品牌后的字符串中提取颜色
+      const color = this.extractColorAdvanced(spuPartWithoutBrand);
       if (is15R) {
         console.log(`[extractSPUPart-15R] 提取颜色: ${color ? `"${color}"` : 'null'}`);
       }
       
       if (color) {
+        // 在原始字符串中查找颜色位置（使用 lastIndexOf 找最后一个）
         const colorIndex = spuPart.lastIndexOf(color);
         if (is15R) {
-          console.log(`[extractSPUPart-15R] 颜色位置: ${colorIndex}`);
+          console.log(`[extractSPUPart-15R] 颜色在原始字符串中的位置: ${colorIndex}`);
         }
-        if (colorIndex !== -1) {
+        // 只有当颜色不在品牌名中时才截取
+        // 通过检查颜色位置是否在品牌名之后来判断
+        const brandLength = brand ? brand.length : 0;
+        if (colorIndex !== -1 && colorIndex >= brandLength) {
           spuPart = spuPart.substring(0, colorIndex).trim();
           if (is15R) {
             console.log(`[extractSPUPart-15R] 截取到颜色前: "${spuPart}"`);
           }
+        } else if (is15R) {
+          console.log(`[extractSPUPart-15R] 颜色在品牌名中，不截取`);
         }
       }
       
