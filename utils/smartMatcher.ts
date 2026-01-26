@@ -1529,11 +1529,25 @@ export class SimpleMatcher {
    * 提取 SPU 部分
    */
   extractSPUPart(str: string): string {
+    // 特殊调试：对于 "15R" 相关的输入
+    const is15R = str.toLowerCase().includes('15') && str.toLowerCase().includes('r') && !str.toLowerCase().includes('note');
+    
+    if (is15R) {
+      console.log(`\n[extractSPUPart-15R] ========== 开始提取SPU部分 ==========`);
+      console.log(`[extractSPUPart-15R] 输入: "${str}"`);
+    }
+    
     // 规则1: 优先检查 "全网通5G"
     const fullNetworkFiveGPattern = /(.+?)\s*全网通\s*5g(?:版)?\b/i;
     const fullNetworkFiveGMatch = str.match(fullNetworkFiveGPattern);
     if (fullNetworkFiveGMatch) {
+      if (is15R) {
+        console.log(`[extractSPUPart-15R] 规则1匹配: 全网通5G -> "${fullNetworkFiveGMatch[1].trim()}"`);
+        console.log(`[extractSPUPart-15R] ========== 提取完成 ==========\n`);
+      }
       return fullNetworkFiveGMatch[1].trim();
+    } else if (is15R) {
+      console.log(`[extractSPUPart-15R] 规则1: 全网通5G - 未匹配`);
     }
     
     // 规则2: 检查网络制式（5G、4G、3G 等）
@@ -1541,18 +1555,34 @@ export class SimpleMatcher {
     const networkPattern = /(.+?)\s*(?:5g|4g|3g|2g)(?:版)?\b/i;
     const networkMatch = str.match(networkPattern);
     if (networkMatch) {
+      if (is15R) {
+        console.log(`[extractSPUPart-15R] 规则2匹配: 网络制式 -> "${networkMatch[1].trim()}"`);
+        console.log(`[extractSPUPart-15R] ========== 提取完成 ==========\n`);
+      }
       return networkMatch[1].trim();
+    } else if (is15R) {
+      console.log(`[extractSPUPart-15R] 规则2: 网络制式 - 未匹配`);
     }
     
     // 规则3: 如果找到容量（改进：支持 4+128 格式）
     const memoryPattern = /(.+?)\s*\(?\d+\s*(?:gb)?\s*\+\s*\d+\s*(?:gb)?\)?/i;
     const memoryMatch = str.match(memoryPattern);
     if (memoryMatch) {
+      if (is15R) {
+        console.log(`[extractSPUPart-15R] 规则3匹配: 容量 -> "${memoryMatch[1].trim()}"`);
+        console.log(`[extractSPUPart-15R] ========== 提取完成 ==========\n`);
+      }
       return memoryMatch[1].trim();
+    } else if (is15R) {
+      console.log(`[extractSPUPart-15R] 规则3: 容量 - 未匹配`);
     }
     
     // 规则4: 按照品牌+型号方法确定SPU
     let spuPart = str;
+    
+    if (is15R) {
+      console.log(`[extractSPUPart-15R] 规则4: 开始品牌+型号方法`);
+    }
     
     let versionKeyword: string | null = null;
     let versionIndex = -1;
@@ -1573,17 +1603,44 @@ export class SimpleMatcher {
     if (versionKeyword && versionIndex !== -1) {
       const versionEndIndex = versionIndex + versionKeyword.length;
       spuPart = spuPart.substring(0, versionEndIndex).trim();
+      if (is15R) {
+        console.log(`[extractSPUPart-15R] 找到版本关键词: "${versionKeyword}" at ${versionIndex}`);
+        console.log(`[extractSPUPart-15R] 截取到版本结束: "${spuPart}"`);
+      }
     } else {
+      if (is15R) {
+        console.log(`[extractSPUPart-15R] 未找到版本关键词，尝试颜色提取`);
+      }
+      
       const color = this.extractColorAdvanced(str);
+      if (is15R) {
+        console.log(`[extractSPUPart-15R] 提取颜色: ${color ? `"${color}"` : 'null'}`);
+      }
+      
       if (color) {
         const colorIndex = spuPart.lastIndexOf(color);
+        if (is15R) {
+          console.log(`[extractSPUPart-15R] 颜色位置: ${colorIndex}`);
+        }
         if (colorIndex !== -1) {
           spuPart = spuPart.substring(0, colorIndex).trim();
+          if (is15R) {
+            console.log(`[extractSPUPart-15R] 截取到颜色前: "${spuPart}"`);
+          }
         }
       }
       
       spuPart = spuPart.replace(/软胶|硅胶|皮革|陶瓷|玻璃/gi, '');
       spuPart = spuPart.trim().replace(/\s+/g, ' ');
+      
+      if (is15R) {
+        console.log(`[extractSPUPart-15R] 移除材质后: "${spuPart}"`);
+      }
+    }
+    
+    if (is15R) {
+      console.log(`[extractSPUPart-15R] 最终结果: "${spuPart}"`);
+      console.log(`[extractSPUPart-15R] ========== 提取完成 ==========\n`);
     }
     
     return spuPart;
