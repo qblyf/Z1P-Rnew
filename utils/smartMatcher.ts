@@ -1307,6 +1307,14 @@ export class SimpleMatcher {
       '原装', '配件', '套餐', '底座', '充电底座', '无线充电'
     ];
     
+    // 特殊处理：对于包含 "底座" 的 SPU，需要更严格的判断
+    // 如果 SPU 包含 "底座" 或 "充电底座"，且输入不包含这些词，则应该过滤
+    if ((lowerSPU.includes('底座') || lowerSPU.includes('充电底座')) && 
+        !lowerInput.includes('底座') && !lowerInput.includes('充电底座')) {
+      console.log(`[过滤] SPU "${spuName}" 被过滤 - 包含配件关键词（底座）`);
+      return true;
+    }
+    
     const hasAccessoryKeywordInInput = accessoryKeywords.some(keyword => 
       lowerInput.includes(keyword)
     );
