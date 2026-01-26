@@ -43,12 +43,15 @@ export default function SKUList(props: {
 
   // 加载 SKU 列表
   useEffect(() => {
+    console.log('SKUList useEffect - token:', token ? '存在' : '不存在');
     if (!token) {
+      console.warn('没有 token，无法加载 SKU 列表');
       return;
     }
 
     lessAwait(async () => {
       setLoading(true);
+      console.log('开始加载 SKU 列表...');
       try {
         let skus: any[] = [];
         
@@ -133,7 +136,18 @@ export default function SKUList(props: {
           message: err instanceof Error ? err.message : String(err),
           stack: err instanceof Error ? err.stack : undefined,
           endpoint: Z1P_ENDPOINT,
+          hasToken: !!token,
+          tokenLength: token?.length,
         });
+        
+        // 检查是否是网络错误
+        if (err instanceof TypeError && err.message === 'Failed to fetch') {
+          console.error('这是一个网络错误，可能的原因：');
+          console.error('1. CORS 跨域问题');
+          console.error('2. API 服务器不可达');
+          console.error('3. 请求被浏览器拦截');
+          console.error('请打开浏览器的 Network 标签查看具体的请求失败原因');
+        }
       } finally {
         setLoading(false);
       }
