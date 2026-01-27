@@ -54,7 +54,7 @@ export default function SKUList(props: {
       try {
         // 构建查询参数 - 不使用 spuIDs，因为 API 可能不支持
         const queryParams: any = {
-          limit: 1000,
+          limit: 5000,  // 增加限制，避免遗漏数据
           offset: 0,
           orderBy: { key: 'p.id', sort: 'DESC' },
           states: [SKUState.在用],
