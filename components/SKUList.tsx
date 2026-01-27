@@ -60,15 +60,17 @@ export default function SKUList(props: {
       setLoading(true);
       try {
         let spuIDs: number[] = [];
+        let limit = 5000;
         
         if (spuID) {
-          // 选中了 SPU，只获取该 SPU 的 SKU
+          // 选中了 SPU，获取该 SPU 的所有 SKU
           spuIDs = [spuID];
           console.log('开始加载选中 SPU 的 SKU...', spuID);
         } else {
-          // 未选中 SPU，获取当前 SPU 列表中所有 SPU 的 SKU（最多100条SPU）
-          spuIDs = spuList.slice(0, 100).map(spu => spu.id);
-          console.log('开始加载 SPU 列表中的 SKU...', spuIDs.length, '个 SPU');
+          // 未选中 SPU，获取当前 SPU 列表中所有 SPU 的 SKU，最多100条SKU
+          spuIDs = spuList.map(spu => spu.id);
+          limit = 100;
+          console.log('开始加载 SPU 列表中的 SKU...', spuIDs.length, '个 SPU，最多获取', limit, '条 SKU');
         }
         
         if (spuIDs.length === 0) {
@@ -80,7 +82,7 @@ export default function SKUList(props: {
 
         // 构建查询参数
         const queryParams: any = {
-          limit: 5000,
+          limit: limit,
           offset: 0,
           orderBy: { key: 'id', sort: 'DESC' },
           states: [SKUState.在用],
