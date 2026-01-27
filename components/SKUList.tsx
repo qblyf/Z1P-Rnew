@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { SkuID, SKUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { Alert, Col, Row, Table, Tag, Input, Button } from 'antd';
-import { getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
+import { getSKUList } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
 import { useSpuIDContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
@@ -59,11 +59,11 @@ export default function SKUList(props: {
         const queryParams: any = {
           limit: 5000,
           offset: 0,
-          orderBy: { key: 'p.id', sort: 'DESC' },
+          orderBy: { key: 'id', sort: 'DESC' },
           states: [SKUState.在用],
         };
 
-        // 如果选中了 SPU，尝试使用 spuIDs 参数，如果不生效则前端筛选
+        // 如果选中了 SPU，添加 spuIDs 参数
         if (spuID) {
           queryParams.spuIDs = [spuID];
         }
@@ -71,19 +71,13 @@ export default function SKUList(props: {
         // 打印完整的请求参数用于调试
         console.log('=== SKU 列表请求参数 ===');
         console.log('queryParams:', JSON.stringify(queryParams, null, 2));
-        console.log('fields:', JSON.stringify({
-          sku: ['id', 'name', 'state', 'spuID'],
-          spu: ['brand'],
-        }, null, 2));
+        console.log('fields:', JSON.stringify(['id', 'name', 'state', 'spuID'], null, 2));
         console.log('========================');
 
-        // 使用 getSKUListJoinSPU API 获取 SKU 数据
-        const skus = await getSKUListJoinSPU(
+        // 使用 getSKUList API 获取 SKU 数据
+        const skus = await getSKUList(
           queryParams,
-          {
-            sku: ['id', 'name', 'state', 'spuID'],
-            spu: ['brand'],
-          }
+          ['id', 'name', 'state', 'spuID']
         );
         
         console.log('✓ 成功获取 SKU 列表，数量:', skus.length);
@@ -93,27 +87,19 @@ export default function SKUList(props: {
           console.log('第一条 SKU 数据示例:', JSON.stringify(skus[0], null, 2));
         }
         
-        // 检查后端 spuIDs 参数是否生效
+        // 如果选中了 SPU，进行前端筛选（以防后端参数不生效）
         let filteredSkus = skus;
         if (spuID) {
-          // 检查返回的数据是否已经按 spuID 筛选
-          const hasOtherSpuData = skus.some(sku => sku.spuID !== spuID);
-          if (hasOtherSpuData) {
-            // 后端 spuIDs 参数不生效，需要前端筛选
-            console.log('后端 spuIDs 参数不生效，进行前端筛选');
-            filteredSkus = skus.filter(sku => sku.spuID === spuID);
-            console.log(`按 SPU ${spuID} 筛选后的 SKU 数量:`, filteredSkus.length);
-          } else {
-            console.log('后端 spuIDs 参数生效，已返回筛选后的数据');
-          }
+          filteredSkus = skus.filter(sku => sku.spuID === spuID);
+          console.log(`按 SPU ${spuID} 筛选后的 SKU 数量:`, filteredSkus.length);
         }
         
-        // 转换数据格式
+        // 转换数据格式 - getSKUList 不返回 brand，需要从 brandList 中匹配
         const formattedSkus = filteredSkus.map((sku: any) => ({
           skuID: sku.id,
           name: sku.name,
           state: sku.state,
-          brand: sku.brand || '',
+          brand: '', // getSKUList 不返回 brand，需要从 SKU 名称中提取或留空
         }));
         
         setSkuList(formattedSkus);
