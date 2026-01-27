@@ -92,12 +92,19 @@ export default function SPUList(props: {
         onRow={(record) => {
           return {
             onClick: () => {
+              console.log('=== SPU 行点击事件 ===');
+              console.log('点击的 SPU ID:', record.id);
+              console.log('当前选中的 spuID:', spuID);
+              
               // 点击整行时切换选中状态
               if (spuID === record.id) {
+                console.log('取消选中 SPU');
                 setSpuID(undefined);
               } else {
+                console.log('选中 SPU:', record.id);
                 setSpuID(record.id);
               }
+              console.log('====================');
             },
             style: { cursor: 'pointer' },
           };
@@ -144,14 +151,22 @@ export default function SPUList(props: {
           selectedRowKeys: spuID ? [spuID] : [],
           hideSelectAll: true,
           onChange: (selectedRowKeys) => {
+            console.log('=== SPU 选择变化 ===');
+            console.log('selectedRowKeys:', selectedRowKeys);
+            console.log('当前 spuID:', spuID);
+            
             // 如果点击的是已选中的项，则取消选中
             if (selectedRowKeys.length === 0) {
+              console.log('取消选中（通过选择框）');
               setSpuID(undefined);
             } else if (selectedRowKeys[0] === spuID) {
+              console.log('取消选中（重复点击）');
               setSpuID(undefined);
             } else {
+              console.log('选中新的 SPU:', selectedRowKeys[0]);
               setSpuID(selectedRowKeys[0] as SpuID);
             }
+            console.log('==================');
           },
         }}
       />

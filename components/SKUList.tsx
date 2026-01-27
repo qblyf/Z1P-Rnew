@@ -41,7 +41,11 @@ export default function SKUList(props: {
 
   // 加载 SKU 列表
   useEffect(() => {
-    console.log('SKUList useEffect - token:', token ? '存在' : '不存在', 'spuID:', spuID);
+    console.log('=== SKUList useEffect 触发 ===');
+    console.log('token:', token ? '存在' : '不存在');
+    console.log('spuID:', spuID);
+    console.log('================================');
+    
     if (!token) {
       console.warn('没有 token，无法加载 SKU 列表');
       return;
