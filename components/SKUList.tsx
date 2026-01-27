@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { SkuID, SKUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { Alert, Col, Row, Table, Tag, Input, Button } from 'antd';
-import { getSKUList } from '@zsqk/z1-sdk/es/z1p/product';
+import { Alert, Col, Row, Table, Tag, Input, Button, Spin } from 'antd';
+import { BarcodeOutlined } from '@ant-design/icons';
+import { getSKUList, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
 import { useSpuIDContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
@@ -25,8 +26,10 @@ export default function SKUList(props: {
 
   const [skuList, setSkuList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedSkuID, setSelectedSkuID] = useState<SkuID | undefined>();
+  const [skuDetails, setSkuDetails] = useState<Map<number, { gtins: string[], listPrice: number }>>(new Map());
   
   const el = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(100);
@@ -108,6 +111,11 @@ export default function SKUList(props: {
         if (spuID && formattedSkus.length === 0) {
           console.warn('⚠️ 该 SPU 没有关联的"在用"状态的 SKU');
         }
+        
+        // 后加载 SKU 详情（69码和官网价）
+        if (formattedSkus.length > 0) {
+          loadSkuDetails(formattedSkus.map(sku => sku.skuID));
+        }
       } catch (err) {
         console.error('✗ 获取 SKU 列表失败');
         console.error('错误对象:', err);
@@ -129,6 +137,34 @@ export default function SKUList(props: {
       }
     })();
   }, [spuID, token]);
+
+  // 后加载 SKU 详情（69码和官网价）
+  const loadSkuDetails = async (skuIDs: number[]) => {
+    if (skuIDs.length === 0) return;
+    
+    setLoadingDetails(true);
+    try {
+      console.log('开始加载 SKU 详情...', skuIDs.length, '条');
+      const details = await getSKUsInfo(skuIDs);
+      
+      const detailsMap = new Map<number, { gtins: string[], listPrice: number }>();
+      details.forEach((detail: any) => {
+        if (!('errInfo' in detail)) {
+          detailsMap.set(detail.id, {
+            gtins: detail.gtins || [],
+            listPrice: detail.listPrice || 0,
+          });
+        }
+      });
+      
+      setSkuDetails(detailsMap);
+      console.log('✓ SKU 详情加载完成');
+    } catch (err) {
+      console.error('✗ 加载 SKU 详情失败:', err);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
 
   const skuListFiltered = useMemo(() => {
     const s = search.replaceAll(/\s/g, '').toLowerCase();
@@ -187,7 +223,7 @@ export default function SKUList(props: {
         rowKey="skuID"
         dataSource={skuListFiltered}
         loading={loading}
-        showHeader={false}
+        showHeader={true}
         onRow={(record) => {
           return {
             onClick: () => {
@@ -203,21 +239,8 @@ export default function SKUList(props: {
         }}
         columns={[
           {
-            key: 'brand',
-            width: 80,
-            render: (_v, v) => {
-              if (!v.brand) {
-                return null;
-              }
-              const b = brandList.find(b => b.name === v.brand);
-              if (b) {
-                return <Tag color={b.color}>{b.name}</Tag>;
-              }
-              return <Tag>{v.brand}</Tag>;
-            },
-          },
-          {
-            key: 'd',
+            key: 'name',
+            title: 'SKU名称',
             render: (_v, v) => {
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
@@ -225,6 +248,51 @@ export default function SKUList(props: {
                     {v.name}
                   </div>
                 </div>
+              );
+            },
+          },
+          {
+            key: 'gtins',
+            title: '69码',
+            width: 150,
+            render: (_v, v) => {
+              const detail = skuDetails.get(v.skuID);
+              if (loadingDetails && !detail) {
+                return <Spin size="small" />;
+              }
+              if (!detail || detail.gtins.length === 0) {
+                return <span style={{ color: '#999' }}>-</span>;
+              }
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <BarcodeOutlined style={{ color: '#1890ff' }} />
+                  <span style={{ fontSize: '12px' }}>{detail.gtins[0]}</span>
+                  {detail.gtins.length > 1 && (
+                    <Tag color="blue" style={{ fontSize: '10px', padding: '0 4px', lineHeight: '16px' }}>
+                      +{detail.gtins.length - 1}
+                    </Tag>
+                  )}
+                </div>
+              );
+            },
+          },
+          {
+            key: 'listPrice',
+            title: '官网价',
+            width: 100,
+            align: 'right' as const,
+            render: (_v, v) => {
+              const detail = skuDetails.get(v.skuID);
+              if (loadingDetails && !detail) {
+                return <Spin size="small" />;
+              }
+              if (!detail || detail.listPrice === 0) {
+                return <span style={{ color: '#999' }}>-</span>;
+              }
+              return (
+                <span style={{ fontWeight: 500, color: '#ff4d4f' }}>
+                  ¥{(detail.listPrice / 100).toFixed(2)}
+                </span>
               );
             },
           },
