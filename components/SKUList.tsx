@@ -74,19 +74,40 @@ export default function SKUList(props: {
         const skus = await getSKUListJoinSPU(
           queryParams,
           {
-            sku: ['id', 'name', 'state'],
+            sku: ['id', 'name', 'state', 'spuID'],
             spu: ['brand'],
           }
         );
         
         console.log('✓ 成功获取 SKU 列表，数量:', skus.length);
+        console.log('当前选中的 spuID:', spuID);
+        
+        // 打印前几条数据的结构用于调试
+        if (skus.length > 0) {
+          console.log('第一条 SKU 数据示例:', JSON.stringify(skus[0], null, 2));
+          console.log('SKU 数据包含的字段:', Object.keys(skus[0]));
+        }
         
         // 如果选中了 SPU，在前端筛选
         const filteredSkus = spuID 
-          ? skus.filter((sku: any) => sku.spuID === spuID)
+          ? skus.filter((sku: any) => {
+              const match = sku.spuID === spuID;
+              if (!match && skus.length < 10) {
+                console.log(`SKU ${sku.id} 的 spuID (${sku.spuID}) 不匹配选中的 spuID (${spuID})`);
+              }
+              return match;
+            })
           : skus;
         
         console.log('筛选后的 SKU 数量:', filteredSkus.length);
+        
+        if (spuID && filteredSkus.length === 0) {
+          console.warn('⚠️ 选中了 SPU 但没有找到匹配的 SKU');
+          console.warn('可能的原因：');
+          console.warn('1. 该 SPU 没有关联的 SKU');
+          console.warn('2. spuID 字段不存在或格式不正确');
+          console.warn('3. API 返回的数据中没有 spuID 字段');
+        }
         
         // 转换数据格式
         const formattedSkus = filteredSkus.map((sku: any) => ({
