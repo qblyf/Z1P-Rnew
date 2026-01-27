@@ -54,15 +54,17 @@ export default function SKUList(props: {
       try {
         // 构建查询参数
         const queryParams: any = {
-          states: [SKUState.在用],
-          limit: 10000,
+          limit: 1000,
           offset: 0,
+          orderBy: { key: 'p.id', sort: 'DESC' },
         };
 
-        // 如果选中了 SPU，则只获取该 SPU 的 SKU
+        // 只添加非空的查询参数
         if (spuID) {
           queryParams.spuIDs = [spuID];
         }
+        
+        queryParams.states = [SKUState.在用];
 
         // 使用 getSKUListJoinSPU API 一次性获取 SKU 和 SPU 关联数据
         const skus = await getSKUListJoinSPU(
