@@ -66,12 +66,13 @@ export default function SKUList(props: {
         
         queryParams.states = [SKUState.在用];
 
-        // 使用 getSKUListJoinSPU API 一次性获取 SKU 和 SPU 关联数据
+        // 使用 getSKUListJoinSPU API 获取 SKU 数据
+        // 注意：只请求 API 支持的字段
         const skus = await getSKUListJoinSPU(
           queryParams,
           {
             sku: ['id', 'name', 'state'],
-            spu: ['brand', 'spuName'],
+            spu: ['brand'],
           }
         );
         
@@ -80,7 +81,6 @@ export default function SKUList(props: {
           skuID: sku.id,
           name: sku.name,
           state: sku.state,
-          spuName: sku.spuName || '',
           brand: sku.brand || '',
         }));
         
@@ -108,8 +108,7 @@ export default function SKUList(props: {
     }
     const ret = skuList.filter(sku => {
       const name = sku.name || '';
-      const spuName = sku.spuName || '';
-      const searchStr = `${spuName}${name}`.replaceAll(/\s/g, '').toLowerCase();
+      const searchStr = name.replaceAll(/\s/g, '').toLowerCase();
       return searchStr.includes(s);
     });
     return ret;
@@ -191,13 +190,10 @@ export default function SKUList(props: {
           {
             key: 'd',
             render: (_v, v) => {
-              // 组合 SPU 名称和 SKU 名称
-              const fullName = v.spuName ? `${v.spuName} ${v.name}` : v.name;
-              
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                   <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {fullName}
+                    {v.name}
                   </div>
                 </div>
               );
