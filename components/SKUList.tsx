@@ -233,7 +233,7 @@ export default function SKUList(props: {
         rowKey="skuID"
         dataSource={skuListFiltered}
         loading={loading}
-        showHeader={true}
+        showHeader={false}
         onRow={(record) => {
           return {
             onClick: () => {
@@ -250,7 +250,6 @@ export default function SKUList(props: {
         columns={[
           {
             key: 'name',
-            title: 'SKU名称',
             render: (_v, v) => {
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
@@ -263,33 +262,45 @@ export default function SKUList(props: {
           },
           {
             key: 'gtins',
-            title: '69码',
-            width: 150,
+            width: 40,
+            align: 'right' as const,
             render: (_v, v) => {
               const detail = skuDetails.get(v.skuID);
               if (loadingDetails && !detail) {
                 return <Spin size="small" />;
               }
               if (!detail || detail.gtins.length === 0) {
-                return <span style={{ color: '#999' }}>-</span>;
+                return null;
               }
+              
+              const gtinsText = detail.gtins.join('\n');
+              
               return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <BarcodeOutlined style={{ color: '#1890ff' }} />
-                  <span style={{ fontSize: '12px' }}>{detail.gtins[0]}</span>
-                  {detail.gtins.length > 1 && (
-                    <Tag color="blue" style={{ fontSize: '10px', padding: '0 4px', lineHeight: '16px' }}>
-                      +{detail.gtins.length - 1}
-                    </Tag>
-                  )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Tag
+                    icon={<BarcodeOutlined />}
+                    color="blue"
+                    style={{ 
+                      margin: 0,
+                      cursor: 'help',
+                      fontSize: '14px',
+                      padding: '2px 6px',
+                    }}
+                    title={gtinsText}
+                  >
+                    {detail.gtins.length > 1 && (
+                      <span style={{ fontSize: '10px', marginLeft: '2px' }}>
+                        {detail.gtins.length}
+                      </span>
+                    )}
+                  </Tag>
                 </div>
               );
             },
           },
           {
             key: 'listPrice',
-            title: '官网价',
-            width: 100,
+            width: 80,
             align: 'right' as const,
             render: (_v, v) => {
               const detail = skuDetails.get(v.skuID);
@@ -297,11 +308,11 @@ export default function SKUList(props: {
                 return <Spin size="small" />;
               }
               if (!detail || detail.listPrice === 0) {
-                return <span style={{ color: '#999' }}>-</span>;
+                return null;
               }
               return (
-                <span style={{ fontWeight: 500, color: '#ff4d4f' }}>
-                  ¥{(detail.listPrice / 100).toFixed(2)}
+                <span style={{ fontWeight: 500, color: '#ff4d4f', fontSize: '13px' }}>
+                  ¥{(detail.listPrice / 100).toFixed(0)}
                 </span>
               );
             },
