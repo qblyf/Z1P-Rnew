@@ -80,7 +80,7 @@ export default function SPUList(props: {
       </Row>
       {spuListFiltered.length === pageSize && (
         <Alert
-          message={`当前显示第 ${currentPage} 页，每页 ${pageSize} 条数据。使用下方分页按钮加载更多。`}
+          message={`当前显示第 ${currentPage} 页数据，每页最多 ${pageSize} 条。`}
           type="info"
           style={{ marginBottom: '8px' }}
         />
@@ -142,8 +142,16 @@ export default function SPUList(props: {
             },
           },
         ]}
-        pagination={false}
-        scroll={{ y: height - 140 }}
+        pagination={{
+          current: currentPage,
+          pageSize: pageSize,
+          total: hasMore ? currentPage * pageSize + 1 : (currentPage - 1) * pageSize + spuListFiltered.length,
+          showSizeChanger: false,
+          onChange: (page) => {
+            loadPage(page);
+          },
+        }}
+        scroll={{ y: height - 100 }}
         rowSelection={{
           type: 'radio',
           selectedRowKeys: spuID ? [spuID] : [],
@@ -168,23 +176,6 @@ export default function SPUList(props: {
           },
         }}
       />
-      <Row justify="center" align="middle" style={{ marginTop: '12px', gap: '8px' }}>
-        <Button
-          size="small"
-          disabled={currentPage === 1}
-          onClick={() => loadPage(currentPage - 1)}
-        >
-          上一页
-        </Button>
-        <span style={{ margin: '0 8px' }}>第 {currentPage} 页</span>
-        <Button
-          size="small"
-          disabled={!hasMore}
-          onClick={() => loadPage(currentPage + 1)}
-        >
-          下一页
-        </Button>
-      </Row>
     </div>
   );
 }
