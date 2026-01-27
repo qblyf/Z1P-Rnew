@@ -89,24 +89,25 @@ export default function SKUList(props: {
         }
         
         // 如果选中了 SPU，在前端筛选
-        const filteredSkus = spuID 
-          ? skus.filter((sku: any) => {
-              const match = sku.spuID === spuID;
-              if (!match && skus.length < 10) {
-                console.log(`SKU ${sku.id} 的 spuID (${sku.spuID}) 不匹配选中的 spuID (${spuID})`);
-              }
-              return match;
-            })
-          : skus;
-        
-        console.log('筛选后的 SKU 数量:', filteredSkus.length);
-        
-        if (spuID && filteredSkus.length === 0) {
-          console.warn('⚠️ 选中了 SPU 但没有找到匹配的 SKU');
-          console.warn('可能的原因：');
-          console.warn('1. 该 SPU 没有关联的 SKU');
-          console.warn('2. spuID 字段不存在或格式不正确');
-          console.warn('3. API 返回的数据中没有 spuID 字段');
+        let filteredSkus = skus;
+        if (spuID) {
+          filteredSkus = skus.filter((sku: any) => {
+            const match = sku.spuID === spuID;
+            return match;
+          });
+          
+          console.log('筛选后的 SKU 数量:', filteredSkus.length);
+          
+          if (filteredSkus.length === 0) {
+            console.warn('⚠️ 选中了 SPU 但没有找到匹配的 SKU');
+            console.warn('可能的原因：');
+            console.warn('1. 该 SPU 没有关联的 SKU');
+            console.warn('2. SKU 数量超过 1000 条限制，匹配的 SKU 不在前 1000 条中');
+            console.warn('3. 该 SPU 的 SKU 状态不是"在用"');
+            console.warn('建议：在 SPU 管理中查看该 SPU 的详细信息');
+          }
+        } else {
+          console.log('未选中 SPU，显示所有 SKU');
         }
         
         // 转换数据格式
