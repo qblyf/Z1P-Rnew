@@ -60,17 +60,16 @@ export default function SKUList(props: {
       setLoading(true);
       try {
         let spuIDs: number[] = [];
-        let limit = 5000;
+        const limit = 100; // 统一最多获取100条SKU
         
         if (spuID) {
-          // 选中了 SPU，获取该 SPU 的所有 SKU
+          // 选中了 SPU，获取该 SPU 的 SKU（最多100条）
           spuIDs = [spuID];
-          console.log('开始加载选中 SPU 的 SKU...', spuID);
+          console.log('开始加载选中 SPU 的 SKU...', spuID, '，最多', limit, '条');
         } else {
-          // 未选中 SPU，获取当前 SPU 列表中所有 SPU 的 SKU，最多100条SKU
+          // 未选中 SPU，获取当前 SPU 列表中所有 SPU 的 SKU（最多100条）
           spuIDs = spuList.map(spu => spu.id);
-          limit = 100;
-          console.log('开始加载 SPU 列表中的 SKU...', spuIDs.length, '个 SPU，最多获取', limit, '条 SKU');
+          console.log('开始加载 SPU 列表中的 SKU...', spuIDs.length, '个 SPU，最多', limit, '条 SKU');
         }
         
         if (spuIDs.length === 0) {
