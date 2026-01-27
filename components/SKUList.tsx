@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { SkuID, SKUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { Alert, Col, Row, Table, Tag, Input, Button, Spin } from 'antd';
+import { Alert, Col, Row, Table, Tag, Input, Button, Spin, message } from 'antd';
 import { BarcodeOutlined } from '@ant-design/icons';
 import { getSKUList, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
@@ -184,6 +184,18 @@ export default function SKUList(props: {
     }
   };
 
+  // 复制69码到剪贴板
+  const copyGtinsToClipboard = async (gtins: string[]) => {
+    try {
+      const text = gtins.join('\n');
+      await navigator.clipboard.writeText(text);
+      message.success('69码已复制到剪贴板');
+    } catch (err) {
+      console.error('复制失败:', err);
+      message.error('复制失败，请手动复制');
+    }
+  };
+
   const skuListFiltered = useMemo(() => {
     const s = search.replaceAll(/\s/g, '').toLowerCase();
     if (!s) {
@@ -296,11 +308,15 @@ export default function SKUList(props: {
                       color="blue"
                       style={{ 
                         margin: 0,
-                        cursor: 'help',
+                        cursor: 'pointer',
                         fontSize: '14px',
                         padding: '2px 6px',
                       }}
-                      title={gtinsText}
+                      title={`${gtinsText}\n\n点击复制`}
+                      onClick={(e) => {
+                        e.stopPropagation(); // 阻止触发行选择
+                        copyGtinsToClipboard(detail.gtins);
+                      }}
                     >
                       {detail.gtins.length > 1 && (
                         <span style={{ fontSize: '10px', marginLeft: '2px' }}>
