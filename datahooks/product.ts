@@ -77,54 +77,48 @@ function useSPUList() {
     Awaited<ReturnType<typeof getSPUListNew>>
   >([]);
   const [isPending, startTransition] = useTransition();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(100);
+  const [hasMore, setHasMore] = useState(true);
 
   const { spuCateID } = useSPUCateIDContext();
   const { setSpuID } = useSpuIDContext();
 
-  const update = useCallback(() => {
+  const loadPage = useCallback((page: number) => {
     // 使用startTransition标记为低优先级更新，不阻塞用户交互
     startTransition(() => {
       lessAwait(async () => {
-        // 使用 getSPUListNew 获取 SPU 列表
-        // API 限制每次最多获取 100 条，需要循环获取
-        const allData: Awaited<ReturnType<typeof getSPUListNew>> = [];
-        let offset = 0;
-        const limit = 100;
-        let hasMore = true;
-
-        while (hasMore) {
-          const d = await getSPUListNew(
-            {
-              ...(spuCateID ? { cateIDs: [spuCateID] } : {}),
-              states: [SPUState.在用],
-              limit,
-              offset,
-              orderBy: [{ key: 'p."order"', sort: 'DESC' }],
-            },
-            ['id', 'name', 'brand', 'series', 'generation', 'order']
-          );
-          
-          allData.push(...d);
-          
-          // 如果返回的数据少于 limit，说明已经是最后一页
-          if (d.length < limit) {
-            hasMore = false;
-          } else {
-            offset += limit;
-          }
-        }
+        const offset = (page - 1) * pageSize;
         
-        setSpuList(allData as any);
+        // 使用 getSPUListNew 获取 SPU 列表，每次最多 100 条
+        const d = await getSPUListNew(
+          {
+            ...(spuCateID ? { cateIDs: [spuCateID] } : {}),
+            states: [SPUState.在用],
+            limit: pageSize,
+            offset,
+            orderBy: [{ key: 'p."order"', sort: 'DESC' }],
+          },
+          ['id', 'name', 'brand', 'series', 'generation', 'order']
+        );
+        
+        setSpuList(d as any);
+        setCurrentPage(page);
+        setHasMore(d.length === pageSize);
         setSpuID(undefined);
       })();
     });
-  }, [spuCateID, setSpuID]);
+  }, [spuCateID, setSpuID, pageSize]);
+
+  const update = useCallback(() => {
+    loadPage(1);
+  }, [loadPage]);
 
   useEffect(() => {
     update();
   }, [update]);
 
-  return { spuList, setSpuList, isPending };
+  return { spuList, setSpuList, isPending, currentPage, pageSize, hasMore, loadPage };
 }
 
 export const [SPUListProvider, useSpuListContext] = constate(useSPUList);

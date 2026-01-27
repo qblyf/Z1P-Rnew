@@ -15,7 +15,7 @@ export default function SPUList(props: {
   offsetTop?: number;
 }) {
   const { onWandEditSPU, onAddClick, offsetTop = 24 } = props;
-  const { spuList } = useSpuListContext();
+  const { spuList, currentPage, pageSize, hasMore, loadPage } = useSpuListContext();
   const { brandList } = useBrandListContext();
 
   const { spuID, setSpuID } = useSpuIDContext();
@@ -78,10 +78,11 @@ export default function SPUList(props: {
           )}
         </Col>
       </Row>
-      {spuListFiltered.length === 1000 && (
+      {spuListFiltered.length === pageSize && (
         <Alert
-          message="最多显示 1000 条数据. 请尽量细化过滤条件避免显示不全."
-          type="warning"
+          message={`当前显示第 ${currentPage} 页，每页 ${pageSize} 条数据。使用下方分页按钮加载更多。`}
+          type="info"
+          style={{ marginBottom: '8px' }}
         />
       )}
       <Table
@@ -141,11 +142,8 @@ export default function SPUList(props: {
             },
           },
         ]}
-        pagination={{
-          defaultPageSize: 20,
-          pageSizeOptions: [20, 100, 1000],
-        }}
-        scroll={{ y: height - 100 }}
+        pagination={false}
+        scroll={{ y: height - 140 }}
         rowSelection={{
           type: 'radio',
           selectedRowKeys: spuID ? [spuID] : [],
@@ -170,6 +168,23 @@ export default function SPUList(props: {
           },
         }}
       />
+      <Row justify="center" align="middle" style={{ marginTop: '12px', gap: '8px' }}>
+        <Button
+          size="small"
+          disabled={currentPage === 1}
+          onClick={() => loadPage(currentPage - 1)}
+        >
+          上一页
+        </Button>
+        <span style={{ margin: '0 8px' }}>第 {currentPage} 页</span>
+        <Button
+          size="small"
+          disabled={!hasMore}
+          onClick={() => loadPage(currentPage + 1)}
+        >
+          下一页
+        </Button>
+      </Row>
     </div>
   );
 }
