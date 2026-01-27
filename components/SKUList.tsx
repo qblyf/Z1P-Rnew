@@ -4,7 +4,7 @@ import { Alert, Col, Row, Table, Tag, Input, Button, Spin } from 'antd';
 import { BarcodeOutlined } from '@ant-design/icons';
 import { getSKUList, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
-import { useSpuIDContext } from '../datahooks/product';
+import { useSpuIDContext, useSpuListContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
 import { lessAwait } from '../error';
 import { Z1P_ENDPOINT } from '../constants';
@@ -21,6 +21,7 @@ export default function SKUList(props: {
 }) {
   const { onWantEditSKU, onAddClick, offsetTop = 24 } = props;
   const { spuID } = useSpuIDContext();
+  const { spuList } = useSpuListContext();
   const { token } = useTokenContext();
   const { brandList } = useBrandListContext();
 
@@ -47,6 +48,7 @@ export default function SKUList(props: {
     console.log('=== SKUList useEffect 触发 ===');
     console.log('token:', token ? '存在' : '不存在');
     console.log('spuID:', spuID);
+    console.log('spuList length:', spuList.length);
     console.log('================================');
     
     if (!token) {
@@ -56,20 +58,34 @@ export default function SKUList(props: {
 
     lessAwait(async () => {
       setLoading(true);
-      console.log('开始加载 SKU 列表...', spuID ? `(SPU: ${spuID})` : '(所有 SKU)');
       try {
+        let spuIDs: number[] = [];
+        
+        if (spuID) {
+          // 选中了 SPU，只获取该 SPU 的 SKU
+          spuIDs = [spuID];
+          console.log('开始加载选中 SPU 的 SKU...', spuID);
+        } else {
+          // 未选中 SPU，获取当前 SPU 列表中所有 SPU 的 SKU（最多100条SPU）
+          spuIDs = spuList.slice(0, 100).map(spu => spu.id);
+          console.log('开始加载 SPU 列表中的 SKU...', spuIDs.length, '个 SPU');
+        }
+        
+        if (spuIDs.length === 0) {
+          console.warn('没有可用的 SPU ID');
+          setSkuList([]);
+          setLoading(false);
+          return;
+        }
+
         // 构建查询参数
         const queryParams: any = {
           limit: 5000,
           offset: 0,
           orderBy: { key: 'id', sort: 'DESC' },
           states: [SKUState.在用],
+          spuIDs: spuIDs,
         };
-
-        // 如果选中了 SPU，添加 spuIDs 参数
-        if (spuID) {
-          queryParams.spuIDs = [spuID];
-        }
 
         // 打印完整的请求参数用于调试
         console.log('=== SKU 列表请求参数 ===');
@@ -90,19 +106,13 @@ export default function SKUList(props: {
           console.log('第一条 SKU 数据示例:', JSON.stringify(skus[0], null, 2));
         }
         
-        // 如果选中了 SPU，进行前端筛选（以防后端参数不生效）
-        let filteredSkus = skus;
-        if (spuID) {
-          filteredSkus = skus.filter(sku => sku.spuID === spuID);
-          console.log(`按 SPU ${spuID} 筛选后的 SKU 数量:`, filteredSkus.length);
-        }
-        
-        // 转换数据格式 - getSKUList 不返回 brand，需要从 brandList 中匹配
-        const formattedSkus = filteredSkus.map((sku: any) => ({
+        // 转换数据格式
+        const formattedSkus = skus.map((sku: any) => ({
           skuID: sku.id,
           name: sku.name,
           state: sku.state,
-          brand: '', // getSKUList 不返回 brand，需要从 SKU 名称中提取或留空
+          spuID: sku.spuID,
+          brand: '',
         }));
         
         setSkuList(formattedSkus);
@@ -136,7 +146,7 @@ export default function SKUList(props: {
         setLoading(false);
       }
     })();
-  }, [spuID, token]);
+  }, [spuID, spuList, token]);
 
   // 后加载 SKU 详情（69码和官网价）
   const loadSkuDetails = async (skuIDs: number[]) => {
