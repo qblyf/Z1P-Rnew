@@ -273,6 +273,7 @@ function ClientPage() {
                 const queryParams: any = {
                   limit: 1000,
                   offset: 0,
+                  orderBy: { key: 'p.id', sort: 'DESC' },
                 };
                 
                 // 只添加非空的查询参数
@@ -281,41 +282,70 @@ function ClientPage() {
                 if (brands && brands.length > 0) queryParams.brands = brands;
                 if (skuState) queryParams.states = [skuState];
                 
-                // 添加 orderBy 参数
-                queryParams.orderBy = { key: 'p.id', sort: 'DESC' };
+                // 打印请求参数用于调试
+                console.log('=== SKU 列表页面请求参数 ===');
+                console.log('queryParams:', JSON.stringify(queryParams, null, 2));
+                console.log('fields:', JSON.stringify({
+                  sku: ['id', 'name', 'gtins', 'state'],
+                  spu: ['brand']
+                }, null, 2));
+                console.log('=============================');
                 
-                // 从服务器获取数据
+                // 从服务器获取数据 - 只请求 API 支持的字段
                 const res = await getSKUListJoinSPU(
                   queryParams,
-                  { sku: ['id', 'name', 'gtins', 'state', 'spec', 'color', 'combo'] as any, spu: ['brand'] }
+                  { sku: ['id', 'name', 'gtins', 'state'], spu: ['brand'] }
                 );
                 
+                console.log('✓ 成功获取 SKU 列表，数量:', res.length);
+                
                 // 前端过滤：根据 spec、color、combo 关键词过滤
+                // 注意：这些字段需要从 SKU 名称中提取或者不支持筛选
                 let filteredRes = res;
                 
                 if (specKeyword) {
                   const specLower = specKeyword.toLowerCase();
                   filteredRes = filteredRes.filter((item: any) => 
-                    item.spec && item.spec.toLowerCase().includes(specLower)
+                    item.name && item.name.toLowerCase().includes(specLower)
                   );
+                  console.log('按配置/内存筛选后数量:', filteredRes.length);
                 }
                 
                 if (colorKeyword) {
                   const colorLower = colorKeyword.toLowerCase();
                   filteredRes = filteredRes.filter((item: any) => 
-                    item.color && item.color.toLowerCase().includes(colorLower)
+                    item.name && item.name.toLowerCase().includes(colorLower)
                   );
+                  console.log('按颜色筛选后数量:', filteredRes.length);
                 }
                 
                 if (comboKeyword) {
                   const comboLower = comboKeyword.toLowerCase();
                   filteredRes = filteredRes.filter((item: any) => 
-                    item.combo && item.combo.toLowerCase().includes(comboLower)
+                    item.name && item.name.toLowerCase().includes(comboLower)
                   );
+                  console.log('按版本筛选后数量:', filteredRes.length);
                 }
                 
                 // 使用 setList 设置 state 数据
                 setList(filteredRes);
+              } catch (err) {
+                console.error('✗ 获取 SKU 列表失败');
+                console.error('错误对象:', err);
+                console.error('错误详情:', {
+                  message: err instanceof Error ? err.message : String(err),
+                  stack: err instanceof Error ? err.stack : undefined,
+                });
+                
+                // 尝试解析错误信息
+                if (err && typeof err === 'object') {
+                  console.error('错误对象的所有属性:', Object.keys(err));
+                  try {
+                    console.error('错误对象完整内容:', JSON.stringify(err, null, 2));
+                  } catch (e) {
+                    console.error('无法序列化错误对象');
+                  }
+                }
               } finally {
                 setLoading(false);
               }
@@ -355,46 +385,13 @@ function ClientPage() {
               { 
                 dataIndex: 'name', 
                 title: 'SKU 名称',
-                width: 300,
+                width: 400,
                 ellipsis: true,
               },
               { 
                 dataIndex: 'brand', 
                 title: '品牌',
                 width: 120,
-              },
-              {
-                dataIndex: 'spec',
-                title: '配置/内存',
-                width: 150,
-                render: (spec: string) => {
-                  if (!spec) {
-                    return <span style={{ color: '#999' }}>-</span>;
-                  }
-                  return <Tag color="cyan">{spec}</Tag>;
-                },
-              },
-              {
-                dataIndex: 'color',
-                title: '颜色',
-                width: 120,
-                render: (color: string) => {
-                  if (!color) {
-                    return <span style={{ color: '#999' }}>-</span>;
-                  }
-                  return <Tag color="purple">{color}</Tag>;
-                },
-              },
-              {
-                dataIndex: 'combo',
-                title: '版本',
-                width: 120,
-                render: (combo: string) => {
-                  if (!combo) {
-                    return <span style={{ color: '#999' }}>-</span>;
-                  }
-                  return <Tag color="orange">{combo}</Tag>;
-                },
               },
               {
                 dataIndex: 'gtins',
