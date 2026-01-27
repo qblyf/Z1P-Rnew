@@ -52,19 +52,22 @@ export default function SKUList(props: {
       setLoading(true);
       console.log('开始加载 SKU 列表...');
       try {
-        // 构建查询参数
+        // 构建查询参数 - 不使用 spuIDs，因为 API 可能不支持
         const queryParams: any = {
           limit: 1000,
           offset: 0,
           orderBy: { key: 'p.id', sort: 'DESC' },
+          states: [SKUState.在用],
         };
 
-        // 只添加非空的查询参数
-        if (spuID) {
-          queryParams.spuIDs = [spuID];
-        }
-        
-        queryParams.states = [SKUState.在用];
+        // 打印完整的请求参数用于调试
+        console.log('=== SKU 列表请求参数 ===');
+        console.log('queryParams:', JSON.stringify(queryParams, null, 2));
+        console.log('fields:', JSON.stringify({
+          sku: ['id', 'name', 'state'],
+          spu: ['brand'],
+        }, null, 2));
+        console.log('========================');
 
         // 使用 getSKUListJoinSPU API 获取 SKU 数据
         // 注意：只请求 API 支持的字段
@@ -76,8 +79,17 @@ export default function SKUList(props: {
           }
         );
         
+        console.log('✓ 成功获取 SKU 列表，数量:', skus.length);
+        
+        // 如果选中了 SPU，在前端筛选
+        const filteredSkus = spuID 
+          ? skus.filter((sku: any) => sku.spuID === spuID)
+          : skus;
+        
+        console.log('筛选后的 SKU 数量:', filteredSkus.length);
+        
         // 转换数据格式
-        const formattedSkus = skus.map((sku: any) => ({
+        const formattedSkus = filteredSkus.map((sku: any) => ({
           skuID: sku.id,
           name: sku.name,
           state: sku.state,
@@ -87,7 +99,8 @@ export default function SKUList(props: {
         setSkuList(formattedSkus);
         setSelectedSkuID(undefined);
       } catch (err) {
-        console.error('获取 SKU 列表失败:', err);
+        console.error('✗ 获取 SKU 列表失败');
+        console.error('错误对象:', err);
         console.error('错误详情:', {
           message: err instanceof Error ? err.message : String(err),
           stack: err instanceof Error ? err.stack : undefined,
@@ -95,6 +108,12 @@ export default function SKUList(props: {
           hasToken: !!token,
           tokenLength: token?.length,
         });
+        
+        // 尝试解析错误信息
+        if (err && typeof err === 'object') {
+          console.error('错误对象的所有属性:', Object.keys(err));
+          console.error('错误对象完整内容:', JSON.stringify(err, null, 2));
+        }
       } finally {
         setLoading(false);
       }
