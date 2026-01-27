@@ -3,7 +3,7 @@ import { SkuID, SKUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { Alert, Col, Row, Table, Tag, Input, Button } from 'antd';
 import { getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
-import { useSpuIDContext, useSPUCateIDContext } from '../datahooks/product';
+import { useSpuIDContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
 import { lessAwait } from '../error';
 import { Z1P_ENDPOINT } from '../constants';
@@ -20,7 +20,6 @@ export default function SKUList(props: {
 }) {
   const { onWantEditSKU, onAddClick, offsetTop = 24 } = props;
   const { spuID } = useSpuIDContext();
-  const { spuCateID } = useSPUCateIDContext();
   const { token } = useTokenContext();
   const { brandList } = useBrandListContext();
 
@@ -42,7 +41,7 @@ export default function SKUList(props: {
 
   // 加载 SKU 列表
   useEffect(() => {
-    console.log('SKUList useEffect - token:', token ? '存在' : '不存在');
+    console.log('SKUList useEffect - token:', token ? '存在' : '不存在', 'spuID:', spuID);
     if (!token) {
       console.warn('没有 token，无法加载 SKU 列表');
       return;
@@ -50,27 +49,31 @@ export default function SKUList(props: {
 
     lessAwait(async () => {
       setLoading(true);
-      console.log('开始加载 SKU 列表...');
+      console.log('开始加载 SKU 列表...', spuID ? `(SPU: ${spuID})` : '(所有 SKU)');
       try {
-        // 构建查询参数 - 不使用 spuIDs，因为 API 可能不支持
+        // 构建查询参数
         const queryParams: any = {
-          limit: 5000,  // 增加限制，避免遗漏数据
+          limit: 5000,
           offset: 0,
           orderBy: { key: 'p.id', sort: 'DESC' },
           states: [SKUState.在用],
         };
 
+        // 如果选中了 SPU，添加 spuIDs 参数让后端筛选
+        if (spuID) {
+          queryParams.spuIDs = [spuID];
+        }
+
         // 打印完整的请求参数用于调试
         console.log('=== SKU 列表请求参数 ===');
         console.log('queryParams:', JSON.stringify(queryParams, null, 2));
         console.log('fields:', JSON.stringify({
-          sku: ['id', 'name', 'state'],
+          sku: ['id', 'name', 'state', 'spuID'],
           spu: ['brand'],
         }, null, 2));
         console.log('========================');
 
         // 使用 getSKUListJoinSPU API 获取 SKU 数据
-        // 注意：只请求 API 支持的字段
         const skus = await getSKUListJoinSPU(
           queryParams,
           {
@@ -80,38 +83,14 @@ export default function SKUList(props: {
         );
         
         console.log('✓ 成功获取 SKU 列表，数量:', skus.length);
-        console.log('当前选中的 spuID:', spuID);
         
         // 打印前几条数据的结构用于调试
         if (skus.length > 0) {
           console.log('第一条 SKU 数据示例:', JSON.stringify(skus[0], null, 2));
-          console.log('SKU 数据包含的字段:', Object.keys(skus[0]));
-        }
-        
-        // 如果选中了 SPU，在前端筛选
-        let filteredSkus = skus;
-        if (spuID) {
-          filteredSkus = skus.filter((sku: any) => {
-            const match = sku.spuID === spuID;
-            return match;
-          });
-          
-          console.log('筛选后的 SKU 数量:', filteredSkus.length);
-          
-          if (filteredSkus.length === 0) {
-            console.warn('⚠️ 选中了 SPU 但没有找到匹配的 SKU');
-            console.warn('可能的原因：');
-            console.warn('1. 该 SPU 没有关联的 SKU');
-            console.warn('2. SKU 数量超过 1000 条限制，匹配的 SKU 不在前 1000 条中');
-            console.warn('3. 该 SPU 的 SKU 状态不是"在用"');
-            console.warn('建议：在 SPU 管理中查看该 SPU 的详细信息');
-          }
-        } else {
-          console.log('未选中 SPU，显示所有 SKU');
         }
         
         // 转换数据格式
-        const formattedSkus = filteredSkus.map((sku: any) => ({
+        const formattedSkus = skus.map((sku: any) => ({
           skuID: sku.id,
           name: sku.name,
           state: sku.state,
@@ -120,6 +99,10 @@ export default function SKUList(props: {
         
         setSkuList(formattedSkus);
         setSelectedSkuID(undefined);
+        
+        if (spuID && formattedSkus.length === 0) {
+          console.warn('⚠️ 该 SPU 没有关联的"在用"状态的 SKU');
+        }
       } catch (err) {
         console.error('✗ 获取 SKU 列表失败');
         console.error('错误对象:', err);
