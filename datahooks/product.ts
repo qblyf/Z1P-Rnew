@@ -85,12 +85,14 @@ function useSPUList() {
     // 使用startTransition标记为低优先级更新，不阻塞用户交互
     startTransition(() => {
       lessAwait(async () => {
-        // 使用 getSPUListNew 并按 order 字段降序排序
+        // 使用 getSPUListNew 获取 SPU 列表
         const d = await getSPUListNew(
           {
             ...(spuCateID ? { cateIDs: [spuCateID] } : {}),
             states: [SPUState.在用],
-            orderBy: [{ key: 'p."order"', sort: 'DESC' }],
+            limit: 10000,
+            offset: 0,
+            orderBy: [{ key: 'p."id"', sort: 'DESC' }],
           },
           ['id', 'name', 'brand', 'series', 'generation', 'order']
         );
