@@ -87,20 +87,11 @@ function useSPUList() {
       lessAwait(async () => {
         // 使用 getSPUListNew 并按 order 字段降序排序
         const d = await getSPUListNew(
-          spuCateID 
-            ? { 
-                lastCateIDs: [spuCateID], 
-                states: [SPUState.在用],
-                limit: 10000,
-                offset: 0,
-                orderBy: [{ key: 'p."order"', sort: 'DESC' }],
-              }
-            : { 
-                states: [SPUState.在用],
-                limit: 10000,
-                offset: 0,
-                orderBy: [{ key: 'p."order"', sort: 'DESC' }],
-              },
+          {
+            ...(spuCateID ? { cateIDs: [spuCateID] } : {}),
+            states: [SPUState.在用],
+            orderBy: [{ key: 'p."order"', sort: 'DESC' }],
+          },
           ['id', 'name', 'brand', 'series', 'generation', 'order']
         );
         setSpuList(d as any);
