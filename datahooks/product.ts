@@ -97,7 +97,10 @@ function useSPUList() {
             states: [SPUState.在用],
             limit: pageSize,
             offset,
-            orderBy: [{ key: 'p."order"', sort: 'DESC' }],
+            orderBy: [
+              { key: 'p."order"', sort: 'DESC' },
+              { key: 'p."id"', sort: 'DESC' }
+            ],
           },
           ['id', 'name', 'brand', 'series', 'generation', 'order']
         );
