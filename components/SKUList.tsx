@@ -63,7 +63,10 @@ export default function SKUList(props: {
           states: [SKUState.在用],
         };
 
-        // 注意：后端的 spuIDs 参数不生效，所以我们在前端进行筛选
+        // 如果选中了 SPU，尝试使用 spuIDs 参数，如果不生效则前端筛选
+        if (spuID) {
+          queryParams.spuIDs = [spuID];
+        }
 
         // 打印完整的请求参数用于调试
         console.log('=== SKU 列表请求参数 ===');
@@ -72,7 +75,6 @@ export default function SKUList(props: {
           sku: ['id', 'name', 'state', 'spuID'],
           spu: ['brand'],
         }, null, 2));
-        console.log('将在前端按 spuID 筛选:', spuID || '不筛选');
         console.log('========================');
 
         // 使用 getSKUListJoinSPU API 获取 SKU 数据
@@ -91,11 +93,19 @@ export default function SKUList(props: {
           console.log('第一条 SKU 数据示例:', JSON.stringify(skus[0], null, 2));
         }
         
-        // 如果选中了 SPU，需要在前端筛选（因为后端 spuIDs 参数不生效）
+        // 检查后端 spuIDs 参数是否生效
         let filteredSkus = skus;
         if (spuID) {
-          filteredSkus = skus.filter(sku => sku.spuID === spuID);
-          console.log(`按 SPU ${spuID} 筛选后的 SKU 数量:`, filteredSkus.length);
+          // 检查返回的数据是否已经按 spuID 筛选
+          const hasOtherSpuData = skus.some(sku => sku.spuID !== spuID);
+          if (hasOtherSpuData) {
+            // 后端 spuIDs 参数不生效，需要前端筛选
+            console.log('后端 spuIDs 参数不生效，进行前端筛选');
+            filteredSkus = skus.filter(sku => sku.spuID === spuID);
+            console.log(`按 SPU ${spuID} 筛选后的 SKU 数量:`, filteredSkus.length);
+          } else {
+            console.log('后端 spuIDs 参数生效，已返回筛选后的数据');
+          }
         }
         
         // 转换数据格式
