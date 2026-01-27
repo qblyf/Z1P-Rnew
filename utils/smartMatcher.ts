@@ -1468,6 +1468,69 @@ export class SimpleMatcher {
   }
 
   /**
+   * 提取手表尺寸（新增）
+   * 用于提取手表/手环的尺寸规格，如 "46mm"、"42mm"、"1.43寸" 等
+   * 
+   * @param str 输入字符串
+   * @returns 尺寸字符串（如 "46mm"）或 null
+   */
+  extractWatchSize(str: string): string | null {
+    // 匹配 mm 尺寸（如 46mm、42mm）
+    const mmPattern = /(\d+)\s*mm\b/i;
+    const mmMatch = str.match(mmPattern);
+    if (mmMatch) {
+      return `${mmMatch[1]}mm`;
+    }
+    
+    // 匹配寸尺寸（如 1.43寸、1.96寸）
+    const inchPattern = /(\d+\.?\d*)\s*寸\b/;
+    const inchMatch = str.match(inchPattern);
+    if (inchMatch) {
+      return `${inchMatch[1]}寸`;
+    }
+    
+    return null;
+  }
+
+  /**
+   * 提取表带类型（新增）
+   * 用于提取手表的表带材质和颜色，如 "复合编织表带托帕蓝"、"氟橡胶表带黑色" 等
+   * 
+   * @param str 输入字符串
+   * @returns 表带描述字符串或 null
+   */
+  extractWatchBand(str: string): string | null {
+    // 表带关键词列表
+    const bandKeywords = [
+      '编织表带', '复合编织表带', '尼龙编织表带',
+      '皮革表带', '真皮表带', '素皮表带',
+      '金属表带', '不锈钢表带', '钛金属表带',
+      '硅胶表带', '氟橡胶表带', '橡胶表带',
+      '表带', '腕带', '表链'
+    ];
+    
+    // 按长度降序排序，优先匹配更具体的表带类型
+    const sortedKeywords = bandKeywords.sort((a, b) => b.length - a.length);
+    
+    for (const keyword of sortedKeywords) {
+      const index = str.indexOf(keyword);
+      if (index !== -1) {
+        // 找到表带关键词，提取从关键词开始到字符串末尾的内容
+        // 这样可以包含表带的材质和颜色信息
+        // 例如："复合编织表带托帕蓝" -> "复合编织表带托帕蓝"
+        const bandInfo = str.substring(index).trim();
+        
+        // 移除可能的括号和型号信息
+        const cleaned = bandInfo.replace(/\([^)]*\)/g, '').trim();
+        
+        return cleaned;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
    * 改进的颜色提取（使用 ColorMatcher）
    */
   extractColorAdvanced(input: string): string | null {
@@ -1651,11 +1714,33 @@ export class SimpleMatcher {
       console.log(`[extractSPUPart-15R] 规则3: 容量 - 未匹配`);
     }
     
-    // 规则4: 按照品牌+型号方法确定SPU
+    // 🔥 新增规则4: 手表尺寸规格（46mm、42mm 等）
+    // 对于手表产品，尺寸是SKU级别的属性，不属于SPU
+    // 例如："华为WatchGT5 46mm 复合编织表带托帕蓝" -> SPU应该是 "华为WatchGT5"
+    const watchSizePattern = /(.+?)\s+(\d+)\s*mm\b/i;
+    const watchSizeMatch = str.match(watchSizePattern);
+    if (watchSizeMatch) {
+      const beforeSize = watchSizeMatch[1].trim();
+      // 检查是否是手表产品（包含 watch、band、手表、手环 等关键词）
+      const isWatch = /watch|band|手表|手环/i.test(beforeSize);
+      if (isWatch) {
+        if (is15R) {
+          console.log(`[extractSPUPart-15R] 规则4匹配: 手表尺寸 -> "${beforeSize}"`);
+          console.log(`[extractSPUPart-15R] ========== 提取完成 ==========\n`);
+        }
+        return beforeSize;
+      } else if (is15R) {
+        console.log(`[extractSPUPart-15R] 规则4: 找到尺寸但不是手表产品`);
+      }
+    } else if (is15R) {
+      console.log(`[extractSPUPart-15R] 规则4: 手表尺寸 - 未匹配`);
+    }
+    
+    // 规则5: 按照品牌+型号方法确定SPU
     let spuPart = str;
     
     if (is15R) {
-      console.log(`[extractSPUPart-15R] 规则4: 开始品牌+型号方法`);
+      console.log(`[extractSPUPart-15R] 规则5: 开始品牌+型号方法`);
     }
     
     let versionKeyword: string | null = null;
@@ -1686,8 +1771,9 @@ export class SimpleMatcher {
         console.log(`[extractSPUPart-15R] 未找到版本关键词，尝试颜色提取`);
       }
       
-      // 🔥 关键修复：先移除品牌名，再提取颜色
+      // 🔥 关键修复：先移除品牌名，再移除配件关键词，最后提取颜色
       // 避免把品牌名中的颜色字（如"红米"中的"红"）误识别为颜色
+      // 避免把配件关键词中的颜色字（如"蓝色表带"中的"蓝色"）误识别为产品颜色
       let spuPartWithoutBrand = spuPart;
       const brand = this.extractBrand(spuPart);
       if (brand) {
@@ -1700,8 +1786,31 @@ export class SimpleMatcher {
         }
       }
       
-      // 从移除品牌后的字符串中提取颜色
-      const color = this.extractColorAdvanced(spuPartWithoutBrand);
+      // 🔥 新增：移除配件关键词（表带、表盘等）
+      // 这些关键词后面的内容通常是配件的颜色/材质，不是产品本身的颜色
+      const accessoryKeywords = [
+        '表带', '表盘', '表链', '表扣', '表冠',
+        '手环', '腕带', '编织表带', '皮革表带', '金属表带', '硅胶表带',
+        '耳机', '耳塞', '充电器', '数据线', '保护壳', '保护套',
+        '键盘', '鼠标', '触控笔', '手写笔'
+      ];
+      
+      let spuPartWithoutAccessory = spuPartWithoutBrand;
+      for (const keyword of accessoryKeywords) {
+        const index = spuPartWithoutAccessory.indexOf(keyword);
+        if (index !== -1) {
+          // 找到配件关键词，截取到关键词之前
+          spuPartWithoutAccessory = spuPartWithoutAccessory.substring(0, index).trim();
+          if (is15R) {
+            console.log(`[extractSPUPart-15R] 找到配件关键词: "${keyword}" at ${index}`);
+            console.log(`[extractSPUPart-15R] 截取到配件关键词前: "${spuPartWithoutAccessory}"`);
+          }
+          break;
+        }
+      }
+      
+      // 从移除品牌和配件关键词后的字符串中提取颜色
+      const color = this.extractColorAdvanced(spuPartWithoutAccessory);
       if (is15R) {
         console.log(`[extractSPUPart-15R] 提取颜色: ${color ? `"${color}"` : 'null'}`);
       }
@@ -2318,6 +2427,13 @@ export class SimpleMatcher {
    * 2. 颜色变体匹配（90%分数）
    * 3. 基础颜色匹配（50%分数）
    * 
+   * 匹配维度（新增手表规格）：
+   * - 版本（活力版、标准版等）
+   * - 容量（8+256GB 等）
+   * - 颜色（星岩黑、冰霜银等）
+   * - 手表尺寸（46mm、42mm 等）- 新增
+   * - 表带类型（复合编织表带托帕蓝等）- 新增
+   * 
    * @param input 输入字符串
    * @param skuList SKU 列表
    * @param options 匹配选项
@@ -2331,16 +2447,25 @@ export class SimpleMatcher {
       versionWeight?: number;
       capacityWeight?: number;
       colorWeight?: number;
+      watchSizeWeight?: number;  // 新增：手表尺寸权重
+      watchBandWeight?: number;  // 新增：表带类型权重
     }
   ): { sku: SKUData | null; similarity: number } {
     const inputCapacity = this.extractCapacity(input);
     const inputColor = this.extractColorAdvanced(input);
     const inputVersion = options?.inputVersion;
+    const inputWatchSize = this.extractWatchSize(input);      // 新增
+    const inputWatchBand = this.extractWatchBand(input);      // 新增
+    
+    // 检测是否是手表产品
+    const isWatchProduct = /watch|band|手表|手环/i.test(input);
     
     // 默认权重
     const versionWeight = options?.versionWeight ?? 0.3;
     const capacityWeight = options?.capacityWeight ?? 0.4;
     const colorWeight = options?.colorWeight ?? 0.3;
+    const watchSizeWeight = options?.watchSizeWeight ?? (isWatchProduct ? 0.3 : 0);  // 手表产品才使用尺寸权重
+    const watchBandWeight = options?.watchBandWeight ?? (isWatchProduct ? 0.2 : 0);  // 手表产品才使用表带权重
     
     let bestMatch: SKUData | null = null;
     let bestScore = 0;
@@ -2349,6 +2474,8 @@ export class SimpleMatcher {
       const skuCapacity = this.extractCapacity(sku.name);
       const skuColor = this.extractColorAdvanced(sku.name);
       const skuVersion = this.extractVersion(sku.name);
+      const skuWatchSize = this.extractWatchSize(sku.name);    // 新增
+      const skuWatchBand = this.extractWatchBand(sku.name);    // 新增
       
       let score = 0;
       let totalWeight = 0;
@@ -2382,6 +2509,46 @@ export class SimpleMatcher {
           const colorMatchResult = this.colorMatcher.match(inputColor, skuColor);
           if (colorMatchResult.match) {
             score += colorWeight * colorMatchResult.score;
+          }
+        }
+      }
+      
+      // 🔥 新增：手表尺寸匹配
+      if (isWatchProduct && (inputWatchSize || skuWatchSize)) {
+        totalWeight += watchSizeWeight;
+        if (inputWatchSize && skuWatchSize && inputWatchSize === skuWatchSize) {
+          score += watchSizeWeight;
+        }
+      }
+      
+      // 🔥 新增：表带类型匹配
+      if (isWatchProduct && (inputWatchBand || skuWatchBand)) {
+        totalWeight += watchBandWeight;
+        if (inputWatchBand && skuWatchBand) {
+          // 表带匹配：检查是否包含相同的关键词
+          // 例如："复合编织表带托帕蓝" 包含 "复合编织表带" 和 "托帕蓝"
+          const inputBandLower = inputWatchBand.toLowerCase();
+          const skuBandLower = skuWatchBand.toLowerCase();
+          
+          // 完全匹配
+          if (inputBandLower === skuBandLower) {
+            score += watchBandWeight;
+          }
+          // 部分匹配：检查是否包含相同的表带类型关键词
+          else {
+            const bandTypes = ['编织', '皮革', '金属', '硅胶', '橡胶', '不锈钢', '钛金属'];
+            let hasCommonType = false;
+            
+            for (const type of bandTypes) {
+              if (inputBandLower.includes(type) && skuBandLower.includes(type)) {
+                hasCommonType = true;
+                break;
+              }
+            }
+            
+            if (hasCommonType) {
+              score += watchBandWeight * 0.7; // 部分匹配给70%的分数
+            }
           }
         }
       }
