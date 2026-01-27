@@ -201,14 +201,32 @@ class ColorMatcher {
    * 提取颜色（改进的颜色提取）
    */
   extractColor(input: string): string | null {
+    // 🔥 关键修复：先移除材质和配件关键词，避免误识别
+    // 例如："真皮表带" 中的 "真皮" 不应该被识别为颜色
+    let cleanedInput = input;
+    const materialKeywords = [
+      '真皮', '素皮', '皮革', '陶瓷', '玻璃', '金属', '塑料', '硅胶', '软胶',
+      '蓝牙', '无线', '有线', '充电', '快充', '超级快充',
+      '表带', '表盘', '手环', '耳机', '耳塞', '充电器', '数据线', '保护壳', '保护套',
+      '智能', '手表', '手机', '平板', '笔记本', '电脑'
+    ];
+    
+    for (const keyword of materialKeywords) {
+      // 移除材质关键词及其前后的中文字符
+      // 例如："星岩黑真皮" -> 移除 "真皮" -> "星岩黑"
+      cleanedInput = cleanedInput.replace(new RegExp(keyword, 'g'), '');
+    }
+    
+    cleanedInput = cleanedInput.trim();
+    
     // 方法1: 使用配置的颜色变体库
     if (this.colorVariantsMap.size > 0) {
       for (const [colorName, variants] of this.colorVariantsMap.entries()) {
-        if (input.includes(colorName)) {
+        if (cleanedInput.includes(colorName)) {
           return colorName;
         }
         for (const variant of variants) {
-          if (input.includes(variant)) {
+          if (cleanedInput.includes(variant)) {
             return colorName; // 返回主颜色名
           }
         }
@@ -218,14 +236,14 @@ class ColorMatcher {
     // 方法2: 使用动态颜色列表
     if (this.dynamicColors.length > 0) {
       for (const color of this.dynamicColors) {
-        if (input.includes(color)) {
+        if (cleanedInput.includes(color)) {
           return color;
         }
       }
     }
     
     // 方法3: 从字符串末尾提取
-    const lastWords = input.match(/[\u4e00-\u9fa5]{2,5}$/);
+    const lastWords = cleanedInput.match(/[\u4e00-\u9fa5]{2,5}$/);
     if (lastWords) {
       const word = lastWords[0];
       const excludeWords = [
@@ -874,10 +892,11 @@ export class SimpleMatcher {
    * 
    * 匹配优先级：
    * 0. 动态型号索引（从实际 SPU 数据中学习）
-   * 1. 平板型号（MatePad、iPad 等）
-   * 2. 字母+字母格式（Watch GT、Band 5 等）
-   * 3. 复杂型号（14 Pro Max+、Y300 Pro+ 等）
-   * 4. 简单型号（P50、14 等）
+   * 1. 可穿戴设备型号（手环、手表等）
+   * 2. 平板型号（MatePad、iPad 等）
+   * 3. 字母+字母格式（Watch GT、Band 5 等）
+   * 4. 复杂型号（14 Pro Max+、Y300 Pro+ 等）
+   * 5. 简单型号（P50、14 等）
    */
   extractModel(str: string, brand?: string | null): string | null {
     let lowerStr = str.toLowerCase();
@@ -913,6 +932,17 @@ export class SimpleMatcher {
       }
     }
     
+    // 优先级1: 可穿戴设备型号（手环、手表等）
+    // 这些产品的型号通常包含产品类型词，如"手环10"、"手表3"
+    const wearableModel = this.extractWearableModel(normalizedStr);
+    if (wearableModel) {
+      if (is15R) {
+        console.log(`[extractModel-15R] ✅ 可穿戴设备型号匹配: "${wearableModel}"`);
+        console.log(`[extractModel-15R] ========== 提取成功 ==========\n`);
+      }
+      return wearableModel;
+    }
+    
     // ⚠️ 重要：先尝试提取简单型号（在 normalizeModel 之前）
     // 因为 normalizeModel 会在字母和数字之间添加空格，导致 "y50" 变成 "y 50"
     const simpleModelBeforeNormalize = this.extractSimpleModel(normalizedStr);
@@ -929,7 +959,7 @@ export class SimpleMatcher {
       console.log(`[extractModel-15R] 智能标准化后: "${normalizedStr}"`);
     }
     
-    // 优先级1: 平板型号
+    // 优先级2: 平板型号
     const tabletModel = this.extractTabletModel(normalizedStr);
     if (tabletModel) {
       if (is15R) {
@@ -941,7 +971,7 @@ export class SimpleMatcher {
       console.log(`[extractModel-15R] 平板型号匹配: null`);
     }
     
-    // 优先级2: 字母+字母格式（Watch GT、Band 5 等）
+    // 优先级3: 字母+字母格式（Watch GT、Band 5 等）
     const wordModel = this.extractWordModel(normalizedStr);
     if (wordModel) {
       if (is15R) {
@@ -953,7 +983,7 @@ export class SimpleMatcher {
       console.log(`[extractModel-15R] 字母型号匹配: null`);
     }
     
-    // 优先级3: 复杂型号（14 Pro Max+、Y300 Pro+ 等）
+    // 优先级4: 复杂型号（14 Pro Max+、Y300 Pro+ 等）
     const complexModel = this.extractComplexModel(normalizedStr);
     if (complexModel) {
       if (is15R) {
@@ -965,7 +995,7 @@ export class SimpleMatcher {
       console.log(`[extractModel-15R] 复杂型号匹配: null`);
     }
     
-    // 优先级4: 简单型号（优先使用标准化前的结果）
+    // 优先级5: 简单型号（优先使用标准化前的结果）
     if (simpleModelBeforeNormalize) {
       if (is15R) {
         console.log(`[extractModel-15R] ✅ 简单型号匹配(标准化前): "${simpleModelBeforeNormalize}"`);
@@ -1186,6 +1216,50 @@ export class SimpleMatcher {
     // 按长度降序排序，优先移除更长的品牌名，并缓存结果
     this.brandsToRemoveCache = brandsToRemove.sort((a, b) => b.length - a.length);
     return this.brandsToRemoveCache;
+  }
+
+  /**
+   * 提取可穿戴设备型号（手环、手表等）
+   * 
+   * 支持格式：
+   * - 手环10
+   * - 手表3 Pro
+   * - Band 5
+   * - Watch GT 2
+   * - Watch Fit 3
+   */
+  private extractWearableModel(normalizedStr: string): string | null {
+    // 匹配中文产品类型 + 数字 + 可选后缀
+    // 例如: 手环10, 手表3 Pro, 手环9 NFC
+    const chineseWearablePattern = /(手环|手表|智能手环|智能手表)\s*(\d+)\s*(pro|max|plus|ultra|nfc|se|活力版|标准版)?\b/gi;
+    const chineseMatch = normalizedStr.match(chineseWearablePattern);
+    
+    if (chineseMatch && chineseMatch.length > 0) {
+      let model = chineseMatch[0].toLowerCase().trim();
+      // 标准化空格
+      model = model.replace(/\s+/g, '');
+      return model;
+    }
+    
+    // 匹配英文产品类型 + 数字 + 可选后缀
+    // 例如: band5, watch gt 2, watch fit 3
+    const englishWearablePattern = /\b(band|watch)\s*(\w+)?\s*(\d+)?\s*(pro|max|plus|ultra|gt|fit|se)?\b/gi;
+    const englishMatch = normalizedStr.match(englishWearablePattern);
+    
+    if (englishMatch && englishMatch.length > 0) {
+      let model = englishMatch[0].toLowerCase().trim();
+      // 移除中文字符
+      model = model.replace(/[\u4e00-\u9fa5]/g, '').trim();
+      // 标准化空格
+      model = model.replace(/\s+/g, '');
+      
+      // 只有当不是纯字母时才返回（避免匹配到 "watch" 这样的单词）
+      if (!/^[a-z]+$/.test(model) && model.length > 0) {
+        return model;
+      }
+    }
+    
+    return null;
   }
 
   /**
