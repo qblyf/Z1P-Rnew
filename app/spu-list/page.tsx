@@ -10,7 +10,6 @@ import type { TableRowSelection } from 'antd/es/table/interface';
 import { SelectBrands } from '../../components/SelectBrands';
 import { formColProps, formItemCol } from '../../constant/formProps';
 import { BrandListProvider, useBrandListContext } from '../../datahooks/brand';
-import { getAwait } from '../../error';
 import { SPUCateListProvider, SpuIDProvider, SPUListProvider, useSpuIDContext } from '../../datahooks/product';
 import { usePermission } from '../../datahooks/permission';
 import PageWrap from '../../components/PageWrap';
@@ -508,8 +507,6 @@ export default function () {
           states: spuState ? [spuState] : undefined,
           lonely,
           orderBy: [
-            { key: 'p."brand"', sort: 'ASC' },
-            { key: 'p."cate_id"', sort: 'ASC' },
             { key: 'p."order"', sort: 'DESC' },
             { key: 'p."id"', sort: 'DESC' },
           ],
