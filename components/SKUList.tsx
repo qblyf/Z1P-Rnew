@@ -27,10 +27,10 @@ export default function SKUList(props: {
 
   const [skuList, setSkuList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingDetails, setLoadingDetails] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedSkuID, setSelectedSkuID] = useState<SkuID | undefined>();
   const [skuDetails, setSkuDetails] = useState<Map<number, { gtins: string[], listPrice: number }>>(new Map());
+  const [loadingSkuIDs, setLoadingSkuIDs] = useState<Set<number>>(new Set());
   
   const el = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(100);
@@ -123,10 +123,7 @@ export default function SKUList(props: {
           console.warn('⚠️ 该 SPU 没有关联的"在用"状态的 SKU');
         }
         
-        // 后加载 SKU 详情（69码和官网价）
-        if (formattedSkus.length > 0) {
-          loadSkuDetails(formattedSkus.map(sku => sku.skuID));
-        }
+        // 不再自动加载所有SKU详情，改为按需加载
       } catch (err) {
         console.error('✗ 获取 SKU 列表失败');
         console.error('错误对象:', err);
@@ -149,31 +146,41 @@ export default function SKUList(props: {
     })();
   }, [spuID, spuList, token]);
 
-  // 后加载 SKU 详情（69码和官网价）
-  const loadSkuDetails = async (skuIDs: number[]) => {
-    if (skuIDs.length === 0) return;
+  // 按需加载单个 SKU 详情（69码和官网价）
+  const loadSingleSkuDetail = async (skuID: number) => {
+    // 如果已经加载过或正在加载，则跳过
+    if (skuDetails.has(skuID) || loadingSkuIDs.has(skuID)) {
+      return;
+    }
     
-    setLoadingDetails(true);
+    // 标记为正在加载
+    setLoadingSkuIDs(prev => new Set(prev).add(skuID));
+    
     try {
-      console.log('开始加载 SKU 详情...', skuIDs.length, '条');
-      const details = await getSKUsInfo(skuIDs);
+      console.log('开始加载 SKU 详情...', skuID);
+      const details = await getSKUsInfo([skuID]);
       
-      const detailsMap = new Map<number, { gtins: string[], listPrice: number }>();
-      details.forEach((detail: any) => {
-        if (!('errInfo' in detail)) {
-          detailsMap.set(detail.id, {
+      if (details.length > 0 && !('errInfo' in details[0])) {
+        const detail = details[0];
+        setSkuDetails(prev => {
+          const newMap = new Map(prev);
+          newMap.set(detail.id, {
             gtins: detail.gtins || [],
             listPrice: detail.listPrice || 0,
           });
-        }
-      });
-      
-      setSkuDetails(detailsMap);
-      console.log('✓ SKU 详情加载完成');
+          return newMap;
+        });
+        console.log('✓ SKU 详情加载完成', skuID);
+      }
     } catch (err) {
-      console.error('✗ 加载 SKU 详情失败:', err);
+      console.error('✗ 加载 SKU 详情失败:', skuID, err);
     } finally {
-      setLoadingDetails(false);
+      // 移除加载标记
+      setLoadingSkuIDs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(skuID);
+        return newSet;
+      });
     }
   };
 
@@ -267,34 +274,57 @@ export default function SKUList(props: {
             align: 'right' as const,
             render: (_v, v) => {
               const detail = skuDetails.get(v.skuID);
-              if (loadingDetails && !detail) {
-                return <Spin size="small" />;
-              }
-              if (!detail || detail.gtins.length === 0) {
-                return null;
+              const isLoading = loadingSkuIDs.has(v.skuID);
+              
+              // 显示加载中
+              if (isLoading) {
+                return (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <Spin size="small" />
+                  </div>
+                );
               }
               
-              const gtinsText = detail.gtins.join('\n');
+              // 已加载且有数据
+              if (detail && detail.gtins.length > 0) {
+                const gtinsText = detail.gtins.join('\n');
+                
+                return (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <Tag
+                      icon={<BarcodeOutlined />}
+                      color="blue"
+                      style={{ 
+                        margin: 0,
+                        cursor: 'help',
+                        fontSize: '14px',
+                        padding: '2px 6px',
+                      }}
+                      title={gtinsText}
+                    >
+                      {detail.gtins.length > 1 && (
+                        <span style={{ fontSize: '10px', marginLeft: '2px' }}>
+                          {detail.gtins.length}
+                        </span>
+                      )}
+                    </Tag>
+                  </div>
+                );
+              }
               
+              // 未加载，显示图标，鼠标悬停时加载
               return (
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <Tag
-                    icon={<BarcodeOutlined />}
-                    color="blue"
+                <div 
+                  style={{ display: 'flex', justifyContent: 'flex-end' }}
+                  onMouseEnter={() => loadSingleSkuDetail(v.skuID)}
+                >
+                  <BarcodeOutlined 
                     style={{ 
-                      margin: 0,
-                      cursor: 'help',
-                      fontSize: '14px',
-                      padding: '2px 6px',
-                    }}
-                    title={gtinsText}
-                  >
-                    {detail.gtins.length > 1 && (
-                      <span style={{ fontSize: '10px', marginLeft: '2px' }}>
-                        {detail.gtins.length}
-                      </span>
-                    )}
-                  </Tag>
+                      color: '#d9d9d9',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                    }} 
+                  />
                 </div>
               );
             },
@@ -305,7 +335,9 @@ export default function SKUList(props: {
             align: 'right' as const,
             render: (_v, v) => {
               const detail = skuDetails.get(v.skuID);
-              if (loadingDetails && !detail) {
+              const isLoading = loadingSkuIDs.has(v.skuID);
+              
+              if (isLoading) {
                 return <Spin size="small" />;
               }
               if (!detail || detail.listPrice === 0) {
