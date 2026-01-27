@@ -52,14 +52,21 @@ export default function SKUList(props: {
       setLoading(true);
       console.log('开始加载 SKU 列表...');
       try {
+        // 构建查询参数
+        const queryParams: any = {
+          states: [SKUState.在用],
+          limit: 10000,
+          offset: 0,
+        };
+
+        // 如果选中了 SPU，则只获取该 SPU 的 SKU
+        if (spuID) {
+          queryParams.spuIDs = [spuID];
+        }
+
         // 使用 getSKUListJoinSPU API 一次性获取 SKU 和 SPU 关联数据
         const skus = await getSKUListJoinSPU(
-          {
-            states: [SKUState.在用],
-            limit: 10000,
-            offset: 0,
-            orderBy: { key: 'p.id', sort: 'DESC' },
-          },
+          queryParams,
           {
             sku: ['id', 'name', 'state'],
             spu: ['brand', 'spuName'],
@@ -90,7 +97,7 @@ export default function SKUList(props: {
         setLoading(false);
       }
     })();
-  }, [spuID, spuCateID, token]);
+  }, [spuID, token]);
 
   const skuListFiltered = useMemo(() => {
     const s = search.replaceAll(/\s/g, '').toLowerCase();
