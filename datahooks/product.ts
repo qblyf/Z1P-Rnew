@@ -86,17 +86,35 @@ function useSPUList() {
     startTransition(() => {
       lessAwait(async () => {
         // 使用 getSPUListNew 获取 SPU 列表
-        const d = await getSPUListNew(
-          {
-            ...(spuCateID ? { cateIDs: [spuCateID] } : {}),
-            states: [SPUState.在用],
-            limit: 10000,
-            offset: 0,
-            orderBy: [{ key: 'p."order"', sort: 'DESC' }],
-          },
-          ['id', 'name', 'brand', 'series', 'generation', 'order']
-        );
-        setSpuList(d as any);
+        // API 限制每次最多获取 100 条，需要循环获取
+        const allData: Awaited<ReturnType<typeof getSPUListNew>> = [];
+        let offset = 0;
+        const limit = 100;
+        let hasMore = true;
+
+        while (hasMore) {
+          const d = await getSPUListNew(
+            {
+              ...(spuCateID ? { cateIDs: [spuCateID] } : {}),
+              states: [SPUState.在用],
+              limit,
+              offset,
+              orderBy: [{ key: 'p."order"', sort: 'DESC' }],
+            },
+            ['id', 'name', 'brand', 'series', 'generation', 'order']
+          );
+          
+          allData.push(...d);
+          
+          // 如果返回的数据少于 limit，说明已经是最后一页
+          if (d.length < limit) {
+            hasMore = false;
+          } else {
+            offset += limit;
+          }
+        }
+        
+        setSpuList(allData as any);
         setSpuID(undefined);
       })();
     });
