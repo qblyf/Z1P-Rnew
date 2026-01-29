@@ -189,7 +189,10 @@ export default function SKUList(props: {
     try {
       const text = gtins.join('\n');
       await navigator.clipboard.writeText(text);
-      message.success('69码已复制到剪贴板');
+      const gtinDisplay = gtins.length > 3 
+        ? `${gtins.slice(0, 3).join(', ')}... (共${gtins.length}个)` 
+        : gtins.join(', ');
+      message.success(`69码已复制到剪贴板: ${gtinDisplay}`);
     } catch (err) {
       console.error('复制失败:', err);
       message.error('复制失败，请手动复制');
