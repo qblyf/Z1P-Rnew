@@ -273,7 +273,7 @@ function ClientPage() {
                 const queryParams: any = {
                   limit: 1000,
                   offset: 0,
-                  orderBy: { key: 'p.id', sort: 'DESC' },
+                  orderBy: [{ key: 'p.id', sort: 'DESC' }],
                 };
                 
                 // 只添加非空的查询参数
