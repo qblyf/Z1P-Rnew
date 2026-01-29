@@ -83,7 +83,7 @@ export default function SKUList(props: {
         const queryParams: any = {
           limit: limit,
           offset: 0,
-          orderBy: { key: 'id', sort: 'DESC' },
+          orderBy: [{ key: 'id', sort: 'DESC' }],
           states: [SKUState.在用],
           spuIDs: spuIDs,
         };
