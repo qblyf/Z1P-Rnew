@@ -111,7 +111,7 @@ export default function SmartMatch() {
             states: [SPUState.在用],
             limit: batchSize,
             offset,
-            orderBy: [{ key: 'p."id"', sort: 'DESC' }],
+            orderBy: [{ key: 'p."created_at"', sort: 'DESC' }],
           },
           ['id', 'name', 'brand', 'skuIDs']
         );

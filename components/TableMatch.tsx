@@ -72,7 +72,7 @@ export function TableMatchComponent() {
             states: [SPUState.在用],
             limit: 10000,
             offset: 0,
-            orderBy: [{ key: 'p."id"', sort: 'DESC' }],
+            orderBy: [{ key: 'p."created_at"', sort: 'DESC' }],
           },
           ['id', 'name', 'brand', 'skuIDs']
         );
