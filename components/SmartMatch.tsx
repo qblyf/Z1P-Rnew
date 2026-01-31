@@ -104,6 +104,8 @@ export default function SmartMatch() {
       const batchSize = 10000;
       let offset = 0;
       let hasMore = true;
+      let totalLoaded = 0;
+      let filteredCount = 0;
       
       while (hasMore) {
         const spuList = await getSPUListNew(
@@ -116,8 +118,20 @@ export default function SmartMatch() {
           ['id', 'name', 'brand', 'skuIDs']
         );
         
-        allSpuList.push(...spuList);
-        console.log(`已加载 ${spuList.length} 个SPU，总计: ${allSpuList.length}`);
+        totalLoaded += spuList.length;
+        
+        // 过滤掉没有品牌的SPU
+        const validSpuList = spuList.filter(spu => {
+          if (!spu.brand || spu.brand.trim() === '') {
+            filteredCount++;
+            console.log(`⚠️  过滤无品牌SPU: ${spu.name} (ID: ${spu.id})`);
+            return false;
+          }
+          return true;
+        });
+        
+        allSpuList.push(...validSpuList);
+        console.log(`已加载 ${spuList.length} 个SPU，过滤 ${spuList.length - validSpuList.length} 个无品牌SPU，有效: ${validSpuList.length}，总计: ${allSpuList.length}`);
         
         if (spuList.length < batchSize) {
           hasMore = false;
@@ -131,10 +145,12 @@ export default function SmartMatch() {
       const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
       
       console.log('=== SPU数据加载完成 ===');
-      console.log(`总SPU数量: ${allSpuList.length}`);
+      console.log(`总加载: ${totalLoaded} 个SPU`);
+      console.log(`过滤无品牌: ${filteredCount} 个SPU`);
+      console.log(`有效SPU: ${allSpuList.length} 个`);
       console.log(`总耗时: ${totalTime}秒`);
       
-      message.success(`已加载 ${allSpuList.length} 个SPU（耗时${totalTime}秒）`);
+      message.success(`已加载 ${allSpuList.length} 个有效SPU（过滤${filteredCount}个无品牌，耗时${totalTime}秒）`);
     } catch (error) {
       message.error('加载SPU数据失败');
       console.error(error);

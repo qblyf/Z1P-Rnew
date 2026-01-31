@@ -62,28 +62,73 @@ export function TableMatchComponent() {
   useEffect(() => {
     const initOrchestrator = async () => {
       try {
+        console.log('=== 开始加载品牌和SPU数据 ===');
+        const startTime = Date.now();
+        
         // 加载品牌列表
         const brands = await getBrandBaseList();
         setBrandList(brands);
+        console.log(`已加载品牌数据: ${brands.length} 个品牌`);
         
-        // 加载 SPU 列表
-        const spus = await getSPUListNew(
-          {
-            states: [SPUState.在用],
-            limit: 10000,
-            offset: 0,
-            orderBy: [{ key: 'p."created_at"', sort: 'DESC' }],
-          },
-          ['id', 'name', 'brand', 'skuIDs']
-        );
-        setSpuList(spus);
+        // 分批加载所有SPU数据
+        const allSpuList = [];
+        const batchSize = 10000;
+        let offset = 0;
+        let hasMore = true;
+        let totalLoaded = 0;
+        let filteredCount = 0;
+        
+        while (hasMore) {
+          const spuList = await getSPUListNew(
+            {
+              states: [SPUState.在用],
+              limit: batchSize,
+              offset,
+              orderBy: [{ key: 'p."created_at"', sort: 'DESC' }],
+            },
+            ['id', 'name', 'brand', 'skuIDs']
+          );
+          
+          totalLoaded += spuList.length;
+          
+          // 过滤掉没有品牌的SPU
+          const validSpuList = spuList.filter(spu => {
+            if (!spu.brand || spu.brand.trim() === '') {
+              filteredCount++;
+              console.log(`⚠️  过滤无品牌SPU: ${spu.name} (ID: ${spu.id})`);
+              return false;
+            }
+            return true;
+          });
+          
+          allSpuList.push(...validSpuList);
+          console.log(`已加载 ${spuList.length} 个SPU，过滤 ${spuList.length - validSpuList.length} 个无品牌SPU，有效: ${validSpuList.length}，总计: ${allSpuList.length}`);
+          
+          if (spuList.length < batchSize) {
+            hasMore = false;
+          } else {
+            offset += batchSize;
+          }
+        }
+        
+        setSpuList(allSpuList);
+        
+        const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+        
+        console.log('=== SPU数据加载完成 ===');
+        console.log(`总加载: ${totalLoaded} 个SPU`);
+        console.log(`过滤无品牌: ${filteredCount} 个SPU`);
+        console.log(`有效SPU: ${allSpuList.length} 个`);
+        console.log(`总耗时: ${totalTime}秒`);
         
         // 初始化 orchestrator
-        await orchestrator.initialize(brands, spus);
+        await orchestrator.initialize(brands, allSpuList);
         setMatcherInitialized(true);
         console.log('✓ TableMatch Orchestrator initialized');
+        message.success(`已加载 ${allSpuList.length} 个有效SPU（过滤${filteredCount}个无品牌，耗时${totalTime}秒）`);
       } catch (error) {
         console.error('Failed to initialize orchestrator:', error);
+        message.error('匹配器初始化失败');
         setMatcherInitialized(true);
       }
     };
