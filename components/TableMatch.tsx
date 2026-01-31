@@ -7,7 +7,8 @@ import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/prod
 import { getBrandBaseList } from '@zsqk/z1-sdk/es/z1p/brand';
 import { SKUState, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import * as XLSX from 'xlsx';
-import { SimpleMatcher, type SPUData, type SKUData } from '../utils/smartMatcher';
+import { MatchingOrchestrator } from '../utils/services/MatchingOrchestrator';
+import type { SPUData, SKUData, BrandData } from '../utils/types';
 
 /**
  * 表格数据接口
@@ -45,31 +46,49 @@ export function TableMatchComponent() {
   const [selectedColumn, setSelectedColumn] = useState<number | null>(null);
   const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
   const [matching, setMatching] = useState(false);
-  const [colorList, setColorList] = useState<string[]>([]);
   
   // 进度相关状态
   const [matchProgress, setMatchProgress] = useState(0);
   const [currentMatching, setCurrentMatching] = useState<string>('');
   const [totalCount, setTotalCount] = useState(0);
   
-  // 创建 matcher 实例（使用 useState 确保只创建一次）
-  const [matcher] = useState(() => new SimpleMatcher());
+  // 创建 orchestrator 实例（使用 useState 确保只创建一次）
+  const [orchestrator] = useState(() => new MatchingOrchestrator());
   const [matcherInitialized, setMatcherInitialized] = useState(false);
+  const [spuList, setSpuList] = useState<SPUData[]>([]);
+  const [brandList, setBrandList] = useState<BrandData[]>([]);
 
-  // 初始化 matcher（加载配置）
+  // 初始化 orchestrator（加载配置）
   useEffect(() => {
-    const initMatcher = async () => {
+    const initOrchestrator = async () => {
       try {
-        await matcher.initialize();
+        // 加载品牌列表
+        const brands = await getBrandBaseList();
+        setBrandList(brands);
+        
+        // 加载 SPU 列表
+        const spus = await getSPUListNew(
+          {
+            states: [SPUState.在用],
+            limit: 10000,
+            offset: 0,
+            orderBy: [{ key: 'p."id"', sort: 'DESC' }],
+          },
+          ['id', 'name', 'brand', 'skuIDs']
+        );
+        setSpuList(spus);
+        
+        // 初始化 orchestrator
+        await orchestrator.initialize(brands, spus);
         setMatcherInitialized(true);
-        console.log('✓ TableMatch Matcher initialized');
+        console.log('✓ TableMatch Orchestrator initialized');
       } catch (error) {
-        console.error('Failed to initialize matcher:', error);
+        console.error('Failed to initialize orchestrator:', error);
         setMatcherInitialized(true);
       }
     };
-    initMatcher();
-  }, [matcher]);
+    initOrchestrator();
+  }, [orchestrator]);
 
   /**
    * 处理文件上传
@@ -163,50 +182,15 @@ export function TableMatchComponent() {
     setTotalCount(tableData.rows.length);
 
     try {
-      // 1. 加载品牌列表
-      const brandList = await getBrandBaseList();
-      console.log('✓ 已加载品牌数据:', brandList.length, '个品牌');
-      matcher.setBrandList(brandList);
-      
-      // 2. 获取 SPU 列表
-      const spuList = await getSPUListNew(
-        {
-          states: [SPUState.在用],
-          limit: 10000,
-          offset: 0,
-          orderBy: [{ key: 'p."id"', sort: 'DESC' }],
-        },
-        ['id', 'name', 'brand', 'skuIDs']
-      );
-      
-      // 3. 建立品牌索引
-      matcher.buildSPUIndex(spuList);
-      
-      // 4. 提取颜色列表
-      const colorMap = new Map<string, Set<number>>();
-      for (const spu of spuList) {
-        const { id, skuIDs } = spu;
-        if (!skuIDs || skuIDs.length === 0) continue;
-        
-        for (const skuInfo of skuIDs) {
-          if ('color' in skuInfo && skuInfo.color) {
-            const color = skuInfo.color;
-            if (!colorMap.has(color)) {
-              colorMap.set(color, new Set());
-            }
-            colorMap.get(color)!.add(id);
-          }
-        }
-      }
-      
-      const colors = Array.from(colorMap.keys()).sort((a, b) => b.length - a.length);
-      setColorList(colors);
-      matcher.setColorList(colors);
-      console.log('✓ 已提取颜色列表:', colors.length, '个颜色');
-
       const results: MatchResult[] = [];
+      const productNames = tableData.rows
+        .map(row => row[selectedColumn]?.trim())
+        .filter(name => name);
 
-      // 遍历每一行进行匹配
+      // 使用 MatchingOrchestrator 进行批量匹配
+      const batchResult = await orchestrator.batchMatch(productNames);
+
+      // 转换结果格式
       for (let i = 0; i < tableData.rows.length; i++) {
         const row = tableData.rows[i];
         const productName = row[selectedColumn]?.trim();
@@ -224,114 +208,29 @@ export function TableMatchComponent() {
           });
           continue;
         }
-        
-        // 清理和预处理输入
-        let trimmedLine = matcher.cleanDemoMarkers(productName);
-        trimmedLine = matcher.preprocessInputAdvanced(trimmedLine);
-        
-        // 提取版本信息
-        const inputVersion = matcher.extractVersion(trimmedLine);
 
-        // 第一阶段：SPU 匹配
-        const { spu: matchedSPU, similarity: spuSimilarity } = matcher.findBestSPUMatch(
-          trimmedLine,
-          spuList,
-          0.5
-        );
-
-        if (!matchedSPU) {
+        // 从批量结果中查找对应的匹配结果
+        const matchResult = batchResult.results.find(r => r.inputName === productName);
+        
+        if (matchResult) {
+          results.push({
+            originalName: productName,
+            status: matchResult.status,
+            brand: matchResult.extractedInfo.brand || undefined,
+            spu: matchResult.matchedInfo.spu || undefined,
+            sku: matchResult.matchedInfo.sku || undefined,
+            version: matchResult.extractedInfo.version || undefined,
+            capacity: matchResult.extractedInfo.memory || undefined,
+            color: matchResult.extractedInfo.color || undefined,
+            gtin: matchResult.matchedInfo.gtins?.[0],
+            similarity: matchResult.similarity * 100,
+            originalRow: row,
+          });
+        } else {
           results.push({
             originalName: productName,
             status: 'unmatched',
             similarity: 0,
-            originalRow: row,
-          });
-          continue;
-        }
-
-        // 第二阶段：获取 SKU 列表
-        try {
-          const spuInfo = await getSPUInfo(matchedSPU.id);
-          const skuIDs = (spuInfo as any).skuIDs || [];
-          
-          if (skuIDs.length === 0) {
-            results.push({
-              originalName: productName,
-              status: 'spu-matched',
-              brand: matcher.extractBrand(productName) || undefined,
-              spu: matchedSPU.name,
-              similarity: spuSimilarity * 100,
-              originalRow: row,
-            });
-            continue;
-          }
-
-          // 获取 SKU 详细信息
-          const skuDetails = await getSKUsInfo(skuIDs.map((s: any) => s.skuID));
-          const skuData: SKUData[] = skuDetails
-            .filter((sku: any) => !('errInfo' in sku) && sku.state === SKUState.在用)
-            .map((sku: any) => ({
-              id: sku.id,
-              name: sku.name,
-              spuID: matchedSPU.id,
-              spuName: matchedSPU.name,
-              brand: matchedSPU.brand,
-              version: undefined,
-              memory: matcher.extractCapacity(sku.name) || undefined,
-              color: matcher.extractColorAdvanced(sku.name) || undefined,
-              gtins: sku.gtins || [],
-            }));
-
-          if (skuData.length === 0) {
-            results.push({
-              originalName: productName,
-              status: 'unmatched',
-              similarity: 0,
-              originalRow: row,
-            });
-            continue;
-          }
-
-          // 第三阶段：SKU 匹配
-          const { sku: matchedSKU, similarity: skuSimilarity } = matcher.findBestSKU(
-            trimmedLine,
-            skuData,
-            { inputVersion }
-          );
-
-          if (matchedSKU) {
-            const finalSimilarity = spuSimilarity * 0.5 + skuSimilarity * 0.5;
-            
-            results.push({
-              originalName: productName,
-              status: 'matched',
-              brand: matcher.extractBrand(productName) || undefined,
-              spu: matchedSPU.name,
-              sku: matchedSKU.name,
-              capacity: matchedSKU.memory,
-              color: matchedSKU.color,
-              gtin: matchedSKU.gtins?.[0],
-              similarity: finalSimilarity * 100,
-              originalRow: row,
-            });
-          } else {
-            results.push({
-              originalName: productName,
-              status: 'spu-matched',
-              brand: matcher.extractBrand(productName) || undefined,
-              spu: matchedSPU.name,
-              similarity: spuSimilarity * 100,
-              originalRow: row,
-            });
-          }
-        } catch (error) {
-          console.error('SKU 匹配失败:', error);
-          results.push({
-            originalName: productName,
-            status: 'spu-matched',
-            brand: matcher.extractBrand(productName) || undefined,
-            spu: matchedSPU.name,
-            similarity: spuSimilarity * 100,
             originalRow: row,
           });
         }
@@ -345,7 +244,7 @@ export function TableMatchComponent() {
       setMatchResults(results);
       setMatchProgress(100);
       setCurrentMatching('');
-      message.success(`匹配完成！共 ${results.length} 条记录`);
+      message.success(`匹配完成！共 ${results.length} 条记录，成功匹配 ${batchResult.summary.matched} 条`);
     } catch (error) {
       message.error('匹配失败');
       console.error(error);

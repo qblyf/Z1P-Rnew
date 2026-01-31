@@ -1,5 +1,22 @@
 /**
  * 智能匹配工具类
+ * 
+ * @deprecated 此类已弃用，请使用 MatchingOrchestrator 替代
+ * 
+ * 迁移指南:
+ * - 旧: import { SimpleMatcher } from './smartMatcher'
+ * - 新: import { MatchingOrchestrator } from './services/MatchingOrchestrator'
+ * 
+ * 旧用法:
+ *   const matcher = new SimpleMatcher();
+ *   await matcher.initialize();
+ *   const result = matcher.findBestSPUMatch(input, spuList, threshold);
+ * 
+ * 新用法:
+ *   const orchestrator = new MatchingOrchestrator();
+ *   await orchestrator.initialize(brands, spuList);
+ *   const result = await orchestrator.match(input);
+ * 
  * 提供统一的商品匹配逻辑，供在线匹配和表格匹配使用
  */
 
@@ -13,6 +30,7 @@ import {
   type ModelNormalizationConfig,
   type BasicColorMapConfig
 } from './config-loader';
+import { InfoExtractor } from './services/InfoExtractor';
 
 // ==================== 类型定义 ====================
 
@@ -370,6 +388,9 @@ export class SimpleMatcher {
   // 颜色匹配器
   private colorMatcher = new ColorMatcher();
   
+  // 信息提取器 - 用于统一的信息提取逻辑
+  private infoExtractor = new InfoExtractor();
+  
   // 性能优化：缓存
   private brandsToRemoveCache: string[] | null = null;
   
@@ -433,13 +454,16 @@ export class SimpleMatcher {
   setColorList(colors: string[]) {
     this.dynamicColors = colors;
     this.colorMatcher.setColorList(colors);
+    this.infoExtractor.setColorList(colors);
   }
 
   /**
    * 设置品牌列表（从品牌库读取）
    */
-  setBrandList(brands: Array<{ name: string; spell?: string }>) {
+  setBrandList(brands: Array<{ name: string; spell?: string; color?: string }>) {
     this.brandList = brands;
+    // InfoExtractor expects BrandData[] with color field, but we can pass brands with optional color
+    this.infoExtractor.setBrandList(brands as any);
     // 清除缓存，因为品牌列表已更新
     this.brandsToRemoveCache = null;
   }
@@ -649,86 +673,16 @@ export class SimpleMatcher {
   }
 
   /**
-   * 提取版本信息
-   * 
-   * 优先级：
-   * 1. 网络制式版本（5G、4G、蓝牙版等）
-   * 2. 产品版本（标准版、活力版等）
-   * 
-   * 特殊处理：
-   * - mini/max/plus/ultra/air/lite/se/pro 都是型号的一部分，不识别为版本
-   * - 这些词通常出现在型号中（如 iPhone 15 Pro Max, Watch GT 3 Pro 等）
+   * 提取版本信息（委托给 InfoExtractor）
+   * @deprecated 此方法已迁移到 InfoExtractor，保留用于向后兼容
    * 
    * @param input 输入字符串
-   * @param extractOriginal 是否提取原始字符串（包含"版"字等）
+   * @param extractOriginal 是否提取原始字符串（包含"版"字等）- 此参数已废弃，保留用于兼容性
    * @returns 版本信息对象，包含标准化名称和原始字符串
    */
   extractVersion(input: string, extractOriginal: boolean = false): VersionInfo | null {
-    const lowerInput = input.toLowerCase();
-    
-    // 优先检查网络制式版本
-    // 按长度降序排序，优先匹配更长的版本（如 "全网通5G" 优先于 "5G"）
-    const sortedNetworkVersions = [...this.networkVersions].sort((a, b) => b.length - a.length);
-    
-    for (const networkVersion of sortedNetworkVersions) {
-      const lowerVersion = networkVersion.toLowerCase();
-      const index = lowerInput.indexOf(lowerVersion);
-      
-      if (index !== -1) {
-        // 找到匹配的网络版本
-        let originalString = networkVersion;
-        
-        // 如果需要提取原始字符串，检查是否有"版"字后缀
-        if (extractOriginal) {
-          const endIndex = index + lowerVersion.length;
-          // 检查后面是否紧跟"版"字
-          if (endIndex < input.length && input[endIndex] === '版') {
-            originalString = input.substring(index, endIndex + 1);
-          } else {
-            originalString = input.substring(index, endIndex);
-          }
-        }
-        
-        return {
-          name: networkVersion,
-          keywords: [networkVersion],
-          priority: 10, // 网络版本优先级高于产品版本
-          originalString, // 添加原始字符串
-        };
-      }
-    }
-    
-    // 检查产品版本（标准版、活力版等）
-    for (const versionInfo of this.versionKeywords) {
-      for (const keyword of versionInfo.keywords) {
-        const lowerKeyword = keyword.toLowerCase();
-        
-        // 特殊处理：这些词都是型号的一部分，不识别为版本
-        const modelSuffixes = ['pro', 'mini', 'max', 'plus', 'ultra', 'air', 'lite', 'se'];
-        if (modelSuffixes.includes(lowerKeyword)) {
-          // 这些词都是型号的一部分，直接跳过
-          continue;
-        }
-        
-        const index = lowerInput.indexOf(lowerKeyword);
-        if (index !== -1) {
-          let originalString = versionInfo.name;
-          
-          // 如果需要提取原始字符串
-          if (extractOriginal) {
-            const endIndex = index + lowerKeyword.length;
-            originalString = input.substring(index, endIndex);
-          }
-          
-          return {
-            ...versionInfo,
-            originalString, // 添加原始字符串
-          };
-        }
-      }
-    }
-    
-    return null;
+    const result = this.infoExtractor.extractVersion(input);
+    return result.value;
   }
 
   /**
@@ -816,36 +770,12 @@ export class SimpleMatcher {
   }
 
   /**
-   * 提取品牌（完全使用品牌库数据）
+   * 提取品牌（委托给 InfoExtractor）
+   * @deprecated 此方法已迁移到 InfoExtractor，保留用于向后兼容
    */
   extractBrand(str: string): string | null {
-    const lowerStr = str.toLowerCase();
-    
-    // 使用品牌库数据
-    if (this.brandList.length > 0) {
-      // 按品牌名称长度降序排序，优先匹配更长的品牌名
-      const sortedBrands = [...this.brandList].sort((a, b) => b.name.length - a.name.length);
-      
-      for (const brand of sortedBrands) {
-        const brandName = brand.name.toLowerCase();
-        const brandSpell = brand.spell?.toLowerCase();
-        
-        // 匹配中文品牌名
-        if (lowerStr.includes(brandName)) {
-          return brand.name; // 返回原始品牌名（保持大小写）
-        }
-        
-        // 匹配拼音
-        if (brandSpell && lowerStr.includes(brandSpell)) {
-          return brand.name;
-        }
-      }
-    } else {
-      // 如果品牌库未加载，记录警告
-      console.warn('品牌库未加载，品牌识别可能不准确');
-    }
-    
-    return null;
+    const result = this.infoExtractor.extractBrand(str);
+    return result.value;
   }
 
   /**
@@ -1426,45 +1356,12 @@ export class SimpleMatcher {
   }
 
   /**
-   * 提取容量
+   * 提取容量（委托给 InfoExtractor）
+   * @deprecated 此方法已迁移到 InfoExtractor，保留用于向后兼容
    */
   extractCapacity(str: string): string | null {
-    // 先将全角加号转换为半角加号，以支持两种格式
-    const normalizedStr = str.replace(/＋/g, '+');
-    
-    // 匹配括号内的容量
-    const bracketPattern = /\((\d+)\s*(?:gb)?\s*\+\s*(\d+)\s*(?:gb)?\)?/gi;
-    let match = normalizedStr.match(bracketPattern);
-    
-    if (match && match.length > 0) {
-      const nums = match[0].match(/\d+/g);
-      if (nums && nums.length === 2) {
-        return `${nums[0]}+${nums[1]}`;
-      }
-    }
-    
-    // 匹配不在括号内的容量
-    const capacityPattern = /(\d+)\s*(?:gb)?\s*\+\s*(\d+)\s*(?:gb)?/gi;
-    match = normalizedStr.match(capacityPattern);
-    
-    if (match && match.length > 0) {
-      const nums = match[0].match(/\d+/g);
-      if (nums && nums.length === 2) {
-        return `${nums[0]}+${nums[1]}`;
-      }
-    }
-    
-    // 匹配单个容量
-    const singlePattern = /(\d+)\s*gb/gi;
-    const singleMatch = normalizedStr.match(singlePattern);
-    if (singleMatch && singleMatch.length > 0) {
-      const num = singleMatch[0].match(/\d+/);
-      if (num) {
-        return num[0];
-      }
-    }
-    
-    return null;
+    const result = this.infoExtractor.extractCapacity(str);
+    return result.value;
   }
 
   /**
@@ -1531,10 +1428,12 @@ export class SimpleMatcher {
   }
 
   /**
-   * 改进的颜色提取（使用 ColorMatcher）
+   * 改进的颜色提取（委托给 InfoExtractor）
+   * @deprecated 此方法已迁移到 InfoExtractor，保留用于向后兼容
    */
   extractColorAdvanced(input: string): string | null {
-    return this.colorMatcher.extractColor(input);
+    const result = this.infoExtractor.extractColor(input);
+    return result.value;
   }
 
   /**

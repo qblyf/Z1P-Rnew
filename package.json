@@ -50,6 +50,7 @@
     "@typescript-eslint/eslint-plugin": "^5.12.1",
     "@typescript-eslint/parser": "^5.12.1",
     "@vercel/node": "^2.9.13",
+    "ajv": "^8.17.1",
     "autoprefixer": "^10.4.23",
     "eslint": "^8.9.0",
     "eslint-config-next": "^14.2.4",

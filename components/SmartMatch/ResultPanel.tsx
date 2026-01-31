@@ -2,7 +2,6 @@
 
 import { Download, Search } from 'lucide-react';
 import { Button, Card, Space, Tag } from 'antd';
-import type { MatchResult } from '../../utils/smartMatcher';
 import { ResultTable } from './ResultTable';
 import { ColumnSelector } from './ColumnSelector';
 
@@ -11,8 +10,22 @@ interface BrandData {
   color: string;
 }
 
+// 兼容的匹配结果类型（用于UI显示）
+interface UIMatchResult {
+  inputName: string;
+  matchedSKU: string | null;
+  matchedSPU: string | null;
+  matchedBrand: string | null;
+  matchedVersion: string | null;
+  matchedMemory: string | null;
+  matchedColor: string | null;
+  matchedGtins: string[];
+  similarity: number;
+  status: 'matched' | 'unmatched' | 'spu-matched';
+}
+
 interface ResultPanelProps {
-  results: MatchResult[];
+  results: UIMatchResult[];
   brandList: BrandData[];
   visibleColumns: string[];
   onVisibleColumnsChange: (columns: string[]) => void;

@@ -5,9 +5,8 @@ import { message, Spin } from 'antd';
 import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { SKUState, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { getBrandBaseList } from '@zsqk/z1-sdk/es/z1p/brand';
-import { SimpleMatcher, type MatchResult } from '../utils/smartMatcher';
+import { MatchingOrchestrator, type MatchResult } from '../utils/services/MatchingOrchestrator';
 import type { SPUData, SKUData, BrandData } from '../utils/types';
-import { SPU_MATCH_THRESHOLD } from '../utils/constants';
 import { InputPanel } from './SmartMatch/InputPanel';
 import { ResultPanel } from './SmartMatch/ResultPanel';
 
@@ -15,10 +14,8 @@ export default function SmartMatch() {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingSPU, setLoadingSPU] = useState(true);
-  const [results, setResults] = useState<MatchResult[]>([]);
   const [spuList, setSPUList] = useState<SPUData[]>([]);
   const [brandList, setBrandList] = useState<BrandData[]>([]);
-  const [colorList, setColorList] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
@@ -30,24 +27,54 @@ export default function SmartMatch() {
     'matchedGtins',
     'statusAndSimilarity',
   ]);
-  const [matcher] = useState(() => new SimpleMatcher());
+  const [orchestrator] = useState(() => new MatchingOrchestrator());
   const [matcherInitialized, setMatcherInitialized] = useState(false);
 
-  // 初始化 matcher（加载配置）
+  // 兼容的匹配结果类型（用于UI显示）
+  interface UIMatchResult {
+    inputName: string;
+    matchedSKU: string | null;
+    matchedSPU: string | null;
+    matchedBrand: string | null;
+    matchedVersion: string | null;
+    matchedMemory: string | null;
+    matchedColor: string | null;
+    matchedGtins: string[];
+    similarity: number;
+    status: 'matched' | 'unmatched' | 'spu-matched';
+  }
+
+  const [results, setResults] = useState<UIMatchResult[]>([]);
+
+  // 初始化 orchestrator（加载配置）
   useEffect(() => {
-    const initMatcher = async () => {
+    const initOrchestrator = async () => {
       try {
-        await matcher.initialize();
+        // 等待品牌列表加载完成
+        if (brandList.length === 0) {
+          console.log('等待品牌列表加载...');
+          return;
+        }
+        
+        // 等待SPU列表加载完成
+        if (spuList.length === 0) {
+          console.log('等待SPU列表加载...');
+          return;
+        }
+        
+        await orchestrator.initialize(brandList, spuList);
         setMatcherInitialized(true);
-        console.log('✓ Matcher initialized');
+        console.log('✓ MatchingOrchestrator initialized');
       } catch (error) {
-        console.error('Failed to initialize matcher:', error);
-        // 即使初始化失败，也允许继续使用（会使用默认值）
-        setMatcherInitialized(true);
+        console.error('Failed to initialize orchestrator:', error);
+        message.error('匹配器初始化失败');
       }
     };
-    initMatcher();
-  }, [matcher]);
+    
+    if (brandList.length > 0 && spuList.length > 0) {
+      initOrchestrator();
+    }
+  }, [orchestrator, brandList, spuList]);
 
   // 加载品牌数据
   useEffect(() => {
@@ -101,73 +128,13 @@ export default function SmartMatch() {
       
       setSPUList(allSpuList);
       
-      // 性能优化：建立品牌索引
-      matcher.buildSPUIndex(allSpuList);
-      
-      // 统计颜色、规格和组合数据
-      // Requirements: 2.4.1, 3.2.1, 3.2.2
-      const colorMap = new Map<string, Set<number>>();
-      const specMap = new Map<string, Set<number>>();
-      const comboMap = new Map<string, Set<number>>();
-      
-      let processedSKUs = 0;
-      
-      for (const spu of allSpuList) {
-        const { id, skuIDs } = spu;
-        
-        if (!skuIDs || skuIDs.length === 0) {
-          continue;
-        }
-        
-        // 从 skuIDs 中提取颜色、规格和组合信息
-        for (const skuInfo of skuIDs) {
-          // 提取颜色
-          if ('color' in skuInfo && skuInfo.color) {
-            const color = skuInfo.color;
-            if (!colorMap.has(color)) {
-              colorMap.set(color, new Set());
-            }
-            colorMap.get(color)!.add(id);
-          }
-          
-          // 提取规格
-          if ('spec' in skuInfo && skuInfo.spec) {
-            const spec = skuInfo.spec;
-            if (!specMap.has(spec)) {
-              specMap.set(spec, new Set());
-            }
-            specMap.get(spec)!.add(id);
-          }
-          
-          // 提取组合
-          if ('combo' in skuInfo && skuInfo.combo) {
-            const combo = skuInfo.combo;
-            if (!comboMap.has(combo)) {
-              comboMap.set(combo, new Set());
-            }
-            comboMap.get(combo)!.add(id);
-          }
-          
-          processedSKUs++;
-        }
-      }
-      
-      // 转换为数组并按长度降序排序（优先匹配更长的颜色词）
-      const colors = Array.from(colorMap.keys()).sort((a, b) => b.length - a.length);
-      setColorList(colors);
-      
       const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
       
-      console.log('=== 规格数据加载完成 ===');
+      console.log('=== SPU数据加载完成 ===');
       console.log(`总SPU数量: ${allSpuList.length}`);
-      console.log(`处理SKU: ${processedSKUs} 个`);
-      console.log(`提取颜色: ${colors.length} 个`);
-      console.log(`提取规格: ${specMap.size} 个`);
-      console.log(`提取组合: ${comboMap.size} 个`);
       console.log(`总耗时: ${totalTime}秒`);
-      console.log('颜色列表（按长度降序）:', colors.slice(0, 20), colors.length > 20 ? `... 还有 ${colors.length - 20} 个` : '');
       
-      message.success(`已加载 ${allSpuList.length} 个SPU，提取 ${colors.length} 个颜色词（耗时${totalTime}秒）`);
+      message.success(`已加载 ${allSpuList.length} 个SPU（耗时${totalTime}秒）`);
     } catch (error) {
       message.error('加载SPU数据失败');
       console.error(error);
@@ -210,208 +177,30 @@ export default function SmartMatch() {
     setResults([]); // 清空之前的结果
     setCurrentPage(1); // 重置到第一页
     
-    // 设置动态颜色列表到 matcher
-    matcher.setColorList(colorList);
-    console.log('使用颜色列表:', colorList.length, '个颜色');
-    
-    // 设置品牌列表到 matcher
-    matcher.setBrandList(brandList);
-    console.log('使用品牌列表:', brandList.length, '个品牌');
-    
     try {
       // 将输入按行分割
       const lines = inputText.split('\n').filter(line => line.trim());
       
-      // 对每一行进行匹配
-      for (let i = 0; i < lines.length; i++) {
-        let trimmedLine = lines[i].trim();
-        
-        // 添加：清理演示机标记
-        trimmedLine = matcher.cleanDemoMarkers(trimmedLine);
-        
-        // 改进的输入预处理
-        trimmedLine = matcher.preprocessInputAdvanced(trimmedLine);
-        
-        // 从输入中提取品牌（用于显示）
-        const inputBrand = matcher.extractBrand(trimmedLine);
-        
-        // 提取版本信息（用于 SKU 匹配）
-        // extractOriginal=true 表示提取原始字符串（如"全网通5G版"）
-        const inputVersion = matcher.extractVersion(trimmedLine, true);
-        
-        // 第一阶段：匹配SPU
-        const { spu: matchedSPU, similarity: spuSimilarity } = matcher.findBestSPUMatch(
-          trimmedLine,
-          spuList,
-          SPU_MATCH_THRESHOLD // 使用常量代替魔法数字
-        );
-        
-        if (!matchedSPU) {
-          // SPU未匹配，立即显示结果
-          setResults(prev => [...prev, {
-            inputName: trimmedLine,
-            matchedSKU: null,
-            matchedSPU: null,
-            matchedBrand: inputBrand || null,
-            matchedVersion: null,
-            matchedMemory: null,
-            matchedColor: null,
-            matchedGtins: [],
-            similarity: 0,
-            status: 'unmatched' as const,
-          }]);
-          continue;
-        }
-        
-        // SPU匹配成功，先显示SPU结果
-        const tempResult: MatchResult = {
-          inputName: trimmedLine,
-          matchedSKU: null,
-          matchedSPU: matchedSPU.name,
-          matchedBrand: inputBrand || null,
-          matchedVersion: null,
-          matchedMemory: null,
-          matchedColor: null,
-          matchedGtins: [],
-          similarity: spuSimilarity,
-          status: 'spu-matched' as const,
-        };
-        
-        setResults(prev => [...prev, tempResult]);
-        
-        console.log('匹配到SPU:', matchedSPU.name, 'ID:', matchedSPU.id, '输入品牌:', inputBrand);
-        
-        // 第二阶段：加载该SPU的所有SKU
-        try {
-          const spuInfo = await getSPUInfo(matchedSPU.id);
-          const skuIDs = spuInfo.skuIDs || [];
-          
-          if (skuIDs.length === 0) {
-            // 该SPU没有SKU，更新为未匹配
-            setResults(prev => prev.map((r, idx) => 
-              idx === prev.length - 1 ? { 
-                ...r, 
-                status: 'unmatched' as const,
-                matchedGtins: [],
-              } : r
-            ));
-            continue;
-          }
-          
-          // 获取SKU详细信息
-          const skuDetails = await getSKUsInfo(skuIDs.map(s => s.skuID));
-          
-          // 转换为 SKUData 格式
-          const skuData: SKUData[] = skuDetails
-            .filter(sku => !('errInfo' in sku) && sku.state === SKUState.在用)
-            .map(sku => {
-              // 从 SKU 名称中提取规格信息
-              const capacity = matcher.extractCapacity(sku.name);
-              const color = matcher.extractColorAdvanced(sku.name);
-              const version = matcher.extractVersion(sku.name);
-              
-              return {
-                id: sku.id,
-                name: sku.name,
-                spuID: matchedSPU.id,
-                spuName: matchedSPU.name,
-                brand: matchedSPU.brand,
-                version: version?.name || undefined, // 从 SKU 名称中提取版本
-                memory: capacity || undefined, // 使用容量作为内存
-                color: color || undefined,
-                gtins: sku.gtins || [],
-              };
-            });
-          
-          console.log(`SPU ${matchedSPU.name} 的在用SKU数量:`, skuData.length);
-          
-          if (skuData.length === 0) {
-            // 该SPU没有在用的SKU，更新为未匹配
-            setResults(prev => prev.map((r, idx) => 
-              idx === prev.length - 1 ? { 
-                ...r, 
-                status: 'unmatched' as const,
-                matchedGtins: [],
-              } : r
-            ));
-            continue;
-          }
-          
-          // 第三阶段：在SKU中匹配参数（容量、颜色、版本）
-          const { sku: matchedSKU, similarity: skuSimilarity } = matcher.findBestSKU(
-            trimmedLine,
-            skuData,
-            { inputVersion }
-          );
-          
-          if (matchedSKU) {
-            // 计算综合相似度
-            // SPU 匹配（品牌+型号）占 50%
-            // SKU 参数匹配（容量+颜色+版本）占 50%
-            const finalSimilarity = spuSimilarity * 0.5 + skuSimilarity * 0.5;
-            
-            console.log('最终相似度计算:', {
-              spuSimilarity,
-              skuSimilarity,
-              finalSimilarity,
-              skuName: matchedSKU.name
-            });
-            
-            // 改进：从输入中提取规格信息，而不是从 SKU 名称中提取
-            // 这样可以保证规格标签显示的是用户输入的内容
-            const inputCapacity = matcher.extractCapacity(trimmedLine);
-            const inputColor = matcher.extractColorAdvanced(trimmedLine);
-            
-            // 使用原始版本字符串（如"全网通5G版"）而不是标准化名称（如"全网通5G"）
-            const displayVersion = inputVersion?.originalString || inputVersion?.name || null;
-            
-            // 更新为完全匹配
-            setResults(prev => prev.map((r, idx) => 
-              idx === prev.length - 1 ? {
-                ...r,
-                matchedSKU: matchedSKU.name || null,
-                matchedVersion: displayVersion,
-                matchedMemory: inputCapacity || null,
-                matchedColor: inputColor || null,
-                matchedGtins: matchedSKU.gtins || [],
-                similarity: finalSimilarity,
-                status: 'matched' as const,
-              } : r
-            ));
-          } else {
-            // SKU参数未匹配，保持 SPU 已匹配状态
-            setResults(prev => prev.map((r, idx) => 
-              idx === prev.length - 1 ? { 
-                ...r, 
-                status: 'unmatched' as const,
-                matchedGtins: [],
-              } : r
-            ));
-          }
-        } catch (error) {
-          console.error('加载SKU失败:', error);
-          // 更新为未匹配
-          setResults(prev => prev.map((r, idx) => 
-            idx === prev.length - 1 ? { 
-              ...r, 
-              status: 'unmatched' as const,
-              matchedGtins: [],
-            } : r
-          ));
-        }
-      }
-
-      const finalResults = await new Promise<MatchResult[]>(resolve => {
-        setTimeout(() => {
-          setResults(current => {
-            const matchedCount = current.filter(r => r.status === 'matched').length;
-            message.success(`匹配完成，共处理 ${lines.length} 条记录，成功匹配 ${matchedCount} 条`);
-            resolve(current);
-            return current;
-          });
-        }, 100);
-      });
+      // 使用 MatchingOrchestrator 进行批量匹配
+      const batchResult = await orchestrator.batchMatch(lines);
       
+      // 转换结果格式以适配UI（保持与旧格式兼容）
+      const uiResults = batchResult.results.map(result => ({
+        inputName: result.inputName,
+        matchedSKU: result.matchedInfo.sku || null,
+        matchedSPU: result.matchedInfo.spu || null,
+        matchedBrand: result.extractedInfo.brand || null,
+        matchedVersion: result.extractedInfo.version || null,
+        matchedMemory: result.extractedInfo.memory || null,
+        matchedColor: result.extractedInfo.color || null,
+        matchedGtins: result.matchedInfo.gtins || [],
+        similarity: result.similarity,
+        status: result.status as 'matched' | 'unmatched' | 'spu-matched',
+      }));
+      
+      setResults(uiResults as any);
+      
+      message.success(`匹配完成，共处理 ${lines.length} 条记录，成功匹配 ${batchResult.summary.matched} 条`);
     } catch (error) {
       message.error('匹配失败，请重试');
       console.error(error);

@@ -1,0 +1,57 @@
+{
+  "note": "产品类型配置：定义不同产品类型的规格匹配权重",
+  "types": [
+    {
+      "id": "phone",
+      "name": "手机",
+      "keywords": ["手机", "phone"],
+      "specWeights": {
+        "capacity": 0.4,
+        "color": 0.3,
+        "version": 0.3
+      }
+    },
+    {
+      "id": "watch",
+      "name": "手表",
+      "keywords": ["watch", "手表", "手环", "band"],
+      "specWeights": {
+        "size": 0.3,
+        "band": 0.2,
+        "color": 0.3,
+        "version": 0.2
+      }
+    },
+    {
+      "id": "tablet",
+      "name": "平板",
+      "keywords": ["pad", "平板", "tablet"],
+      "specWeights": {
+        "capacity": 0.4,
+        "color": 0.3,
+        "version": 0.3
+      }
+    },
+    {
+      "id": "laptop",
+      "name": "笔记本",
+      "keywords": ["book", "笔记本", "laptop", "notebook"],
+      "specWeights": {
+        "capacity": 0.35,
+        "color": 0.25,
+        "version": 0.25,
+        "spec": 0.15
+      }
+    },
+    {
+      "id": "earphone",
+      "name": "耳机",
+      "keywords": ["buds", "耳机", "earphone", "headphone"],
+      "specWeights": {
+        "color": 0.4,
+        "version": 0.4,
+        "spec": 0.2
+      }
+    }
+  ]
+}

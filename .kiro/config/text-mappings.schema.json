@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/text-mappings.schema.json",
+  "title": "Text Mappings Configuration",
+  "description": "Configuration for text mappings including typo corrections, abbreviations, brand aliases, and capacity normalizations",
+  "type": "object",
+  "properties": {
+    "note": {
+      "type": "string",
+      "description": "Optional note describing the configuration file"
+    },
+    "typoCorrections": {
+      "type": "object",
+      "description": "Mapping of common typos to their correct forms",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "abbreviations": {
+      "type": "object",
+      "description": "Mapping of abbreviations to their full forms",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "brandAliases": {
+      "type": "object",
+      "description": "Mapping of brand names to their various aliases",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      }
+    },
+    "capacityNormalizations": {
+      "type": "object",
+      "description": "Mapping of various capacity formats to normalized forms",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9]+(\\+[0-9]+)?[GT]?$"
+      }
+    }
+  },
+  "required": ["typoCorrections", "abbreviations", "brandAliases", "capacityNormalizations"],
+  "additionalProperties": false
+}

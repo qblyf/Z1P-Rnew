@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/product-types.schema.json",
+  "title": "Product Types Configuration",
+  "description": "Configuration for product types and their specification matching weights",
+  "type": "object",
+  "properties": {
+    "note": {
+      "type": "string",
+      "description": "Optional note describing the configuration file"
+    },
+    "types": {
+      "type": "array",
+      "description": "Array of product type definitions",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the product type",
+            "pattern": "^[a-z][a-z0-9_-]*$"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the product type",
+            "minLength": 1
+          },
+          "keywords": {
+            "type": "array",
+            "description": "Keywords used to identify this product type",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "specWeights": {
+            "type": "object",
+            "description": "Weights for different specification fields (must sum to approximately 1.0)",
+            "properties": {
+              "capacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "color": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "version": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "size": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "band": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "spec": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "additionalProperties": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "minProperties": 1
+          }
+        },
+        "required": ["id", "name", "keywords", "specWeights"],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "required": ["types"],
+  "additionalProperties": false
+}

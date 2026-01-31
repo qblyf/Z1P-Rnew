@@ -2,15 +2,28 @@
 
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
 import { Space, Table, Tag } from 'antd';
-import type { MatchResult } from '../../utils/smartMatcher';
 
 interface BrandData {
   name: string;
   color: string;
 }
 
+// 兼容的匹配结果类型（用于UI显示）
+interface UIMatchResult {
+  inputName: string;
+  matchedSKU: string | null;
+  matchedSPU: string | null;
+  matchedBrand: string | null;
+  matchedVersion: string | null;
+  matchedMemory: string | null;
+  matchedColor: string | null;
+  matchedGtins: string[];
+  similarity: number;
+  status: 'matched' | 'unmatched' | 'spu-matched';
+}
+
 interface ResultTableProps {
-  results: MatchResult[];
+  results: UIMatchResult[];
   brandList: BrandData[];
   visibleColumns: string[];
   currentPage: number;
@@ -46,7 +59,7 @@ export function ResultTable({
       title: '规格标签',
       key: 'specs',
       width: 250,
-      render: (_: unknown, record: MatchResult) => {
+      render: (_: unknown, record: UIMatchResult) => {
         if (record.status === 'spu-matched') {
           return <span className="text-gray-400">正在匹配...</span>;
         }
@@ -62,7 +75,7 @@ export function ResultTable({
       dataIndex: 'matchedSKU',
       key: 'matchedSKU',
       width: 250,
-      render: (text: string | null, record: MatchResult) => {
+      render: (text: string | null, record: UIMatchResult) => {
         if (record.status === 'spu-matched') {
           return <span className="text-gray-400">正在匹配SKU...</span>;
         }
@@ -101,7 +114,7 @@ export function ResultTable({
       key: 'statusAndSimilarity',
       width: 140,
       fixed: 'right' as const,
-      render: (_: unknown, record: MatchResult) => {
+      render: (_: unknown, record: UIMatchResult) => {
         if (record.status === 'matched') {
           return (
             <Space direction="vertical" size={4}>
