@@ -509,6 +509,9 @@ export class InfoExtractor {
    * Examples: "Mate 60 Pro", "iPhone 15 Pro Max", "14 Pro", "6 Pro", "Find X5 Pro"
    * 
    * Pattern: ([a-z]+\s+)*([a-z]*\d+[a-z]*)\s+(pro|max|plus|ultra|mini|se|air|lite|note|turbo)+
+   * 
+   * IMPORTANT: This method normalizes all extracted models by removing spaces and converting to lowercase
+   * to handle inconsistent spacing in product names (e.g., "A5PRO", "A5 Pro", "A 5 Pro" all become "a5pro")
    */
   private extractComplexModel(str: string): string | null {
     const suffixes = ['pro', 'max', 'plus', 'ultra', 'mini', 'se', 'air', 'lite', 'note', 'turbo', 'fold', 'flip'];
@@ -523,9 +526,10 @@ export class InfoExtractor {
     
     const match = str.match(pattern);
     if (match) {
-      // Combine all parts and remove spaces
-      const model = ((match[1] || '') + match[2] + match[3]).replace(/\s+/g, '');
-      return model.toLowerCase();
+      // Combine all parts and remove ALL spaces (including within parts)
+      // This ensures "A5 Pro", "A5PRO", "A 5 Pro" all become "a5pro"
+      const model = ((match[1] || '') + match[2] + match[3]).replace(/\s+/g, '').toLowerCase();
+      return model;
     }
     
     return null;
@@ -536,6 +540,9 @@ export class InfoExtractor {
    * Examples: "Watch GT", "Band 8", "Pad Pro"
    * 
    * Pattern: [a-z]+\s+([a-z]+|\d+)
+   * 
+   * IMPORTANT: This method normalizes all extracted models by removing spaces and converting to lowercase
+   * to handle inconsistent spacing in product names
    */
   private extractWordModel(str: string): string | null {
     // Pattern 1: word + word + optional number (e.g., "Watch GT 5", "Pad Pro")
@@ -543,8 +550,9 @@ export class InfoExtractor {
     let match = str.match(wordWordPattern);
     
     if (match && match[1] && match[2]) {
-      const model = (match[1] + match[2] + (match[3] || '')).replace(/\s+/g, '');
-      return model.toLowerCase();
+      // Remove ALL spaces and convert to lowercase
+      const model = (match[1] + match[2] + (match[3] || '')).replace(/\s+/g, '').toLowerCase();
+      return model;
     }
     
     // Pattern 2: word + number (e.g., "Band 8", "Watch 5")
@@ -556,8 +564,9 @@ export class InfoExtractor {
     if (match && match[1] && match[2]) {
       const word = match[1].toLowerCase();
       if (knownTypes.includes(word)) {
-        const model = (match[1] + match[2]).replace(/\s+/g, '');
-        return model.toLowerCase();
+        // Remove ALL spaces and convert to lowercase
+        const model = (match[1] + match[2]).replace(/\s+/g, '').toLowerCase();
+        return model;
       }
     }
     
@@ -569,6 +578,9 @@ export class InfoExtractor {
    * Examples: "P50", "14", "Y50", "15R"
    * 
    * Pattern: [a-z]*\d+[a-z]*
+   * 
+   * IMPORTANT: This method normalizes all extracted models by removing spaces and converting to lowercase
+   * to handle inconsistent spacing in product names
    */
   private extractSimpleModel(str: string): string | null {
     // Pattern: optional letters + numbers + optional letters (one or more)
@@ -578,7 +590,8 @@ export class InfoExtractor {
     const match = str.match(pattern);
     if (match && match[2]) {
       // Must have at least a number
-      const model = (match[1] + match[2] + match[3]).replace(/\s+/g, '');
+      // Remove ALL spaces and convert to lowercase
+      const model = (match[1] + match[2] + match[3]).replace(/\s+/g, '').toLowerCase();
       
       // Filter out models that are too short (just 1 digit) unless they have letters
       if (model.length < 2 && !match[1] && !match[3]) {
@@ -594,7 +607,7 @@ export class InfoExtractor {
         }
       }
       
-      return model.toLowerCase();
+      return model;
     }
     
     return null;

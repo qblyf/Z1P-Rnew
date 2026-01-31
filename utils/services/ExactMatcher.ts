@@ -109,6 +109,15 @@ export class ExactMatcher {
       const spuModel = options?.extractModel ? options.extractModel(spuSPUPart, spuBrand) : null;
       const spuVersion = options?.extractVersion ? options.extractVersion(spuSPUPart) : null;
       
+      // 调试日志：输出前5个SPU的提取结果
+      if (checkedCount <= 5) {
+        console.log(`[精确匹配-调试] SPU #${checkedCount}: "${spu.name}"`);
+        console.log(`[精确匹配-调试]   SPU部分: "${spuSPUPart}"`);
+        console.log(`[精确匹配-调试]   提取品牌: "${spuBrand}"`);
+        console.log(`[精确匹配-调试]   提取型号: "${spuModel}"`);
+        console.log(`[精确匹配-调试]   标准化型号: "${spuModel ? this.normalizeForComparison(spuModel) : 'null'}"`);
+      }
+      
       // 品牌匹配检查
       const brandMatch = options?.isBrandMatch 
         ? options.isBrandMatch(inputBrand, spuBrand)
@@ -116,16 +125,27 @@ export class ExactMatcher {
       
       if (!brandMatch) {
         brandMismatchCount++;
+        if (checkedCount <= 5) {
+          console.log(`[精确匹配-调试]   ✗ 品牌不匹配: "${inputBrand}" !== "${spuBrand}"`);
+        }
         continue;
       }
       
       // 型号匹配检查（标准化后比较）
-      const modelMatch = inputModel && spuModel && 
-        this.normalizeForComparison(inputModel) === this.normalizeForComparison(spuModel);
+      const inputModelNorm = inputModel ? this.normalizeForComparison(inputModel) : null;
+      const spuModelNorm = spuModel ? this.normalizeForComparison(spuModel) : null;
+      const modelMatch = inputModelNorm && spuModelNorm && inputModelNorm === spuModelNorm;
+      
+      if (checkedCount <= 5) {
+        console.log(`[精确匹配-调试]   型号比较: "${inputModelNorm}" ${modelMatch ? '===' : '!=='} "${spuModelNorm}"`);
+      }
       
       if (!modelMatch) {
         if (spuModel) {
           modelMismatchCount++;
+        }
+        if (checkedCount <= 5) {
+          console.log(`[精确匹配-调试]   ✗ 型号不匹配`);
         }
         continue;
       }
