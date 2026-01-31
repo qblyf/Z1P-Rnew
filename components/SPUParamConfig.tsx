@@ -8,6 +8,8 @@ import {
 } from '@zsqk/z1-sdk/es/z1p/params-value';
 import { paramsDefinitionDetail } from '@zsqk/z1-sdk/es/z1p/params-definition';
 import { getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
+import { GetSKUListOrderByKey } from '@zsqk/z1-sdk/es/z1p/product-types';
+import { OrderBySort } from '@zsqk/z1-sdk/es/types/basetypes';
 import {
   Anchor,
   Button,
@@ -113,7 +115,7 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
     const fn = async () => {
       try {
         const res = await getSKUListJoinSPU(
-          { limit: 1000, offset: 0, orderBy: { key: 'p.id', sort: 'DESC' } },
+          { limit: 1000, offset: 0, orderBy: [{ key: GetSKUListOrderByKey.skuID, sort: OrderBySort.降序 }] },
           { sku: ['id', 'name', 'gtins', 'state'], spu: ['brand'] }
         );
         const filteredRes = res.filter((item: any) => item.spuID === spuID);

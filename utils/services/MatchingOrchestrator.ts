@@ -334,7 +334,7 @@ export class MatchingOrchestrator {
     if (skuMatchResult.sku) {
       status = 'matched';
       similarity = skuMatchResult.score;
-    } else if (spuMatchResult.spu) {
+    } else if (spuMatchResult && spuMatchResult.spu) {
       status = 'spu-matched';
       similarity = spuMatchResult.score;
     }
@@ -349,14 +349,24 @@ export class MatchingOrchestrator {
     
     // 匹配的信息
     const matchedInfo = {
-      spu: spuMatchResult.spu ? spuMatchResult.spu.name : null,
+      spu: spuMatchResult && spuMatchResult.spu ? spuMatchResult.spu.name : null,
       sku: skuMatchResult.sku ? skuMatchResult.sku.skuID : null,
       gtins: skuMatchResult.sku ? (skuMatchResult.sku.gtins || []) : [],
     };
     
     return {
       inputName: input,
-      spuMatch: spuMatchResult,
+      spuMatch: spuMatchResult || {
+        spu: null,
+        score: 0,
+        explanation: {
+          matchType: 'exact' as const,
+          brandMatch: { matched: false, score: 0 },
+          modelMatch: { matched: false, score: 0 },
+          versionMatch: { matched: false, score: 0 },
+          details: '未找到匹配',
+        },
+      },
       skuMatch: skuMatchResult,
       status,
       similarity,

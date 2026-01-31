@@ -4,6 +4,8 @@ import { Button, Descriptions, Space, Tabs, TabsProps } from 'antd';
 import { Suspense, useMemo, useState } from 'react';
 import { SKU, SKUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { getSKUList } from '@zsqk/z1-sdk/es/z1p/product';
+import { GetSKUListOrderByKey } from '@zsqk/z1-sdk/es/z1p/product-types';
+import { OrderBySort } from '@zsqk/z1-sdk/es/types/basetypes';
 import { postAwait } from '../../error';
 import { Content } from '../../components/style/Content';
 import Head from 'next/head';
@@ -60,7 +62,7 @@ function SKUDataExport1() {
                   states: [SKUState.在用],
                   limit,
                   offset,
-                  orderBy: { key: 'id', sort: 'ASC' },
+                  orderBy: [{ key: GetSKUListOrderByKey.skuID, sort: OrderBySort.升序 }],
                 },
                 ['id', 'name', 'gtins']
               );

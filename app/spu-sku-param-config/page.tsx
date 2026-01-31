@@ -8,6 +8,8 @@ import {
 } from '@zsqk/z1-sdk/es/z1p/params-value';
 import { paramsDefinitionDetail } from '@zsqk/z1-sdk/es/z1p/params-definition';
 import { getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
+import { GetSKUListOrderByKey } from '@zsqk/z1-sdk/es/z1p/product-types';
+import { OrderBySort } from '@zsqk/z1-sdk/es/types/basetypes';
 import { PageHeader } from '@ant-design/pro-components';
 import {
   Anchor,
@@ -149,7 +151,7 @@ function Page() {
           {
             limit: 1000,
             offset: 0,
-            orderBy: { key: 'p.id', sort: 'DESC' },
+            orderBy: [{ key: GetSKUListOrderByKey.skuID, sort: OrderBySort.降序 }],
           },
           { 
             sku: ['id', 'name', 'gtins', 'state'],
