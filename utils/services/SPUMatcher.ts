@@ -529,29 +529,32 @@ export class SPUMatcher {
         const currentName = current.spu.name.toLowerCase();
         const bestName = best.spu.name.toLowerCase();
         
-        // 检查常见后缀
+        // 检查常见后缀（使用单词边界确保准确匹配）
         const suffixes = ['pro', 'max', 'plus', 'ultra', 'mini', 'se', 'air', 'lite'];
         
+        // 计算输入和SPU名称中匹配的后缀数量
+        let inputSuffixCount = 0;
+        let currentSuffixCount = 0;
+        let bestSuffixCount = 0;
+        
         for (const suffix of suffixes) {
-          const inputHasSuffix = inputLower.includes(suffix);
-          const currentHasSuffix = currentName.includes(suffix);
-          const bestHasSuffix = bestName.includes(suffix);
+          // 使用正则表达式确保是完整的单词，不是部分匹配
+          const suffixRegex = new RegExp(`\\b${suffix}\\b`, 'i');
           
-          // 如果输入包含后缀，优先选择也包含该后缀的SPU
-          if (inputHasSuffix && currentHasSuffix && !bestHasSuffix) {
-            return current;
-          }
-          if (inputHasSuffix && !currentHasSuffix && bestHasSuffix) {
-            return best;
-          }
-          
-          // 如果输入不包含后缀，优先选择也不包含该后缀的SPU
-          if (!inputHasSuffix && !currentHasSuffix && bestHasSuffix) {
-            return current;
-          }
-          if (!inputHasSuffix && currentHasSuffix && !bestHasSuffix) {
-            return best;
-          }
+          if (suffixRegex.test(inputLower)) inputSuffixCount++;
+          if (suffixRegex.test(currentName)) currentSuffixCount++;
+          if (suffixRegex.test(bestName)) bestSuffixCount++;
+        }
+        
+        // 优先选择后缀数量与输入更接近的SPU
+        const currentDiff = Math.abs(currentSuffixCount - inputSuffixCount);
+        const bestDiff = Math.abs(bestSuffixCount - inputSuffixCount);
+        
+        if (currentDiff < bestDiff) {
+          return current;
+        }
+        if (currentDiff > bestDiff) {
+          return best;
         }
         
         // 如果后缀匹配度相同，选择名称更短的（更精确）
