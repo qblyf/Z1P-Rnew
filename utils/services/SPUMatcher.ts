@@ -385,7 +385,7 @@ export class SPUMatcher {
     let bestMatch: SPUMatchResult | null = null;
     
     if (exactMatches.length > 0) {
-      bestMatch = this.selectBestMatch(exactMatches, inputModel, options);
+      bestMatch = this.selectBestMatch(exactMatches, inputModel || undefined, options);
       console.log(`[SPU匹配] 精确匹配最佳: "${bestMatch.spu.name}", 分数: ${bestMatch.score.toFixed(2)}`);
     }
     
@@ -426,7 +426,7 @@ export class SPUMatcher {
       }
       
       if (fuzzyMatches.length > 0) {
-        const fuzzyBest = this.selectBestMatch(fuzzyMatches, inputModel, options);
+        const fuzzyBest = this.selectBestMatch(fuzzyMatches, inputModel || undefined, options);
         console.log(`[SPU匹配] 模糊匹配最佳: "${fuzzyBest.spu.name}", 分数: ${fuzzyBest.score.toFixed(2)}`);
         
         if (!bestMatch || fuzzyBest.score > bestMatch.score) {
