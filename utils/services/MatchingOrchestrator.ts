@@ -223,7 +223,25 @@ export class MatchingOrchestrator {
           shouldFilterSPU: (inputName: string, spuName: string) => {
             // 过滤礼盒版等
             const giftBoxKeywords = ['礼盒', '套装'];
-            return giftBoxKeywords.some(keyword => spuName.includes(keyword));
+            if (giftBoxKeywords.some(keyword => spuName.includes(keyword))) {
+              return true;
+            }
+            
+            // 过滤配件类商品（保护壳、钢化膜、充电器等）
+            const accessoryKeywords = [
+              '保护壳', '手机壳', '保护套', '手机套', '壳',
+              '钢化膜', '膜', '贴膜', '屏幕保护',
+              '充电器', '充电线', '数据线', '充电头',
+              '耳机', '耳塞', '音频线',
+              '支架', '车载', '车充',
+              '电池', '移动电源', '充电宝',
+              '表带', '腕带',
+              '机模', '模型'
+            ];
+            
+            // 检查是否包含配件关键词
+            const lowerSpuName = spuName.toLowerCase();
+            return accessoryKeywords.some(keyword => lowerSpuName.includes(keyword));
           },
           getSPUPriority: (inputName: string, spuName: string) => {
             // 标准版优先级最高
