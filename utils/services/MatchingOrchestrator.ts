@@ -399,6 +399,14 @@ export class MatchingOrchestrator {
       color: extractedInfo.color.value,
     };
     
+    // 调试日志：输出提取的信息
+    console.log(`[聚合结果] 提取的信息:`, {
+      brand: extractedInfoDisplay.brand,
+      version: extractedInfoDisplay.version,
+      memory: extractedInfoDisplay.memory,
+      color: extractedInfoDisplay.color,
+    });
+    
     // 匹配的信息
     const matchedInfo = {
       spu: spuMatchResult && spuMatchResult.spu ? spuMatchResult.spu.name : null,
