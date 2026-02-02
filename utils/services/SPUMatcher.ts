@@ -385,7 +385,7 @@ export class SPUMatcher {
     let bestMatch: SPUMatchResult | null = null;
     
     if (exactMatches.length > 0) {
-      bestMatch = this.selectBestMatch(exactMatches);
+      bestMatch = this.selectBestMatch(exactMatches, inputModel);
       console.log(`[SPU匹配] 精确匹配最佳: "${bestMatch.spu.name}", 分数: ${bestMatch.score.toFixed(2)}`);
     }
     
@@ -426,7 +426,7 @@ export class SPUMatcher {
       }
       
       if (fuzzyMatches.length > 0) {
-        const fuzzyBest = this.selectBestMatch(fuzzyMatches);
+        const fuzzyBest = this.selectBestMatch(fuzzyMatches, inputModel);
         console.log(`[SPU匹配] 模糊匹配最佳: "${fuzzyBest.spu.name}", 分数: ${fuzzyBest.score.toFixed(2)}`);
         
         if (!bestMatch || fuzzyBest.score > bestMatch.score) {
@@ -509,10 +509,9 @@ export class SPUMatcher {
    * 选择优先级：
    * 1. 分数更高
    * 2. 优先级更高（标准版 > 版本匹配 > 其他）
-   * 3. 名称更匹配（考虑后缀匹配度）
-   * 4. 更详细的SPU名称（包含更多信息）
+   * 3. 名称更精确匹配（考虑输入中的关键词）
    */
-  private selectBestMatch(matches: SPUMatchResult[]): SPUMatchResult {
+  private selectBestMatch(matches: SPUMatchResult[], inputModel?: string): SPUMatchResult {
     return matches.reduce((best, current) => {
       // 优先选择分数更高的
       if (current.score > best.score) {
@@ -524,11 +523,39 @@ export class SPUMatcher {
         return current;
       }
       
-      // 分数和优先级都相同时，选择名称更长的（更详细的）
-      // 例如：当输入包含"pro"时，"iPhone 17 Pro"比"iPhone 17"更匹配
-      if (current.score === best.score && current.priority === best.priority) {
-        // 优先选择名称更长的SPU（通常包含更多信息）
-        if (current.spu.name.length > best.spu.name.length) {
+      // 分数和优先级都相同时，考虑输入型号中的后缀
+      if (current.score === best.score && current.priority === best.priority && inputModel) {
+        const inputLower = inputModel.toLowerCase();
+        const currentName = current.spu.name.toLowerCase();
+        const bestName = best.spu.name.toLowerCase();
+        
+        // 检查常见后缀
+        const suffixes = ['pro', 'max', 'plus', 'ultra', 'mini', 'se', 'air', 'lite'];
+        
+        for (const suffix of suffixes) {
+          const inputHasSuffix = inputLower.includes(suffix);
+          const currentHasSuffix = currentName.includes(suffix);
+          const bestHasSuffix = bestName.includes(suffix);
+          
+          // 如果输入包含后缀，优先选择也包含该后缀的SPU
+          if (inputHasSuffix && currentHasSuffix && !bestHasSuffix) {
+            return current;
+          }
+          if (inputHasSuffix && !currentHasSuffix && bestHasSuffix) {
+            return best;
+          }
+          
+          // 如果输入不包含后缀，优先选择也不包含该后缀的SPU
+          if (!inputHasSuffix && !currentHasSuffix && bestHasSuffix) {
+            return current;
+          }
+          if (!inputHasSuffix && currentHasSuffix && !bestHasSuffix) {
+            return best;
+          }
+        }
+        
+        // 如果后缀匹配度相同，选择名称更短的（更精确）
+        if (current.spu.name.length < best.spu.name.length) {
           return current;
         }
       }
