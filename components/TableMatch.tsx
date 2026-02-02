@@ -95,7 +95,6 @@ export function TableMatchComponent() {
           const validSpuList = spuList.filter(spu => {
             if (!spu.brand || spu.brand.trim() === '') {
               filteredCount++;
-              console.log(`⚠️  过滤无品牌SPU: ${spu.name} (ID: ${spu.id})`);
               return false;
             }
             return true;
