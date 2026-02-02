@@ -204,7 +204,41 @@ export class MatchingOrchestrator {
       console.log(`[信息提取] 品牌: ${extractedInfo.brand.value}, 型号: ${extractedInfo.model.value}`);
       
       // 3. SPU匹配
-      const spuMatchResult = this.spuMatcher.findBestMatch(extractedInfo, this.spuList);
+      const spuMatchResult = this.spuMatcher.findBestMatch(
+        extractedInfo, 
+        this.spuList,
+        undefined, // 使用默认阈值
+        {
+          extractBrand: (name: string) => this.infoExtractor.extractBrand(name).value,
+          extractModel: (name: string, brand?: string | null) => this.infoExtractor.extractModel(name, brand || undefined).value,
+          extractVersion: (name: string) => this.infoExtractor.extractVersion(name).value,
+          extractSPUPart: (name: string) => {
+            // 移除容量和颜色信息，保留SPU核心部分
+            return name.replace(/\d+\+\d+/g, '').replace(/[\u4e00-\u9fa5]{2,4}$/g, '').trim();
+          },
+          isBrandMatch: (brand1: string | null, brand2: string | null) => {
+            if (!brand1 || !brand2) return false;
+            return brand1.toLowerCase() === brand2.toLowerCase();
+          },
+          shouldFilterSPU: (inputName: string, spuName: string) => {
+            // 过滤礼盒版等
+            const giftBoxKeywords = ['礼盒', '套装'];
+            return giftBoxKeywords.some(keyword => spuName.includes(keyword));
+          },
+          getSPUPriority: (inputName: string, spuName: string) => {
+            // 标准版优先级最高
+            const giftBoxKeywords = ['礼盒', '套装'];
+            if (giftBoxKeywords.some(keyword => spuName.includes(keyword))) {
+              return 1; // 礼盒版优先级低
+            }
+            return 3; // 标准版优先级高
+          },
+          tokenize: (str: string) => {
+            // 简单的分词：按空格和标点分割
+            return str.toLowerCase().split(/[\s\-_,，、。；;]+/).filter(t => t.length > 0);
+          }
+        }
+      );
       if (!spuMatchResult) {
         console.log(`[SPU匹配] 未找到匹配`);
       } else {
