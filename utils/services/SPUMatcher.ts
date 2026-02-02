@@ -385,7 +385,7 @@ export class SPUMatcher {
     let bestMatch: SPUMatchResult | null = null;
     
     if (exactMatches.length > 0) {
-      bestMatch = this.selectBestMatch(exactMatches, inputModel);
+      bestMatch = this.selectBestMatch(exactMatches, inputModel, options);
       console.log(`[SPU匹配] 精确匹配最佳: "${bestMatch.spu.name}", 分数: ${bestMatch.score.toFixed(2)}`);
     }
     
@@ -426,7 +426,7 @@ export class SPUMatcher {
       }
       
       if (fuzzyMatches.length > 0) {
-        const fuzzyBest = this.selectBestMatch(fuzzyMatches, inputModel);
+        const fuzzyBest = this.selectBestMatch(fuzzyMatches, inputModel, options);
         console.log(`[SPU匹配] 模糊匹配最佳: "${fuzzyBest.spu.name}", 分数: ${fuzzyBest.score.toFixed(2)}`);
         
         if (!bestMatch || fuzzyBest.score > bestMatch.score) {
@@ -509,9 +509,17 @@ export class SPUMatcher {
    * 选择优先级：
    * 1. 分数更高
    * 2. 优先级更高（标准版 > 版本匹配 > 其他）
-   * 3. 名称更精确匹配（考虑输入中的关键词）
+   * 3. 名称更精确匹配（考虑输入和候选SPU的型号后缀）
    */
-  private selectBestMatch(matches: SPUMatchResult[], inputModel?: string): SPUMatchResult {
+  private selectBestMatch(
+    matches: SPUMatchResult[], 
+    inputModel?: string,
+    options?: {
+      extractBrand: (name: string) => string | null;
+      extractModel: (name: string, brand?: string | null) => string | null;
+      extractSPUPart: (name: string) => string;
+    }
+  ): SPUMatchResult {
     return matches.reduce((best, current) => {
       // 优先选择分数更高的
       if (current.score > best.score) {
@@ -523,38 +531,50 @@ export class SPUMatcher {
         return current;
       }
       
-      // 分数和优先级都相同时，考虑输入型号中的后缀
-      if (current.score === best.score && current.priority === best.priority && inputModel) {
+      // 分数和优先级都相同时，考虑输入型号和候选SPU型号的后缀匹配度
+      if (current.score === best.score && current.priority === best.priority && inputModel && options) {
         const inputLower = inputModel.toLowerCase();
-        const currentName = current.spu.name.toLowerCase();
-        const bestName = best.spu.name.toLowerCase();
         
-        // 检查常见后缀（使用单词边界确保准确匹配）
-        const suffixes = ['pro', 'max', 'plus', 'ultra', 'mini', 'se', 'air', 'lite'];
+        // 提取候选SPU的型号
+        const currentSPUPart = options.extractSPUPart(current.spu.name);
+        const currentBrand = current.spu.brand || options.extractBrand(currentSPUPart);
+        const currentModel = options.extractModel(currentSPUPart, currentBrand);
         
-        // 计算输入和SPU名称中匹配的后缀数量
-        let inputSuffixCount = 0;
-        let currentSuffixCount = 0;
-        let bestSuffixCount = 0;
+        const bestSPUPart = options.extractSPUPart(best.spu.name);
+        const bestBrand = best.spu.brand || options.extractBrand(bestSPUPart);
+        const bestModel = options.extractModel(bestSPUPart, bestBrand);
         
-        for (const suffix of suffixes) {
-          // 使用正则表达式确保是完整的单词，不是部分匹配
-          const suffixRegex = new RegExp(`\\b${suffix}\\b`, 'i');
+        if (currentModel && bestModel) {
+          const currentModelLower = currentModel.toLowerCase();
+          const bestModelLower = bestModel.toLowerCase();
           
-          if (suffixRegex.test(inputLower)) inputSuffixCount++;
-          if (suffixRegex.test(currentName)) currentSuffixCount++;
-          if (suffixRegex.test(bestName)) bestSuffixCount++;
-        }
-        
-        // 优先选择后缀数量与输入更接近的SPU
-        const currentDiff = Math.abs(currentSuffixCount - inputSuffixCount);
-        const bestDiff = Math.abs(bestSuffixCount - inputSuffixCount);
-        
-        if (currentDiff < bestDiff) {
-          return current;
-        }
-        if (currentDiff > bestDiff) {
-          return best;
+          // 检查常见后缀（使用单词边界确保准确匹配）
+          const suffixes = ['pro', 'max', 'plus', 'ultra', 'mini', 'se', 'air', 'lite'];
+          
+          // 计算输入和候选SPU型号中匹配的后缀数量
+          let inputSuffixCount = 0;
+          let currentSuffixCount = 0;
+          let bestSuffixCount = 0;
+          
+          for (const suffix of suffixes) {
+            // 使用正则表达式确保是完整的单词，不是部分匹配
+            const suffixRegex = new RegExp(`\\b${suffix}\\b`, 'i');
+            
+            if (suffixRegex.test(inputLower)) inputSuffixCount++;
+            if (suffixRegex.test(currentModelLower)) currentSuffixCount++;
+            if (suffixRegex.test(bestModelLower)) bestSuffixCount++;
+          }
+          
+          // 优先选择后缀数量与输入更接近的SPU
+          const currentDiff = Math.abs(currentSuffixCount - inputSuffixCount);
+          const bestDiff = Math.abs(bestSuffixCount - inputSuffixCount);
+          
+          if (currentDiff < bestDiff) {
+            return current;
+          }
+          if (currentDiff > bestDiff) {
+            return best;
+          }
         }
         
         // 如果后缀匹配度相同，选择名称更短的（更精确）
