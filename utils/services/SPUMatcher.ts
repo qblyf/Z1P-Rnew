@@ -509,7 +509,8 @@ export class SPUMatcher {
    * 选择优先级：
    * 1. 分数更高
    * 2. 优先级更高（标准版 > 版本匹配 > 其他）
-   * 3. 更简洁的SPU名称（不包含Pro、Max等后缀）
+   * 3. 名称更匹配（考虑后缀匹配度）
+   * 4. 更详细的SPU名称（包含更多信息）
    */
   private selectBestMatch(matches: SPUMatchResult[]): SPUMatchResult {
     return matches.reduce((best, current) => {
@@ -523,13 +524,11 @@ export class SPUMatcher {
         return current;
       }
       
-      // 分数和优先级都相同时，选择更简洁的SPU名称
+      // 分数和优先级都相同时，选择名称更长的（更详细的）
+      // 例如：当输入包含"pro"时，"iPhone 17 Pro"比"iPhone 17"更匹配
       if (current.score === best.score && current.priority === best.priority) {
-        const currentHasSuffix = this.hasSPUSuffix(current.spu.name);
-        const bestHasSuffix = this.hasSPUSuffix(best.spu.name);
-        
-        // 如果当前SPU没有后缀但最佳SPU有后缀，选择当前SPU
-        if (!currentHasSuffix && bestHasSuffix) {
+        // 优先选择名称更长的SPU（通常包含更多信息）
+        if (current.spu.name.length > best.spu.name.length) {
           return current;
         }
       }
