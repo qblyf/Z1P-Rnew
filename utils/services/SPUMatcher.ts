@@ -7,7 +7,7 @@
 
 import { ExactMatcher } from './ExactMatcher';
 import { FuzzyMatcher } from './FuzzyMatcher';
-import type { SPUData, VersionInfo, BrandData } from '../types';
+import type { SPUData, VersionInfo, BrandData, EnhancedSPUData } from '../types';
 import type { SPUMatchResult, ExtractedInfo } from './types';
 import type { MatchLogger } from '../monitoring/MatchLogger';
 import type { PerformanceMetrics } from '../monitoring/PerformanceMetrics';
@@ -31,10 +31,10 @@ export class SPUMatcher {
   private metrics?: PerformanceMetrics;
   
   // 品牌索引：品牌名 -> SPU 列表
-  private spuIndexByBrand: Map<string, SPUData[]> = new Map();
+  private spuIndexByBrand: Map<string, EnhancedSPUData[]> = new Map();
   
   // 型号索引：型号 -> SPU 列表
-  private spuIndexByModel: Map<string, SPUData[]> = new Map();
+  private spuIndexByModel: Map<string, EnhancedSPUData[]> = new Map();
   
   // 品牌列表（用于品牌匹配）
   private brandList: BrandData[] = [];
@@ -106,13 +106,15 @@ export class SPUMatcher {
   /**
    * 构建品牌索引和型号索引
    * 
-   * @param spuList SPU 列表
+   * Requirements: 2.4.3 - 使用品牌索引快速过滤候选SPU
+   * 
+   * @param spuList SPU 列表（增强的SPU数据）
    * @param extractBrand 品牌提取函数
    * @param extractModel 型号提取函数
    * @param extractSPUPart SPU 部分提取函数
    */
   buildIndexes(
-    spuList: SPUData[],
+    spuList: EnhancedSPUData[],
     extractBrand: (name: string) => string | null,
     extractModel: (name: string, brand?: string | null) => string | null,
     extractSPUPart: (name: string) => string
@@ -231,15 +233,17 @@ export class SPUMatcher {
   /**
    * 查找最佳匹配的 SPU
    * 
+   * Requirements: 2.4.1, 2.4.2 - 使用增强的SPU数据进行匹配
+   * 
    * @param extractedInfo 提取的信息
-   * @param spuList 完整的 SPU 列表（用于回退）
+   * @param spuList 完整的 SPU 列表（增强的SPU数据，用于回退）
    * @param threshold 匹配阈值
    * @param options 匹配选项
    * @returns 最佳匹配结果
    */
   findBestMatch(
     extractedInfo: ExtractedInfo,
-    spuList: SPUData[],
+    spuList: EnhancedSPUData[],
     threshold: number = MATCH_THRESHOLDS.SPU,
     options?: {
       extractBrand: (name: string) => string | null;
@@ -274,12 +278,12 @@ export class SPUMatcher {
     }
     
     // 使用品牌索引缩小候选范围
-    let candidates: SPUData[];
+    let candidates: EnhancedSPUData[];
     let usedBrandIndex = false;
     
     if (inputBrand && this.spuIndexByBrand.size > 0) {
       const brandKeys = this.getBrandKeys(inputBrand);
-      const candidateSet = new Set<SPUData>();
+      const candidateSet = new Set<EnhancedSPUData>();
       
       for (const key of brandKeys) {
         const spus = this.spuIndexByBrand.get(key);

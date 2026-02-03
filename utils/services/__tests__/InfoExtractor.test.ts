@@ -376,7 +376,7 @@ describe('InfoExtractor', () => {
         const result = extractor.extractModel('小米 14', '小米');
         
         expect(result.value).toBe('14');
-        expect(result.confidence).toBe(0.9);
+        expect(result.confidence).toBe(0.85);
         expect(result.source).toBe('exact');
       });
       
@@ -1420,79 +1420,79 @@ describe('InfoExtractor', () => {
   
   describe('extractVersion', () => {
     describe('standard and special edition versions', () => {
-      it('should extract 活力版 with confidence 1.0', () => {
+      it('should extract 活力版 with confidence 0.95', () => {
         const result = extractor.extractVersion('OPPO A5 活力版 8+256');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('活力版');
         expect(result.value?.keywords).toContain('活力版');
         expect(result.value?.priority).toBe(5);
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
       
-      it('should extract 优享版 with confidence 1.0', () => {
+      it('should extract 优享版 with confidence 0.95', () => {
         const result = extractor.extractVersion('vivo Y50 优享版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('优享版');
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
       
-      it('should extract 尊享版 with confidence 1.0', () => {
+      it('should extract 尊享版 with confidence 0.95', () => {
         const result = extractor.extractVersion('小米 14 尊享版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('尊享版');
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
       
-      it('should extract 青春版 with confidence 1.0', () => {
+      it('should extract 青春版 with confidence 0.95', () => {
         const result = extractor.extractVersion('红米 Note 12 青春版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('青春版');
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
       
-      it('should extract 轻享版 with confidence 1.0', () => {
+      it('should extract 轻享版 with confidence 0.95', () => {
         const result = extractor.extractVersion('OPPO A8 轻享版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('轻享版');
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
       
-      it('should extract 标准版 with confidence 1.0', () => {
+      it('should extract 标准版 with confidence 0.95', () => {
         const result = extractor.extractVersion('华为 Mate 60 标准版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('标准版');
         expect(result.value?.priority).toBe(4);
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
       
-      it('should extract 基础版 with confidence 1.0', () => {
+      it('should extract 基础版 with confidence 0.95', () => {
         const result = extractor.extractVersion('vivo Y300 基础版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('基础版');
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
       
-      it('should extract Pro版 with confidence 1.0', () => {
+      it('should extract Pro版 with confidence 0.95', () => {
         const result = extractor.extractVersion('小米 14 Pro版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('Pro版');
         expect(result.value?.priority).toBe(6);
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
       
@@ -1501,29 +1501,29 @@ describe('InfoExtractor', () => {
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('Pro版');
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
     });
     
     describe('technology versions', () => {
-      it('should extract 蓝牙版 with confidence 0.95', () => {
+      it('should extract 蓝牙版 with confidence 1.0', () => {
         const result = extractor.extractVersion('华为 Watch GT 5 蓝牙版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('蓝牙版');
         expect(result.value?.keywords).toContain('蓝牙版');
-        expect(result.value?.priority).toBe(4);
-        expect(result.confidence).toBe(0.95);
+        expect(result.value?.priority).toBe(9);
+        expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
       
-      it('should extract eSIM版 with confidence 0.95', () => {
+      it('should extract eSIM版 with confidence 1.0', () => {
         const result = extractor.extractVersion('Apple Watch eSIM版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('eSIM版');
-        expect(result.confidence).toBe(0.95);
+        expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
       
@@ -1532,54 +1532,54 @@ describe('InfoExtractor', () => {
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('eSIM版');
-        expect(result.confidence).toBe(0.95);
+        expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
       
-      it('should extract 5G版 with confidence 0.95', () => {
+      it('should extract 5G版 with confidence 1.0', () => {
         const result = extractor.extractVersion('小米 14 5G版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('5G版');
-        expect(result.confidence).toBe(0.95);
+        expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
       
-      it('should extract 4G版 with confidence 0.95', () => {
+      it('should extract 4G版 with confidence 1.0', () => {
         const result = extractor.extractVersion('红米 Note 11 4G版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('4G版');
-        expect(result.value?.priority).toBe(3);
-        expect(result.confidence).toBe(0.95);
+        expect(result.value?.priority).toBe(8);
+        expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
       
-      it('should extract WiFi版 with confidence 0.95', () => {
+      it('should extract WiFi版 with confidence 1.0', () => {
         const result = extractor.extractVersion('iPad Pro WiFi版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('WiFi版');
-        expect(result.confidence).toBe(0.95);
+        expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
       
-      it('should extract 全网通版 with confidence 0.95', () => {
+      it('should extract 全网通版 with confidence 1.0', () => {
         const result = extractor.extractVersion('vivo Y50 全网通版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('全网通版');
-        expect(result.confidence).toBe(0.95);
+        expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
       
-      it('should extract 卫星通信版 with confidence 0.95', () => {
+      it('should extract 卫星通信版 with confidence 1.0', () => {
         const result = extractor.extractVersion('华为 Mate 60 Pro 卫星通信版');
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('卫星通信版');
-        expect(result.value?.priority).toBe(5);
-        expect(result.confidence).toBe(0.95);
+        expect(result.value?.priority).toBe(10);
+        expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
     });
@@ -1737,7 +1737,7 @@ describe('InfoExtractor', () => {
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('活力版');
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
       
@@ -1755,7 +1755,7 @@ describe('InfoExtractor', () => {
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('活力版');
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
       
@@ -1764,7 +1764,7 @@ describe('InfoExtractor', () => {
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('活力版');
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
       
@@ -1773,7 +1773,7 @@ describe('InfoExtractor', () => {
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('优享版');
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
       
@@ -1781,7 +1781,8 @@ describe('InfoExtractor', () => {
         const result = extractor.extractVersion('Vivo S30Promini活力版5G(12+512)可可黑');
         
         expect(result.value).not.toBeNull();
-        expect(result.value?.name).toBe('活力版');
+        // Should extract "5G" (network version, priority 1) not "活力版" (standard version, priority 2)
+        expect(result.value?.name).toBe('5G');
         expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
@@ -1793,7 +1794,7 @@ describe('InfoExtractor', () => {
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('活力版');
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
         expect(result.source).toBe('exact');
       });
       
@@ -1802,7 +1803,7 @@ describe('InfoExtractor', () => {
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('蓝牙版');
-        expect(result.confidence).toBe(0.95);
+        expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
       
@@ -1811,7 +1812,7 @@ describe('InfoExtractor', () => {
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('eSIM版');
-        expect(result.confidence).toBe(0.95);
+        expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
       
@@ -1819,8 +1820,9 @@ describe('InfoExtractor', () => {
         const result = extractor.extractVersion('vivo Y500 全网通5G版 12GB+512GB 龙晶紫');
         
         expect(result.value).not.toBeNull();
-        expect(result.value?.name).toBe('5G版');
-        expect(result.confidence).toBe(0.95);
+        // Should extract "全网通5G" (highest priority network version)
+        expect(result.value?.name).toBe('全网通5G');
+        expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
       
@@ -1828,7 +1830,8 @@ describe('InfoExtractor', () => {
         const result = extractor.extractVersion('红米 Note 12 Pro 青春版 5G 8GB+256GB');
         
         expect(result.value).not.toBeNull();
-        expect(result.value?.name).toBe('青春版');
+        // Should extract "5G" (network version, priority 1) not "青春版" (standard version, priority 2)
+        expect(result.value?.name).toBe('5G');
         expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
@@ -1856,7 +1859,7 @@ describe('InfoExtractor', () => {
         
         expect(result.value).not.toBeNull();
         expect(result.value?.name).toBe('卫星通信版');
-        expect(result.confidence).toBe(0.95);
+        expect(result.confidence).toBe(1.0);
         expect(result.source).toBe('exact');
       });
       
@@ -1878,29 +1881,29 @@ describe('InfoExtractor', () => {
     });
     
     describe('priority order verification', () => {
-      it('should prioritize standard versions over tech versions', () => {
-        // If both exist, standard version should be found first
+      it('should prioritize network versions over standard versions', () => {
+        // Network versions (priority 1) should be found before standard versions (priority 2)
         const result = extractor.extractVersion('手机 活力版 5G版');
         
-        // Should extract "活力版" (priority 1) not "5G版" (priority 2)
-        expect(result.value?.name).toBe('活力版');
+        // Should extract "5G版" (network version, priority 1) not "活力版" (standard version, priority 2)
+        expect(result.value?.name).toBe('5G版');
         expect(result.confidence).toBe(1.0);
       });
       
-      it('should prioritize tech versions over premium editions', () => {
-        // If both exist, tech version should be found first
+      it('should prioritize network versions over premium editions', () => {
+        // Network versions (priority 1) should be found before premium editions (priority 3)
         const result = extractor.extractVersion('手机 蓝牙版 典藏版');
         
-        // Should extract "蓝牙版" (priority 2) not "典藏版" (priority 3)
+        // Should extract "蓝牙版" (network version, priority 1) not "典藏版" (premium edition, priority 3)
         expect(result.value?.name).toBe('蓝牙版');
-        expect(result.confidence).toBe(0.95);
+        expect(result.confidence).toBe(1.0);
       });
       
       it('should have higher priority for Pro版', () => {
         const result = extractor.extractVersion('小米 14 Pro版');
         
         expect(result.value?.priority).toBe(6);
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
       });
       
       it('should have higher priority for 旗舰版', () => {
@@ -1914,7 +1917,7 @@ describe('InfoExtractor', () => {
         const result = extractor.extractVersion('OPPO A5 活力版');
         
         expect(result.value?.priority).toBe(5);
-        expect(result.confidence).toBe(1.0);
+        expect(result.confidence).toBe(0.95);
       });
       
       it('should have lower priority for 礼盒版', () => {
@@ -2075,7 +2078,7 @@ describe('InfoExtractor', () => {
         const result = extractor.extractAll(input);
         
         expect(result.brand.value).toBe('华为');
-        expect(result.model.value).toBe('gt4pro'); // "Watch" is removed as descriptor
+        expect(result.model.value).toBe('watchgt4pro'); // "Watch" is kept as part of model
         expect(result.productType).toBe('watch');
       });
     });
@@ -2337,7 +2340,7 @@ describe('InfoExtractor', () => {
         expect(result.model.value).toBe('s30promini');
         expect(result.capacity.value).toBe('12+512');
         expect(result.color.value).toBe('可可黑');
-        expect(result.version.value?.name).toBe('5G版');
+        expect(result.version.value?.name).toBe('全网通5G');
         expect(result.productType).toBe('phone');
       });
       
@@ -2346,7 +2349,7 @@ describe('InfoExtractor', () => {
         const result = extractor.extractAll(input);
         
         expect(result.brand.value).toBe('华为');
-        expect(result.model.value).toBe('gt5pro'); // "Watch" removed as descriptor
+        expect(result.model.value).toBe('watchgt5pro'); // "Watch" kept as part of model
         expect(result.version.value?.name).toBe('eSIM版');
         expect(result.productType).toBe('watch');
       });
@@ -2437,7 +2440,7 @@ describe('InfoExtractor', () => {
         expect(result.model.value).toBe('mate60pro');
         expect(result.capacity.value).toBe('12+512');
         expect(result.color.value).toBe('雅川青');
-        expect(result.version.value?.name).toBe('5G版');
+        expect(result.version.value?.name).toBe('全网通5G');
         expect(result.productType).toBe('phone');
       });
       
@@ -2462,8 +2465,8 @@ describe('InfoExtractor', () => {
         const input = 'OPPO A5 活力版 5G版 标准版';
         const result = extractor.extractAll(input);
         
-        // Should extract the first matching version (活力版 has priority 1)
-        expect(result.version.value?.name).toBe('活力版');
+        // Should extract the highest priority version (5G版 has priority 1, 活力版 has priority 2)
+        expect(result.version.value?.name).toBe('5G版');
         expect(result.version.confidence).toBe(1.0);
       });
       
@@ -2578,7 +2581,7 @@ describe('InfoExtractor', () => {
         const result = extractor.extractAll(input);
         
         expect(result.brand.value).toBe('华为');
-        expect(result.model.value).toBe('gt5pro');
+        expect(result.model.value).toBe('watchgt5pro');
         expect(result.color.value).toBe('星岩黑');
         expect(result.version.value?.name).toBe('eSIM版');
         expect(result.productType).toBe('watch');

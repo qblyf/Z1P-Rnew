@@ -3,7 +3,7 @@
  * 用于 SPU/SKU 匹配服务
  */
 
-import type { SPUData, SKUData, VersionInfo, ProductType } from '../types';
+import type { SPUData, SKUData, VersionInfo, ProductType, EnhancedSPUData } from '../types';
 
 /**
  * 匹配解释
@@ -18,9 +18,11 @@ export interface MatchExplanation {
 
 /**
  * SPU 匹配结果
+ * 
+ * Requirements: 2.4.1, 2.4.2 - 使用增强的SPU数据进行匹配
  */
 export interface SPUMatchResult {
-  spu: SPUData;
+  spu: EnhancedSPUData;
   score: number;
   explanation: MatchExplanation;
   priority?: number; // SPU 优先级（标准版 > 版本匹配 > 其他）
@@ -76,4 +78,4 @@ export interface ExtractedInfo {
 }
 
 // Re-export types for convenience
-export type { SPUData, SKUData, VersionInfo, ProductType };
+export type { SPUData, SKUData, VersionInfo, ProductType, EnhancedSPUData };

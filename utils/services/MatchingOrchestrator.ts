@@ -115,18 +115,23 @@ export class MatchingOrchestrator {
     console.log('🚀 初始化 MatchingOrchestrator...');
     
     try {
-      // Store SPU list for later use
-      this.spuList = spuList;
-      
       // 初始化各个服务
       await this.dataPrep.initialize(brandList);
       await this.preprocessing.initialize();
       this.infoExtractor.setBrandList(brandList);
       
-      // 构建索引
-      this.dataPrep.buildBrandIndex(spuList);
-      this.dataPrep.buildModelIndex(spuList);
-      this.dataPrep.buildSpecIndex(spuList);
+      // 预处理SPU列表（新增）
+      // Requirements: 2.1.1, 2.1.2, 2.1.4 - 提前提取品牌、型号、精简度
+      console.log('📦 预处理SPU列表...');
+      const enhancedSPUs = this.dataPrep.preprocessSPUs(spuList);
+      
+      // 存储增强的SPU列表供匹配使用
+      this.spuList = enhancedSPUs;
+      
+      // 构建索引（使用增强的SPU数据）
+      this.dataPrep.buildBrandIndex(enhancedSPUs);
+      this.dataPrep.buildModelIndex(enhancedSPUs);
+      this.dataPrep.buildSpecIndex(enhancedSPUs);
       
       // 初始化 SPU 匹配器
       // 定义提取函数

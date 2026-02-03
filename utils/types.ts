@@ -48,6 +48,73 @@ export interface SPUData {
 }
 
 /**
+ * Enhanced SPU Data with Pre-extracted Information
+ * 
+ * Extends SPUData with pre-extracted and normalized information for efficient matching.
+ * This data is generated during the preprocessing phase to avoid repeated extraction
+ * during matching operations.
+ * 
+ * The preprocessing extracts:
+ * - Brand information (from brand field or name)
+ * - Model information (core product model after removing brand and specs)
+ * - Normalized model (standardized format for exact matching)
+ * - Simplicity score (measure of name conciseness for prioritization)
+ * 
+ * @interface EnhancedSPUData
+ * @extends SPUData
+ * @property {string | null} extractedBrand - Pre-extracted brand name from SPU
+ *   - Prioritizes the `brand` field if available
+ *   - Otherwise extracts from `name` using brand recognition
+ *   - null if extraction fails
+ * @property {string | null} extractedModel - Pre-extracted model name
+ *   - Core model identifier after removing brand, color, capacity, etc.
+ *   - Example: "Mate 60 Pro" from "华为 Mate 60 Pro 12GB+512GB 雅川青"
+ *   - null if extraction fails
+ * @property {string | null} normalizedModel - Normalized model for matching
+ *   - Standardized format: lowercase + no spaces + no special characters
+ *   - Example: "mate60pro" from "Mate 60 Pro"
+ *   - Used for exact model comparison during matching
+ *   - null if model extraction fails
+ * @property {number} simplicity - Simplicity score (lower = more concise)
+ *   - Formula: name.length - brand.length - model.length - specs.length
+ *   - Used for prioritization when match scores are equal
+ *   - Lower values indicate more concise/standard product names
+ *   - Example: "华为 Mate 60 Pro" has lower simplicity than "华为 Mate 60 Pro 典藏版"
+ * @property {number} [preprocessedAt] - Timestamp when preprocessing occurred
+ *   - Unix timestamp in milliseconds
+ *   - Optional field for debugging and cache validation
+ * 
+ * @example
+ * // Original SPU
+ * const spu: SPUData = {
+ *   id: 1,
+ *   name: "华为 Mate 60 Pro 12GB+512GB 雅川青",
+ *   brand: "华为",
+ *   skuIDs: [...]
+ * };
+ * 
+ * // Enhanced SPU after preprocessing
+ * const enhanced: EnhancedSPUData = {
+ *   ...spu,
+ *   extractedBrand: "华为",
+ *   extractedModel: "Mate 60 Pro",
+ *   normalizedModel: "mate60pro",
+ *   simplicity: 6,
+ *   preprocessedAt: 1704067200000
+ * };
+ * 
+ * @see SPUData - Base interface
+ * @see Requirements 2.1.1, 2.1.2, 2.1.4 - Preprocessing requirements
+ */
+export interface EnhancedSPUData extends SPUData {
+  extractedBrand: string | null;
+  extractedModel: string | null;
+  normalizedModel: string | null;
+  simplicity: number;
+  preprocessedAt?: number;
+}
+
+/**
  * SKU (Stock Keeping Unit) Data
  * 
  * Represents a specific product variant with exact specifications.

@@ -54,11 +54,44 @@ describe('SPUMatcher - Performance Monitoring Integration', () => {
       { name: '小米', spell: 'xiaomi', color: '#FF6600' },
     ];
     
+    // 使用 EnhancedSPUData 格式，包含预提取的品牌和型号
     mockSPUList = [
-      { id: 1, name: '华为 Mate 60 Pro', brand: '华为' },
-      { id: 2, name: '华为 Mate 60', brand: '华为' },
-      { id: 3, name: '小米 14 Pro', brand: '小米' },
-      { id: 4, name: '小米 14', brand: '小米' },
+      { 
+        id: 1, 
+        name: '华为 Mate 60 Pro', 
+        brand: '华为',
+        extractedBrand: '华为',
+        extractedModel: 'mate60pro',
+        normalizedModel: 'mate60pro',
+        spuPart: '华为 Mate 60 Pro'
+      },
+      { 
+        id: 2, 
+        name: '华为 Mate 60', 
+        brand: '华为',
+        extractedBrand: '华为',
+        extractedModel: 'mate60',
+        normalizedModel: 'mate60',
+        spuPart: '华为 Mate 60'
+      },
+      { 
+        id: 3, 
+        name: '小米 14 Pro', 
+        brand: '小米',
+        extractedBrand: '小米',
+        extractedModel: '14pro',
+        normalizedModel: '14pro',
+        spuPart: '小米 14 Pro'
+      },
+      { 
+        id: 4, 
+        name: '小米 14', 
+        brand: '小米',
+        extractedBrand: '小米',
+        extractedModel: '14',
+        normalizedModel: '14',
+        spuPart: '小米 14'
+      },
     ];
     
     matcher.setBrandList(mockBrandList);
@@ -71,7 +104,7 @@ describe('SPUMatcher - Performance Monitoring Integration', () => {
         originalInput: '华为 Mate 60 Pro',
         preprocessedInput: '华为 Mate 60 Pro',
         brand: { value: '华为', confidence: 1.0, source: 'exact' },
-        model: { value: 'Mate60Pro', confidence: 1.0, source: 'exact' },
+        model: { value: 'mate60pro', confidence: 1.0, source: 'exact' },
         color: { value: null, confidence: 0, source: 'exact' },
         capacity: { value: null, confidence: 0, source: 'exact' },
         version: { value: null, confidence: 0, source: 'exact' },

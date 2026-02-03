@@ -5,7 +5,7 @@
  * 匹配策略：品牌必须完全匹配，型号必须完全匹配（标准化后）
  */
 
-import type { SPUData, VersionInfo } from '../types';
+import type { SPUData, VersionInfo, EnhancedSPUData } from '../types';
 import type { SPUMatchResult, MatchExplanation, ExtractedInfo } from './types';
 import { VersionMatcher } from './VersionMatcher';
 import type { MatchLogger } from '../monitoring/MatchLogger';
@@ -53,17 +53,22 @@ export class ExactMatcher {
   /**
    * 查找精确匹配的 SPU
    * 
+   * 修改说明：
+   * - 使用预处理的 EnhancedSPUData，不再需要动态提取品牌和型号
+   * - 直接使用 spu.extractedBrand 和 spu.normalizedModel 进行匹配
+   * - 保留必要的匹配选项（过滤、优先级、分词等）
+   * 
+   * Requirements: 2.4.1, 2.4.2 - 确保ExactMatcher接收增强的SPU数据
+   * 
    * @param extractedInfo 提取的信息（品牌、型号、版本等）
-   * @param candidates 候选 SPU 列表
-   * @param options 匹配选项
+   * @param candidates 候选 SPU 列表（已预处理的增强数据）
+   * @param options 匹配选项（不包含动态提取函数）
    * @returns 匹配结果列表
    */
   findMatches(
     extractedInfo: ExtractedInfo,
-    candidates: SPUData[],
+    candidates: EnhancedSPUData[],
     options?: {
-      extractBrand: (name: string) => string | null;
-      extractModel: (name: string, brand?: string | null) => string | null;
       extractVersion: (name: string) => VersionInfo | null;
       extractSPUPart: (name: string) => string;
       isBrandMatch: (brand1: string | null, brand2: string | null) => boolean;
@@ -81,8 +86,7 @@ export class ExactMatcher {
     const originalInput = extractedInfo.originalInput;
     
     // 调试信息
-    const inputModelNormalized = inputModel?.toLowerCase().replace(/\s+/g, '');
-    console.log(`[精确匹配] 输入型号标准化: "${inputModel}" -> "${inputModelNormalized}"`);
+    console.log(`[精确匹配] 输入型号（已标准化）: "${inputModel}"`);
     
     // 日志：开始精确匹配
     if (this.logger) {
@@ -103,19 +107,19 @@ export class ExactMatcher {
         continue;
       }
       
-      // 提取 SPU 信息
+      // 使用预提取的 SPU 信息（不再动态提取）
       const spuSPUPart = options?.extractSPUPart ? options.extractSPUPart(spu.name) : spu.name;
-      const spuBrand = spu.brand || (options?.extractBrand ? options.extractBrand(spuSPUPart) : null);
-      const spuModel = options?.extractModel ? options.extractModel(spuSPUPart, spuBrand) : null;
+      const spuBrand = spu.extractedBrand; // 直接使用预提取的品牌
+      const spuModelNorm = spu.normalizedModel; // 直接使用预提取的标准化型号
       const spuVersion = options?.extractVersion ? options.extractVersion(spuSPUPart) : null;
       
       // 调试日志：输出前5个SPU的提取结果
       if (checkedCount <= 5) {
         console.log(`[精确匹配-调试] SPU #${checkedCount}: "${spu.name}"`);
         console.log(`[精确匹配-调试]   SPU部分: "${spuSPUPart}"`);
-        console.log(`[精确匹配-调试]   提取品牌: "${spuBrand}"`);
-        console.log(`[精确匹配-调试]   提取型号: "${spuModel}"`);
-        console.log(`[精确匹配-调试]   标准化型号: "${spuModel ? this.normalizeForComparison(spuModel) : 'null'}"`);
+        console.log(`[精确匹配-调试]   预提取品牌: "${spuBrand}"`);
+        console.log(`[精确匹配-调试]   预提取型号: "${spu.extractedModel}"`);
+        console.log(`[精确匹配-调试]   标准化型号: "${spuModelNorm}"`);
       }
       
       // 品牌匹配检查
@@ -131,17 +135,17 @@ export class ExactMatcher {
         continue;
       }
       
-      // 型号匹配检查（标准化后比较）
-      const inputModelNorm = inputModel ? this.normalizeForComparison(inputModel) : null;
-      const spuModelNorm = spuModel ? this.normalizeForComparison(spuModel) : null;
-      const modelMatch = inputModelNorm && spuModelNorm && inputModelNorm === spuModelNorm;
+      // 型号匹配检查（直接使用预提取的标准化型号，无需再次标准化）
+      // inputModel 已经在 InfoExtractor.extractModel() 中标准化过
+      // spuModelNorm 已经在 DataPreparationService.preprocessSPUs() 中标准化过
+      const modelMatch = inputModel && spuModelNorm && inputModel === spuModelNorm;
       
       if (checkedCount <= 5) {
-        console.log(`[精确匹配-调试]   型号比较: "${inputModelNorm}" ${modelMatch ? '===' : '!=='} "${spuModelNorm}"`);
+        console.log(`[精确匹配-调试]   型号比较: "${inputModel}" ${modelMatch ? '===' : '!=='} "${spuModelNorm}"`);
       }
       
       if (!modelMatch) {
-        if (spuModel) {
+        if (spuModelNorm) {
           modelMismatchCount++;
         }
         if (checkedCount <= 5) {
@@ -161,7 +165,7 @@ export class ExactMatcher {
       const keywordBonus = options?.tokenize 
         ? this.calculateKeywordBonus(originalInput, spu.name, options.tokenize)
         : 0;
-      const modelDetailBonus = this.calculateModelDetailBonus(inputModel, spuModel);
+      const modelDetailBonus = this.calculateModelDetailBonus(inputModel, spu.extractedModel);
       
       const finalScore = Math.min(baseScore + keywordBonus + modelDetailBonus, 1.0);
       
@@ -179,7 +183,7 @@ export class ExactMatcher {
           inputModel, 
           inputVersion, 
           spuBrand, 
-          spuModel, 
+          spu.extractedModel, 
           spuVersion, 
           versionMatchResult,
           baseScore, 
@@ -209,14 +213,30 @@ export class ExactMatcher {
       console.log(`[精确匹配] 详细统计: 检查${checkedCount}个, 过滤${filteredCount}个, 品牌不匹配${brandMismatchCount}个, 型号不匹配${modelMismatchCount}个`);
     }
     
-    return matches.sort((a, b) => b.score - a.score);
-  }
-  
-  /**
-   * 标准化字符串用于比较（移除所有空格和特殊字符）
-   */
-  private normalizeForComparison(str: string): string {
-    return str.toLowerCase().replace(/[\s\-_]/g, '');
+    // 多级排序：分数 > 版本类型优先级 > 精简度
+    // 需求: 2.5.1, 2.5.2, 2.5.3
+    return matches.sort((a, b) => {
+      // 1. 分数更高优先 (需求 2.5.1)
+      if (a.score !== b.score) {
+        return b.score - a.score;
+      }
+      
+      // 2. 版本类型优先级更高优先 (需求 2.5.2)
+      // 标准版 > 版本匹配 > 其他（礼盒版、套装版等）
+      const aPriority = a.priority ?? 0;
+      const bPriority = b.priority ?? 0;
+      if (aPriority !== bPriority) {
+        return bPriority - aPriority;
+      }
+      
+      // 3. 精简度更小优先（名称更短、更精简） (需求 2.5.3)
+      // simplicity 值越小表示越精简
+      if (a.spu.simplicity !== b.spu.simplicity) {
+        return a.spu.simplicity - b.spu.simplicity;
+      }
+      
+      return 0;
+    });
   }
   
   /**

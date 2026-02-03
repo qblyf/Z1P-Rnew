@@ -27,9 +27,16 @@ describe('SPUMatcher', () => {
       normalized = normalized.replace(brand.toLowerCase(), '').trim();
     }
     
-    // 简单的型号提取逻辑
-    const match = normalized.match(/([a-z]+\s*\d+\s*(?:pro|max|plus|ultra)?)/i);
-    return match ? match[1].replace(/\s+/g, '') : null;
+    // 改进的型号提取逻辑，确保能正确提取 "Mate 60 Pro"
+    // 先尝试匹配复杂型号（包含 Pro/Max/Plus/Ultra 等后缀）
+    const complexMatch = normalized.match(/([a-z]+\s*\d+\s*(?:pro|max|plus|ultra))/i);
+    if (complexMatch) {
+      return complexMatch[1].replace(/\s+/g, '');
+    }
+    
+    // 然后尝试匹配简单型号
+    const simpleMatch = normalized.match(/([a-z]+\s*\d+)/i);
+    return simpleMatch ? simpleMatch[1].replace(/\s+/g, '') : null;
   };
   
   const mockExtractVersion = (name: string): VersionInfo | null => {
@@ -91,15 +98,71 @@ describe('SPUMatcher', () => {
       { name: 'OPPO', spell: 'oppo', color: '#00CC00' },
     ];
     
-    // Mock SPU 列表
+    // Mock SPU 列表 - 使用 EnhancedSPUData 格式，包含预提取的品牌和型号
     mockSPUList = [
-      { id: 1, name: '华为 Mate 60 Pro', brand: '华为' },
-      { id: 2, name: '华为 Mate 60', brand: '华为' },
-      { id: 3, name: '华为 Mate 60 Pro 礼盒版', brand: '华为' },
-      { id: 4, name: '小米 14 Pro', brand: '小米' },
-      { id: 5, name: '小米 14', brand: '小米' },
-      { id: 6, name: 'vivo X100 Pro', brand: 'vivo' },
-      { id: 7, name: 'OPPO Find X7 Ultra', brand: 'OPPO' },
+      { 
+        id: 1, 
+        name: '华为 Mate 60 Pro', 
+        brand: '华为',
+        extractedBrand: '华为',
+        extractedModel: 'mate60pro',
+        normalizedModel: 'mate60pro',
+        spuPart: '华为 Mate 60 Pro'
+      },
+      { 
+        id: 2, 
+        name: '华为 Mate 60', 
+        brand: '华为',
+        extractedBrand: '华为',
+        extractedModel: 'mate60',
+        normalizedModel: 'mate60',
+        spuPart: '华为 Mate 60'
+      },
+      { 
+        id: 3, 
+        name: '华为 Mate 60 Pro 礼盒版', 
+        brand: '华为',
+        extractedBrand: '华为',
+        extractedModel: 'mate60pro',
+        normalizedModel: 'mate60pro',
+        spuPart: '华为 Mate 60 Pro'
+      },
+      { 
+        id: 4, 
+        name: '小米 14 Pro', 
+        brand: '小米',
+        extractedBrand: '小米',
+        extractedModel: '14pro',
+        normalizedModel: '14pro',
+        spuPart: '小米 14 Pro'
+      },
+      { 
+        id: 5, 
+        name: '小米 14', 
+        brand: '小米',
+        extractedBrand: '小米',
+        extractedModel: '14',
+        normalizedModel: '14',
+        spuPart: '小米 14'
+      },
+      { 
+        id: 6, 
+        name: 'vivo X100 Pro', 
+        brand: 'vivo',
+        extractedBrand: 'vivo',
+        extractedModel: 'x100pro',
+        normalizedModel: 'x100pro',
+        spuPart: 'vivo X100 Pro'
+      },
+      { 
+        id: 7, 
+        name: 'OPPO Find X7 Ultra', 
+        brand: 'OPPO',
+        extractedBrand: 'OPPO',
+        extractedModel: 'findx7ultra',
+        normalizedModel: 'findx7ultra',
+        spuPart: 'OPPO Find X7 Ultra'
+      },
     ];
     
     matcher.setBrandList(mockBrandList);
