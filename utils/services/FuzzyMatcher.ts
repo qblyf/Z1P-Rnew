@@ -5,7 +5,7 @@
  * 匹配策略：当精确匹配失败时，使用分词和相似度算法进行模糊匹配
  */
 
-import type { SPUData, VersionInfo } from '../types';
+import type { EnhancedSPUData, VersionInfo } from '../types';
 import type { SPUMatchResult, MatchExplanation, ExtractedInfo } from './types';
 import type { MatchLogger } from '../monitoring/MatchLogger';
 import type { PerformanceMetrics } from '../monitoring/PerformanceMetrics';
@@ -62,7 +62,7 @@ export class FuzzyMatcher {
    */
   findMatches(
     extractedInfo: ExtractedInfo,
-    candidates: SPUData[],
+    candidates: EnhancedSPUData[],
     threshold: number,
     options?: {
       extractBrand: (name: string) => string | null;

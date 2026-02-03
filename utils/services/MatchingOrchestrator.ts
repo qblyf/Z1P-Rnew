@@ -11,7 +11,7 @@
  * Design: Section 1.2.6
  */
 
-import type { SPUData, BrandData } from '../types';
+import type { SPUData, BrandData, EnhancedSPUData } from '../types';
 import { DataPreparationService } from './DataPreparationService';
 import { PreprocessingService } from './PreprocessingService';
 import { InfoExtractor } from './InfoExtractor';
@@ -93,7 +93,7 @@ export class MatchingOrchestrator {
   private skuMatcher: SKUMatcher;
   
   private isInitialized = false;
-  private spuList: SPUData[] = [];
+  private spuList: EnhancedSPUData[] = [];
   
   constructor() {
     this.dataPrep = new DataPreparationService();
@@ -159,7 +159,7 @@ export class MatchingOrchestrator {
       };
       
       this.spuMatcher.buildIndexes(
-        spuList,
+        enhancedSPUs,
         extractBrand,
         extractModel,
         extractSPUPart
