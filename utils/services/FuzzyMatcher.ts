@@ -201,25 +201,86 @@ export class FuzzyMatcher {
   
   /**
    * 计算两个词汇列表的相似度
+   * 
+   * 根据需求1.1和1.5实现：
+   * - 为每个token对计算最佳匹配分数
+   * - 使用新的calculateTokenMatchScore方法
+   * - 返回平均分数
+   * 
+   * 策略：计算双向匹配的平均值
+   * - 从tokens1到tokens2的匹配度
+   * - 从tokens2到tokens1的匹配度
+   * - 取两者的平均值，确保对称性和公平性
+   * 
+   * @param tokens1 第一个词汇列表
+   * @param tokens2 第二个词汇列表
+   * @returns 相似度分数 (0-1)
    */
   private calculateTokenSimilarity(tokens1: string[], tokens2: string[]): number {
     if (tokens1.length === 0 || tokens2.length === 0) {
       return 0;
     }
     
-    let matchCount = 0;
-    
+    // 计算从tokens1到tokens2的匹配度
+    let score1to2 = 0;
     for (const token1 of tokens1) {
+      let bestMatchScore = 0;
       for (const token2 of tokens2) {
-        if (token1 === token2 || token1.includes(token2) || token2.includes(token1)) {
-          matchCount++;
-          break;
-        }
+        const matchScore = this.calculateTokenMatchScore(token1, token2);
+        bestMatchScore = Math.max(bestMatchScore, matchScore);
       }
+      score1to2 += bestMatchScore;
+    }
+    score1to2 = score1to2 / tokens1.length;
+    
+    // 计算从tokens2到tokens1的匹配度
+    let score2to1 = 0;
+    for (const token2 of tokens2) {
+      let bestMatchScore = 0;
+      for (const token1 of tokens1) {
+        const matchScore = this.calculateTokenMatchScore(token2, token1);
+        bestMatchScore = Math.max(bestMatchScore, matchScore);
+      }
+      score2to1 += bestMatchScore;
+    }
+    score2to1 = score2to1 / tokens2.length;
+    
+    // 返回双向匹配的平均值
+    return (score1to2 + score2to1) / 2;
+  }
+  
+  /**
+   * 计算两个token之间的匹配分数
+   * 
+   * 根据需求1.1-1.4实现：
+   * - 完全匹配返回1.0
+   * - 部分匹配根据长度比例计算分数（最高0.7）
+   * - 长输入包含短SPU时得分较低
+   * 
+   * @param token1 第一个token
+   * @param token2 第二个token
+   * @returns 匹配分数 (0-1)
+   */
+  private calculateTokenMatchScore(token1: string, token2: string): number {
+    // 完全匹配 (需求 1.2)
+    if (token1 === token2) {
+      return 1.0;
     }
     
-    const totalTokens = Math.max(tokens1.length, tokens2.length);
-    return matchCount / totalTokens;
+    // 部分匹配 (需求 1.3, 1.4)
+    const longer = token1.length > token2.length ? token1 : token2;
+    const shorter = token1.length > token2.length ? token2 : token1;
+    
+    if (longer.includes(shorter)) {
+      // 根据长度差异给予部分分数
+      // 例如："17promax"包含"17" → 2/9 ≈ 0.22 * 0.7 = 0.15
+      // 例如："promax"包含"pro" → 3/6 = 0.5 * 0.7 = 0.35
+      const lengthRatio = shorter.length / longer.length;
+      return lengthRatio * 0.7; // 最高0.7分 (需求 1.3)
+    }
+    
+    // 不匹配
+    return 0;
   }
   
   /**

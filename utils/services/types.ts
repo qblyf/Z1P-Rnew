@@ -45,6 +45,40 @@ export interface SKUMatchResult {
 }
 
 /**
+ * SPU 选择指标
+ * 
+ * 用于多层次决策逻辑，当多个候选SPU具有相同基础匹配分数时，
+ * 通过多个维度的评分来选择最佳匹配。
+ * 
+ * Requirements: 5.1 - 综合评分机制
+ * 
+ * @interface SelectionMetrics
+ * @property {EnhancedSPUData} spu - SPU数据
+ * @property {number} baseScore - 基础匹配分数 (0-1)
+ * @property {number} suffixMatchScore - 型号后缀匹配分数 (0-1)
+ *   - 识别常见后缀（Pro、Max、Plus、Ultra、Mini、SE、Air、Lite等）
+ *   - 计算输入和SPU中匹配的后缀数量
+ *   - 根据匹配度和额外后缀惩罚计算分数
+ * @property {number} keywordCoverageScore - 关键词覆盖率分数 (0-1)
+ *   - 统计SPU名称中包含的输入关键词数量
+ *   - 计算覆盖率（覆盖数/总数）
+ * @property {number} lengthMatchScore - 长度匹配分数 (0-1)
+ *   - 比较输入和SPU型号的长度
+ *   - 对过短或过长的SPU降低分数
+ *   - 对长度接近的SPU给予高分
+ * @property {number} finalScore - 综合分数（用于日志和调试）
+ *   - 综合考虑所有维度的最终评分
+ */
+export interface SelectionMetrics {
+  spu: EnhancedSPUData;
+  baseScore: number;
+  suffixMatchScore: number;
+  keywordCoverageScore: number;
+  lengthMatchScore: number;
+  finalScore: number;
+}
+
+/**
  * 提取结果（带置信度）
  */
 export interface ExtractionResult<T> {
