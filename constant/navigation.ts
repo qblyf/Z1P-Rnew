@@ -74,6 +74,11 @@ export const MENU_CONFIG: MenuItem[] = [
         href: '/basedata-manage',
       },
       {
+        id: 'sku-spec-sorting',
+        label: 'SKU 规格排序设置',
+        href: '/sku-spec-sorting',
+      },
+      {
         id: 'data-export',
         label: '数据导出',
         href: '/data-export',
