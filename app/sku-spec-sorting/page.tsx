@@ -10,9 +10,9 @@ import { useTokenContext } from '../../datahooks/auth';
  * 路由: /sku-spec-sorting
  */
 export default function SkuSpecSortingPage() {
-  const { auth } = useTokenContext();
+  const { token } = useTokenContext();
 
-  if (!auth) {
+  if (!token) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -22,5 +22,5 @@ export default function SkuSpecSortingPage() {
     );
   }
 
-  return <SpecSortingPage auth={auth} />;
+  return <SpecSortingPage auth={token as any} />;
 }
