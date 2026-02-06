@@ -34,7 +34,7 @@ import {
   EyeOutlined,
   EyeInvisibleOutlined,
 } from '@ant-design/icons';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState, useCallback } from 'react';
 import update from 'immutability-helper';
 import pinyin from 'tiny-pinyin';
 
@@ -43,6 +43,13 @@ import { BrandListProvider, useBrandListContext } from '../../datahooks/brand';
 import Head from 'next/head';
 import PageWrap from '../../components/PageWrap';
 import { useTokenContext } from '../../datahooks/auth';
+import {
+  allSpuSpecAttribute,
+  editSpuSpecAttribute,
+  addSpuSpecAttribute,
+} from '@zsqk/z1-sdk/es/z1p/spu-spec-attribute';
+import { SpecName } from '@zsqk/z1-sdk/es/z1p/spu-spec-attribute-types';
+import type { SpuSpecAttribute } from '@zsqk/z1-sdk/es/z1p/spu-spec-attribute-types';
 
 const { Title, Text } = Typography;
 
@@ -707,6 +714,587 @@ function BrandAdd(props: { onSuccess?: () => void }) {
   );
 }
 
+// ============ 规格管理组件 ============
+
+interface SpecManageProps {
+  specName: SpecName;
+  title: string;
+}
+
+function SpecManage({ specName, title }: SpecManageProps) {
+  const { token } = useTokenContext();
+  const [specs, setSpecs] = useState<SpuSpecAttribute[]>([]);
+  const [filteredSpecs, setFilteredSpecs] = useState<SpuSpecAttribute[]>([]);
+  const [selected, setSelected] = useState<string>();
+  const [search, setSearch] = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isAddMode, setIsAddMode] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(60);
+
+  // 加载规格数据
+  const loadSpecs = useCallback(async () => {
+    if (!token) return;
+    try {
+      setLoading(true);
+      const allSpecs = await allSpuSpecAttribute({ auth: token });
+      // 按类型筛选
+      const typeSpecs = allSpecs.filter((s) => s.name === specName);
+      // 按sortWeight降序排序
+      typeSpecs.sort((a, b) => b.sortWeight - a.sortWeight);
+      setSpecs(typeSpecs);
+      setFilteredSpecs(typeSpecs);
+    } catch (error) {
+      message.error('加载失败');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, specName]);
+
+  useEffect(() => {
+    loadSpecs();
+  }, [loadSpecs]);
+
+  // 搜索过滤
+  useEffect(() => {
+    if (!search) {
+      setFilteredSpecs(specs);
+      return;
+    }
+    const s = search.toLowerCase();
+    const filtered = specs.filter((spec) =>
+      spec.value.toLowerCase().includes(s) ||
+      spec.label.some((l) => l.toLowerCase().includes(s))
+    );
+    setFilteredSpecs(filtered);
+    setCurrentPage(1);
+  }, [search, specs]);
+
+  // 分页数据
+  const paginatedSpecs = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredSpecs.slice(start, end);
+  }, [filteredSpecs, currentPage, pageSize]);
+
+  // 统计数据
+  const stats = useMemo(() => {
+    return {
+      total: specs.length,
+    };
+  }, [specs]);
+
+  const handleEdit = (zid: string) => {
+    setSelected(zid);
+    setIsAddMode(false);
+    setDrawerOpen(true);
+  };
+
+  const handleAdd = () => {
+    setSelected(undefined);
+    setIsAddMode(true);
+    setDrawerOpen(true);
+  };
+
+  const handleDrawerClose = () => {
+    setDrawerOpen(false);
+    setSelected(undefined);
+    setIsAddMode(false);
+  };
+
+  const handleSuccess = () => {
+    handleDrawerClose();
+    loadSpecs();
+  };
+
+  if (!token) {
+    return null;
+  }
+
+  return (
+    <>
+      <style jsx>{`
+        :global(.spec-card) {
+          transition: all 0.3s ease;
+          cursor: pointer;
+          height: 100%;
+        }
+        :global(.spec-card:hover) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+        }
+        :global(.spec-card .ant-card-body) {
+          padding: 12px !important;
+        }
+      `}</style>
+      <div style={{ padding: '24px', backgroundColor: '#f5f7fa', minHeight: '100vh' }}>
+        {/* 页面标题 */}
+        <div style={{ marginBottom: 24 }}>
+          <Title level={4} style={{ margin: 0, color: '#1a1a2e' }}>
+            <TagsOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+            {title}管理
+          </Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>
+            管理系统中的{title}规格属性，支持新增、编辑和搜索
+          </Text>
+        </div>
+
+        {/* 统计卡片 */}
+        <Row gutter={16} style={{ marginBottom: 24 }}>
+          <Col xs={24} sm={8}>
+            <Card
+              size="small"
+              style={{
+                borderRadius: 12,
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <Text type="secondary" style={{ fontSize: 13 }}>全部{title}</Text>
+                  <Title level={3} style={{ margin: '4px 0 0', color: '#1890ff' }}>
+                    {stats.total}
+                  </Title>
+                </div>
+                <div style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  backgroundColor: '#e6f7ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <TagsOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+                </div>
+              </div>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* 主内容卡片 */}
+        <Card
+          style={{
+            borderRadius: 12,
+            border: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+          }}
+        >
+          {/* 操作栏 */}
+          <Row justify="space-between" align="middle" style={{ marginBottom: 20 }}>
+            <Col>
+              <Input
+                placeholder={`搜索${title}值或标签`}
+                allowClear
+                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ width: 280, borderRadius: 8 }}
+              />
+            </Col>
+            <Col>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleAdd}
+                style={{ borderRadius: 8 }}
+              >
+                新增{title}
+              </Button>
+            </Col>
+          </Row>
+
+          {/* 规格列表 */}
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '60px 0' }}>
+              <Spin size="large" />
+              <div style={{ marginTop: 16, color: '#999' }}>加载中...</div>
+            </div>
+          ) : filteredSpecs.length > 0 ? (
+            <>
+              <Row gutter={[12, 12]}>
+                {paginatedSpecs.map((spec) => {
+                  return (
+                    <Col
+                      key={spec.zid}
+                      xs={12}
+                      sm={8}
+                      md={6}
+                      lg={4}
+                      xl={3}
+                      xxl={2}
+                    >
+                      <Card
+                        className="spec-card"
+                        size="small"
+                        onClick={() => handleEdit(spec.zid)}
+                        style={{
+                          borderRadius: 8,
+                          border: '1px solid #f0f0f0',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+                        }}
+                        bodyStyle={{
+                          padding: 12,
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6,
+                        }}>
+                          {/* 规格值 */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}>
+                            <Tag
+                              color="blue"
+                              style={{
+                                margin: 0,
+                                fontSize: 14,
+                                fontWeight: 500,
+                                maxWidth: '100%',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {spec.value}
+                            </Tag>
+                          </div>
+
+                          {/* 标签 */}
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: 12,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {spec.label.length > 0 ? spec.label.join(', ') : '-'}
+                          </Text>
+
+                          {/* 排序权重 */}
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: 11,
+                              color: '#999',
+                              textAlign: 'center',
+                            }}
+                          >
+                            排序 {spec.sortWeight}
+                          </Text>
+                        </div>
+                      </Card>
+                    </Col>
+                  );
+                })}
+              </Row>
+
+              {/* 分页 */}
+              <div style={{
+                marginTop: 24,
+                display: 'flex',
+                justifyContent: 'center'
+              }}>
+                <Pagination
+                  current={currentPage}
+                  pageSize={pageSize}
+                  total={filteredSpecs.length}
+                  onChange={(page, size) => {
+                    setCurrentPage(page);
+                    setPageSize(size);
+                  }}
+                  showSizeChanger
+                  showQuickJumper
+                  pageSizeOptions={[60, 120, 180, 240]}
+                  showTotal={(total, range) =>
+                    `第 ${range[0]}-${range[1]} 个，共 ${total} 个${title}`
+                  }
+                />
+              </div>
+            </>
+          ) : (
+            <Empty
+              description={`没有找到匹配的${title}`}
+              style={{ padding: '60px 0' }}
+            />
+          )}
+        </Card>
+
+        {/* 编辑/新增抽屉 */}
+        <Drawer
+          title={
+            <Space>
+              {isAddMode ? <PlusOutlined /> : <EditOutlined />}
+              {isAddMode ? `新增${title}` : `编辑${title}`}
+            </Space>
+          }
+          placement="right"
+          width={typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 420}
+          open={drawerOpen}
+          onClose={handleDrawerClose}
+          styles={{
+            body: { padding: '24px' },
+            header: { borderBottom: '1px solid #f0f0f0' },
+          }}
+        >
+          {isAddMode ? (
+            <SpecAdd specName={specName} title={title} onSuccess={handleSuccess} />
+          ) : selected ? (
+            <SpecEdit zid={selected} title={title} onSuccess={handleSuccess} />
+          ) : null}
+        </Drawer>
+      </div>
+    </>
+  );
+}
+
+function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void }) {
+  const { zid, title, onSuccess } = props;
+  const [input, setInput] = useState<{
+    value?: string;
+    label?: string[];
+    sortWeight?: number;
+  }>({});
+  const [preData, setPreData] = useState<SpuSpecAttribute>();
+  const [loading, setLoading] = useState(false);
+  const [labelInput, setLabelInput] = useState('');
+
+  const { token } = useTokenContext();
+
+  useEffect(() => {
+    const fn = async () => {
+      if (!token) return;
+      const allSpecs = await allSpuSpecAttribute({ auth: token });
+      const spec = allSpecs.find((s) => s.zid === zid);
+      setPreData(spec);
+      if (spec) {
+        setLabelInput(spec.label.join(', '));
+      }
+    };
+    setInput({});
+    lessAwait(fn)();
+  }, [zid, token]);
+
+  if (!token) {
+    throw new Error('因外层组件处理, 所以不该到达此处');
+  }
+
+  if (!preData) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px 0' }}>
+        <Spin />
+        <div style={{ marginTop: 12, color: '#999' }}>加载{title}信息...</div>
+      </div>
+    );
+  }
+
+  const currentLabel = input.label ?? preData.label;
+
+  return (
+    <Form layout="vertical" style={{ marginTop: 8 }}>
+      <Form.Item
+        label={`${title}值`}
+        tooltip={`${title}的具体值，如"红色"、"128GB"等`}
+      >
+        <Input
+          value={input.value ?? preData.value}
+          onChange={e => {
+            setInput(update(input, { value: { $set: e.target.value } }));
+          }}
+          placeholder={`输入${title}值`}
+          style={{
+            borderRadius: 8,
+          }}
+        />
+      </Form.Item>
+
+      <Form.Item label="标签" tooltip="多个标签用逗号分隔">
+        <Input
+          value={labelInput}
+          onChange={e => {
+            setLabelInput(e.target.value);
+            const labels = e.target.value.split(',').map(l => l.trim()).filter(l => l);
+            setInput(update(input, { label: { $set: labels } }));
+          }}
+          placeholder="输入标签，用逗号分隔"
+          style={{ borderRadius: 8 }}
+        />
+        {currentLabel.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            {currentLabel.map((label, idx) => (
+              <Tag key={idx} style={{ marginTop: 4 }}>{label}</Tag>
+            ))}
+          </div>
+        )}
+      </Form.Item>
+
+      <Form.Item label="排序权重" tooltip="数值越大越靠前显示 (0-999)">
+        <InputNumber
+          value={input.sortWeight ?? preData.sortWeight}
+          onChange={v => {
+            setInput(update(input, { sortWeight: { $set: v ?? undefined } }));
+          }}
+          placeholder="输入排序权重"
+          style={{ width: '100%', borderRadius: 8 }}
+          min={0}
+          max={999}
+        />
+      </Form.Item>
+
+      <Form.Item style={{ marginTop: 32, marginBottom: 0 }}>
+        <Button
+          type="primary"
+          loading={loading}
+          block
+          size="large"
+          disabled={input.value !== undefined && !input.value.trim()}
+          style={{ borderRadius: 8 }}
+          onClick={postAwait(async () => {
+            if (input.value !== undefined && !input.value.trim()) {
+              message.warning(`${title}值不能为空`);
+              return;
+            }
+            setLoading(true);
+            try {
+              await editSpuSpecAttribute(
+                {
+                  zid: preData.zid,
+                  value: input.value,
+                  label: input.label,
+                  sortWeight: input.sortWeight,
+                },
+                { auth: token }
+              );
+              message.success('修改成功');
+              onSuccess?.();
+            } finally {
+              setLoading(false);
+            }
+          })}
+        >
+          保存修改
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+}
+
+function SpecAdd(props: { specName: SpecName; title: string; onSuccess?: () => void }) {
+  const { specName, title, onSuccess } = props;
+  const [input, setInput] = useState({
+    value: '',
+    label: [] as string[],
+    sortWeight: 0,
+  });
+  const [labelInput, setLabelInput] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const { token } = useTokenContext();
+  if (!token) {
+    throw new Error('因外层组件处理, 所以不该到达此处');
+  }
+
+  return (
+    <Form layout="vertical" style={{ marginTop: 8 }}>
+      <Form.Item
+        label={`${title}值`}
+        required
+        tooltip={`${title}的具体值，如"红色"、"128GB"等`}
+      >
+        <Input
+          value={input.value}
+          onChange={e => {
+            setInput(update(input, { value: { $set: e.target.value } }));
+          }}
+          placeholder={`请输入${title}值`}
+          style={{ borderRadius: 8 }}
+        />
+      </Form.Item>
+
+      <Form.Item label="标签" tooltip="多个标签用逗号分隔">
+        <Input
+          value={labelInput}
+          onChange={e => {
+            setLabelInput(e.target.value);
+            const labels = e.target.value.split(',').map(l => l.trim()).filter(l => l);
+            setInput(update(input, { label: { $set: labels } }));
+          }}
+          placeholder="输入标签，用逗号分隔"
+          style={{ borderRadius: 8 }}
+        />
+        {input.label.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            {input.label.map((label, idx) => (
+              <Tag key={idx} style={{ marginTop: 4 }}>{label}</Tag>
+            ))}
+          </div>
+        )}
+      </Form.Item>
+
+      <Form.Item label="排序权重" tooltip="数值越大越靠前显示 (0-999)">
+        <InputNumber
+          value={input.sortWeight}
+          onChange={v => {
+            setInput(update(input, { sortWeight: { $set: v ?? 0 } }));
+          }}
+          placeholder="输入排序权重"
+          style={{ width: '100%', borderRadius: 8 }}
+          min={0}
+          max={999}
+        />
+      </Form.Item>
+
+      <Form.Item style={{ marginTop: 32, marginBottom: 0 }}>
+        <Button
+          type="primary"
+          loading={loading}
+          block
+          size="large"
+          disabled={!input.value}
+          style={{ borderRadius: 8 }}
+          onClick={postAwait(async () => {
+            if (!input.value) {
+              message.warning(`请输入${title}值`);
+              return;
+            }
+            setLoading(true);
+            try {
+              await addSpuSpecAttribute(
+                {
+                  name: specName,
+                  value: input.value,
+                  label: input.label,
+                  sortWeight: input.sortWeight,
+                },
+                { auth: token }
+              );
+              message.success('创建成功');
+              onSuccess?.();
+            } catch (error) {
+              message.error('创建失败');
+              console.error(error);
+            } finally {
+              setLoading(false);
+            }
+          })}
+        >
+          创建{title}
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+}
+
 export default function () {
   return (
     <Suspense>
@@ -735,8 +1323,36 @@ function ClientPage() {
         </BrandListProvider>
       ),
     },
-    // TODO: 版本、配置、颜色管理待实现
-    // 需要根据SDK的实际类型定义重新设计
+    {
+      label: (
+        <span>
+          <TagsOutlined />
+          颜色管理
+        </span>
+      ),
+      key: 'color',
+      children: <SpecManage specName={SpecName.颜色} title="颜色" />,
+    },
+    {
+      label: (
+        <span>
+          <TagsOutlined />
+          规格管理
+        </span>
+      ),
+      key: 'spec',
+      children: <SpecManage specName={SpecName.规格} title="规格" />,
+    },
+    {
+      label: (
+        <span>
+          <TagsOutlined />
+          组合管理
+        </span>
+      ),
+      key: 'combo',
+      children: <SpecManage specName={SpecName.组合} title="组合" />,
+    },
   ];
 
   return (
