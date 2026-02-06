@@ -33,10 +33,13 @@ import {
   TagsOutlined,
   EyeOutlined,
   EyeInvisibleOutlined,
+  SaveOutlined,
 } from '@ant-design/icons';
-import { Suspense, useEffect, useMemo, useState, useCallback } from 'react';
+import { Suspense, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import update from 'immutability-helper';
 import pinyin from 'tiny-pinyin';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
 import { lessAwait, postAwait } from '../../error';
 import { BrandListProvider, useBrandListContext } from '../../datahooks/brand';
@@ -52,6 +55,12 @@ import { SpecName } from '@zsqk/z1-sdk/es/z1p/spu-spec-attribute-types';
 import type { SpuSpecAttribute } from '@zsqk/z1-sdk/es/z1p/spu-spec-attribute-types';
 
 const { Title, Text } = Typography;
+
+// 拖拽类型
+const ItemTypes = {
+  BRAND_CARD: 'brand_card',
+  SPEC_CARD: 'spec_card',
+};
 
 function BrandManage() {
   const { brandList: brands, reUpdate: refreshBrandList } = useBrandListContext();
@@ -716,6 +725,148 @@ function BrandAdd(props: { onSuccess?: () => void }) {
 
 // ============ 规格管理组件 ============
 
+// 可拖拽的规格卡片组件
+interface DraggableSpecCardProps {
+  spec: SpuSpecAttribute;
+  index: number;
+  moveCard: (dragIndex: number, hoverIndex: number) => void;
+  onEdit: (zid: string) => void;
+}
+
+function DraggableSpecCard({ spec, index, moveCard, onEdit }: DraggableSpecCardProps) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  const [{ handlerId }, drop] = useDrop<
+    { index: number },
+    void,
+    { handlerId: any }
+  >({
+    accept: ItemTypes.SPEC_CARD,
+    collect(monitor) {
+      return {
+        handlerId: monitor.getHandlerId(),
+      };
+    },
+    hover(item: { index: number }, monitor) {
+      if (!ref.current) {
+        return;
+      }
+      const dragIndex = item.index;
+      const hoverIndex = index;
+
+      if (dragIndex === hoverIndex) {
+        return;
+      }
+
+      const hoverBoundingRect = ref.current?.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
+
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
+        return;
+      }
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
+        return;
+      }
+
+      moveCard(dragIndex, hoverIndex);
+      item.index = hoverIndex;
+    },
+  });
+
+  const [{ isDragging }, drag] = useDrag({
+    type: ItemTypes.SPEC_CARD,
+    item: () => {
+      return { index };
+    },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
+  drag(drop(ref));
+
+  return (
+    <div
+      ref={ref}
+      data-handler-id={handlerId}
+      style={{
+        opacity: isDragging ? 0.5 : 1,
+        cursor: 'move',
+      }}
+    >
+      <Card
+        className="spec-card"
+        size="small"
+        onClick={() => onEdit(spec.zid)}
+        style={{
+          borderRadius: 8,
+          border: '1px solid #f0f0f0',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+        }}
+        bodyStyle={{
+          padding: 12,
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}>
+          {/* 规格值 */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Tag
+              color="blue"
+              style={{
+                margin: 0,
+                fontSize: 14,
+                fontWeight: 500,
+                maxWidth: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {spec.value}
+            </Tag>
+          </div>
+
+          {/* 描述 */}
+          <Text
+            type="secondary"
+            style={{
+              fontSize: 12,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textAlign: 'center',
+            }}
+          >
+            {spec.label.length > 0 ? spec.label.join(', ') : '-'}
+          </Text>
+
+          {/* 排序权重 */}
+          <Text
+            type="secondary"
+            style={{
+              fontSize: 11,
+              color: '#999',
+              textAlign: 'center',
+            }}
+          >
+            排序 {spec.sortWeight}
+          </Text>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 interface SpecManageProps {
   specName: SpecName;
   title: string;
@@ -730,8 +881,11 @@ function SpecManage({ specName, title }: SpecManageProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isAddMode, setIsAddMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(60);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [originalSpecs, setOriginalSpecs] = useState<SpuSpecAttribute[]>([]);
 
   // 加载规格数据
   const loadSpecs = useCallback(async () => {
@@ -745,6 +899,8 @@ function SpecManage({ specName, title }: SpecManageProps) {
       typeSpecs.sort((a, b) => b.sortWeight - a.sortWeight);
       setSpecs(typeSpecs);
       setFilteredSpecs(typeSpecs);
+      setOriginalSpecs(JSON.parse(JSON.stringify(typeSpecs)));
+      setHasChanges(false);
     } catch (error) {
       message.error('加载失败');
       console.error(error);
@@ -808,6 +964,83 @@ function SpecManage({ specName, title }: SpecManageProps) {
     handleDrawerClose();
     loadSpecs();
   };
+
+  // 拖拽移动卡片
+  const moveCard = useCallback((dragIndex: number, hoverIndex: number) => {
+    setFilteredSpecs((prevSpecs) => {
+      const newSpecs = [...prevSpecs];
+      const draggedItem = newSpecs[dragIndex];
+      newSpecs.splice(dragIndex, 1);
+      newSpecs.splice(hoverIndex, 0, draggedItem);
+      
+      // 重新计算sortWeight（降序，最大值在前）
+      const maxWeight = 999;
+      const step = maxWeight / newSpecs.length;
+      newSpecs.forEach((spec, index) => {
+        spec.sortWeight = Math.round(maxWeight - index * step);
+      });
+      
+      return newSpecs;
+    });
+    
+    setSpecs((prevSpecs) => {
+      const newSpecs = [...prevSpecs];
+      const draggedItem = newSpecs[dragIndex];
+      newSpecs.splice(dragIndex, 1);
+      newSpecs.splice(hoverIndex, 0, draggedItem);
+      
+      // 重新计算sortWeight
+      const maxWeight = 999;
+      const step = maxWeight / newSpecs.length;
+      newSpecs.forEach((spec, index) => {
+        spec.sortWeight = Math.round(maxWeight - index * step);
+      });
+      
+      return newSpecs;
+    });
+    
+    setHasChanges(true);
+  }, []);
+
+  // 保存排序
+  const handleSaveOrder = useCallback(async () => {
+    if (!token) return;
+    try {
+      setSaving(true);
+      
+      // 找出有变更的项
+      const changedSpecs = specs.filter((spec) => {
+        const original = originalSpecs.find((o) => o.zid === spec.zid);
+        return original && original.sortWeight !== spec.sortWeight;
+      });
+
+      if (changedSpecs.length === 0) {
+        message.info('没有需要保存的更改');
+        return;
+      }
+
+      // 批量保存
+      const promises = changedSpecs.map((spec) =>
+        editSpuSpecAttribute(
+          {
+            zid: spec.zid,
+            sortWeight: spec.sortWeight,
+          },
+          { auth: token }
+        )
+      );
+
+      await Promise.all(promises);
+      message.success(`保存成功，共更新 ${changedSpecs.length} 项`);
+      setHasChanges(false);
+      await loadSpecs();
+    } catch (error) {
+      message.error('保存失败');
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
+  }, [token, specs, originalSpecs, loadSpecs]);
 
   if (!token) {
     return null;
@@ -896,14 +1129,27 @@ function SpecManage({ specName, title }: SpecManageProps) {
               />
             </Col>
             <Col>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleAdd}
-                style={{ borderRadius: 8 }}
-              >
-                新增{title}
-              </Button>
+              <Space>
+                {hasChanges && (
+                  <Button
+                    type="primary"
+                    icon={<SaveOutlined />}
+                    onClick={handleSaveOrder}
+                    loading={saving}
+                    style={{ borderRadius: 8 }}
+                  >
+                    保存排序
+                  </Button>
+                )}
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={handleAdd}
+                  style={{ borderRadius: 8 }}
+                >
+                  新增{title}
+                </Button>
+              </Space>
             </Col>
           </Row>
 
@@ -916,7 +1162,7 @@ function SpecManage({ specName, title }: SpecManageProps) {
           ) : filteredSpecs.length > 0 ? (
             <>
               <Row gutter={[12, 12]}>
-                {paginatedSpecs.map((spec) => {
+                {paginatedSpecs.map((spec, index) => {
                   return (
                     <Col
                       key={spec.zid}
@@ -927,73 +1173,12 @@ function SpecManage({ specName, title }: SpecManageProps) {
                       xl={3}
                       xxl={2}
                     >
-                      <Card
-                        className="spec-card"
-                        size="small"
-                        onClick={() => handleEdit(spec.zid)}
-                        style={{
-                          borderRadius: 8,
-                          border: '1px solid #f0f0f0',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
-                        }}
-                        bodyStyle={{
-                          padding: 12,
-                        }}
-                      >
-                        <div style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 6,
-                        }}>
-                          {/* 规格值 */}
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}>
-                            <Tag
-                              color="blue"
-                              style={{
-                                margin: 0,
-                                fontSize: 14,
-                                fontWeight: 500,
-                                maxWidth: '100%',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {spec.value}
-                            </Tag>
-                          </div>
-
-                          {/* 标签 */}
-                          <Text
-                            type="secondary"
-                            style={{
-                              fontSize: 12,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              textAlign: 'center',
-                            }}
-                          >
-                            {spec.label.length > 0 ? spec.label.join(', ') : '-'}
-                          </Text>
-
-                          {/* 排序权重 */}
-                          <Text
-                            type="secondary"
-                            style={{
-                              fontSize: 11,
-                              color: '#999',
-                              textAlign: 'center',
-                            }}
-                          >
-                            排序 {spec.sortWeight}
-                          </Text>
-                        </div>
-                      </Card>
+                      <DraggableSpecCard
+                        spec={spec}
+                        index={index}
+                        moveCard={moveCard}
+                        onEdit={handleEdit}
+                      />
                     </Col>
                   );
                 })}
@@ -1356,18 +1541,20 @@ function ClientPage() {
   ];
 
   return (
-    <PageWrap ppKey="product-manage">
-      <Head>
-        <title>基础数据管理</title>
-      </Head>
-      <Tabs 
-        defaultActiveKey="brand" 
-        items={items}
-        style={{ 
-          backgroundColor: '#fff',
-          padding: '0 16px',
-        }}
-      />
-    </PageWrap>
+    <DndProvider backend={HTML5Backend}>
+      <PageWrap ppKey="product-manage">
+        <Head>
+          <title>基础数据管理</title>
+        </Head>
+        <Tabs 
+          defaultActiveKey="brand" 
+          items={items}
+          style={{ 
+            backgroundColor: '#fff',
+            padding: '0 16px',
+          }}
+        />
+      </PageWrap>
+    </DndProvider>
   );
 }
