@@ -15,7 +15,7 @@ export default function SkuSpecSortingPage() {
 
   if (!token) {
     return (
-      <PageWrap>
+      <PageWrap ppKey="product-manage">
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <p className="text-gray-600">请先登录</p>
@@ -26,7 +26,7 @@ export default function SkuSpecSortingPage() {
   }
 
   return (
-    <PageWrap>
+    <PageWrap ppKey="product-manage">
       <SpecSortingPage auth={token as any} />
     </PageWrap>
   );
