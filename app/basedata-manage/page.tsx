@@ -887,7 +887,7 @@ function SpecManage({ specName, title }: SpecManageProps) {
           <Row justify="space-between" align="middle" style={{ marginBottom: 20 }}>
             <Col>
               <Input
-                placeholder={`搜索${title}值或标签`}
+                placeholder={`搜索${title}值或描述`}
                 allowClear
                 prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
                 value={search}
@@ -1118,7 +1118,7 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void })
         />
       </Form.Item>
 
-      <Form.Item label="标签" tooltip="多个标签用逗号分隔">
+      <Form.Item label="规格描述" tooltip="多个描述用逗号分隔">
         <Input
           value={labelInput}
           onChange={e => {
@@ -1126,7 +1126,7 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void })
             const labels = e.target.value.split(',').map(l => l.trim()).filter(l => l);
             setInput(update(input, { label: { $set: labels } }));
           }}
-          placeholder="输入标签，用逗号分隔"
+          placeholder="输入描述，用逗号分隔"
           style={{ borderRadius: 8 }}
         />
         {currentLabel.length > 0 && (
@@ -1221,7 +1221,7 @@ function SpecAdd(props: { specName: SpecName; title: string; onSuccess?: () => v
         />
       </Form.Item>
 
-      <Form.Item label="标签" tooltip="多个标签用逗号分隔">
+      <Form.Item label="规格描述" tooltip="多个描述用逗号分隔">
         <Input
           value={labelInput}
           onChange={e => {
@@ -1229,7 +1229,7 @@ function SpecAdd(props: { specName: SpecName; title: string; onSuccess?: () => v
             const labels = e.target.value.split(',').map(l => l.trim()).filter(l => l);
             setInput(update(input, { label: { $set: labels } }));
           }}
-          placeholder="输入标签，用逗号分隔"
+          placeholder="输入描述，用逗号分隔"
           style={{ borderRadius: 8 }}
         />
         {input.label.length > 0 && (
