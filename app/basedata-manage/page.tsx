@@ -62,25 +62,182 @@ const ItemTypes = {
   SPEC_CARD: 'spec_card',
 };
 
+// 可拖拽的品牌卡片组件
+interface DraggableBrandCardProps {
+  brand: Brand;
+  index: number;
+  moveCard: (dragIndex: number, hoverIndex: number) => void;
+  onEdit: (name: string) => void;
+}
+
+function DraggableBrandCard({ brand, index, moveCard, onEdit }: DraggableBrandCardProps) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  const [{ handlerId }, drop] = useDrop<
+    { index: number },
+    void,
+    { handlerId: any }
+  >({
+    accept: ItemTypes.BRAND_CARD,
+    collect(monitor) {
+      return {
+        handlerId: monitor.getHandlerId(),
+      };
+    },
+    hover(item: { index: number }, monitor) {
+      if (!ref.current) {
+        return;
+      }
+      const dragIndex = item.index;
+      const hoverIndex = index;
+
+      if (dragIndex === hoverIndex) {
+        return;
+      }
+
+      const hoverBoundingRect = ref.current?.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
+
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
+        return;
+      }
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
+        return;
+      }
+
+      moveCard(dragIndex, hoverIndex);
+      item.index = hoverIndex;
+    },
+  });
+
+  const [{ isDragging }, drag] = useDrag({
+    type: ItemTypes.BRAND_CARD,
+    item: () => {
+      return { index };
+    },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
+  drag(drop(ref));
+
+  return (
+    <div
+      ref={ref}
+      data-handler-id={handlerId}
+      style={{
+        opacity: isDragging ? 0.5 : 1,
+        cursor: 'move',
+      }}
+    >
+      <Card
+        className="brand-card"
+        size="small"
+        onClick={() => onEdit(brand.name)}
+        style={{
+          borderRadius: 8,
+          border: '1px solid #f0f0f0',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+        }}
+        bodyStyle={{
+          padding: 12,
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}>
+          {/* 品牌名称 */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Tag
+              color={brand.color || 'default'}
+              style={{
+                margin: 0,
+                fontSize: 14,
+                fontWeight: 500,
+                maxWidth: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {brand.name}
+            </Tag>
+          </div>
+
+          {/* 拼音码 */}
+          <Text
+            type="secondary"
+            style={{
+              fontSize: 12,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textAlign: 'center',
+            }}
+          >
+            {brand.spell || '-'}
+          </Text>
+
+          {/* 排序号 */}
+          <Text
+            type="secondary"
+            style={{
+              fontSize: 11,
+              color: '#999',
+              textAlign: 'center',
+            }}
+          >
+            排序 {brand.order || 0}
+          </Text>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function BrandManage() {
   const { brandList: brands, reUpdate: refreshBrandList } = useBrandListContext();
+  const { token } = useTokenContext();
   const [selected, setSelected] = useState<string>();
   const [search, setSearch] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isAddMode, setIsAddMode] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(60);
+  const [localBrands, setLocalBrands] = useState<Brand[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [originalBrands, setOriginalBrands] = useState<Brand[]>([]);
+
+  // 同步外部品牌列表到本地
+  useEffect(() => {
+    if (brands) {
+      const sortedBrands = [...brands].sort((a, b) => (b.order || 0) - (a.order || 0));
+      setLocalBrands(sortedBrands as Brand[]);
+      setOriginalBrands(JSON.parse(JSON.stringify(sortedBrands)));
+      setHasChanges(false);
+    }
+  }, [brands]);
 
   // 过滤品牌列表
   const filteredBrands = useMemo(() => {
-    if (!brands) return [];
-    if (!search) return brands;
+    if (!localBrands) return [];
+    if (!search) return localBrands;
     const s = search.toLowerCase();
-    return brands.filter(b => 
+    return localBrands.filter(b => 
       b.name.toLowerCase().includes(s) || 
       (b.spell && b.spell.toLowerCase().includes(s))
     );
-  }, [brands, search]);
+  }, [localBrands, search]);
 
   // 分页数据
   const paginatedBrands = useMemo(() => {
@@ -91,13 +248,13 @@ function BrandManage() {
 
   // 统计数据
   const stats = useMemo(() => {
-    if (!brands) return { total: 0, visible: 0, hidden: 0 };
+    if (!localBrands) return { total: 0, visible: 0, hidden: 0 };
     return {
-      total: brands.length,
-      visible: brands.filter(b => (b as any).display !== false).length,
-      hidden: brands.filter(b => (b as any).display === false).length,
+      total: localBrands.length,
+      visible: localBrands.filter(b => (b as any).display !== false).length,
+      hidden: localBrands.filter(b => (b as any).display === false).length,
     };
-  }, [brands]);
+  }, [localBrands]);
 
   const handleEdit = (name: string) => {
     setSelected(name);
@@ -121,6 +278,65 @@ function BrandManage() {
     handleDrawerClose();
     refreshBrandList?.();
   };
+
+  // 拖拽移动卡片
+  const moveCard = useCallback((dragIndex: number, hoverIndex: number) => {
+    setLocalBrands((prevBrands) => {
+      const newBrands = [...prevBrands];
+      const draggedItem = newBrands[dragIndex];
+      newBrands.splice(dragIndex, 1);
+      newBrands.splice(hoverIndex, 0, draggedItem);
+      
+      // 重新计算order（降序，最大值在前）
+      const maxOrder = 999;
+      const step = maxOrder / newBrands.length;
+      newBrands.forEach((brand, index) => {
+        brand.order = Math.round(maxOrder - index * step);
+      });
+      
+      return newBrands;
+    });
+    
+    setHasChanges(true);
+  }, []);
+
+  // 保存排序
+  const handleSaveOrder = useCallback(async () => {
+    if (!token) return;
+    try {
+      setSaving(true);
+      
+      // 找出有变更的项
+      const changedBrands = localBrands.filter((brand) => {
+        const original = originalBrands.find((o) => o.name === brand.name);
+        return original && original.order !== brand.order;
+      });
+
+      if (changedBrands.length === 0) {
+        message.info('没有需要保存的更改');
+        return;
+      }
+
+      // 批量保存
+      const promises = changedBrands.map((brand) =>
+        editBrandInfo(
+          brand.name,
+          { order: brand.order },
+          { auth: token }
+        )
+      );
+
+      await Promise.all(promises);
+      message.success(`保存成功，共更新 ${changedBrands.length} 项`);
+      setHasChanges(false);
+      refreshBrandList?.();
+    } catch (error) {
+      message.error('保存失败');
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
+  }, [token, localBrands, originalBrands, refreshBrandList]);
 
   return (
     <>
@@ -265,14 +481,27 @@ function BrandManage() {
             />
           </Col>
           <Col>
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />} 
-              onClick={handleAdd}
-              style={{ borderRadius: 8 }}
-            >
-              新增品牌
-            </Button>
+            <Space>
+              {hasChanges && (
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  onClick={handleSaveOrder}
+                  loading={saving}
+                  style={{ borderRadius: 8 }}
+                >
+                  保存排序
+                </Button>
+              )}
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />} 
+                onClick={handleAdd}
+                style={{ borderRadius: 8 }}
+              >
+                新增品牌
+              </Button>
+            </Space>
           </Col>
         </Row>
 
@@ -281,7 +510,7 @@ function BrandManage() {
           filteredBrands.length > 0 ? (
             <>
               <Row gutter={[12, 12]}>
-                {paginatedBrands.map((brand) => {
+                {paginatedBrands.map((brand, index) => {
                   return (
                     <Col 
                       key={brand.name} 
@@ -292,74 +521,12 @@ function BrandManage() {
                       xl={3}
                       xxl={2}
                     >
-                      <Card
-                        className="brand-card"
-                        size="small"
-                        onClick={() => handleEdit(brand.name)}
-                        style={{
-                          borderRadius: 8,
-                          border: '1px solid #f0f0f0',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
-                        }}
-                        bodyStyle={{
-                          padding: 12,
-                        }}
-                      >
-                        <div style={{ 
-                          display: 'flex', 
-                          flexDirection: 'column',
-                          gap: 6,
-                        }}>
-                          {/* 品牌名称 */}
-                          <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}>
-                            <Tag 
-                              color={brand.color || 'default'}
-                              style={{
-                                margin: 0,
-                                fontSize: 14,
-                                fontWeight: 500,
-                                maxWidth: '100%',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {brand.name}
-                            </Tag>
-                          </div>
-
-                          {/* 拼音码 */}
-                          <Text 
-                            type="secondary" 
-                            style={{ 
-                              fontSize: 12,
-                              fontFamily: 'monospace',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              textAlign: 'center',
-                            }}
-                          >
-                            {brand.spell || '-'}
-                          </Text>
-
-                          {/* 排序号 */}
-                          <Text 
-                            type="secondary"
-                            style={{ 
-                              fontSize: 11,
-                              color: '#999',
-                              textAlign: 'center',
-                            }}
-                          >
-                            排序 {brand.order || 0}
-                          </Text>
-                        </div>
-                      </Card>
+                      <DraggableBrandCard
+                        brand={brand}
+                        index={index}
+                        moveCard={moveCard}
+                        onEdit={handleEdit}
+                      />
                     </Col>
                   );
                 })}
