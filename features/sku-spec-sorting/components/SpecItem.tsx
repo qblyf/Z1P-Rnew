@@ -34,6 +34,9 @@ export interface SpecItemProps {
   
   /** 是否禁用所有操作（保存中） */
   disabled?: boolean;
+  
+  /** 显示的排序号（从1开始） */
+  displaySortNumber?: number;
 }
 
 /**
@@ -61,6 +64,7 @@ export const SpecItem: React.FC<SpecItemProps> = ({
   onMoveDown,
   onEdit,
   disabled = false,
+  displaySortNumber,
 }) => {
   return (
     <div
@@ -92,7 +96,7 @@ export const SpecItem: React.FC<SpecItemProps> = ({
           </div>
         )}
         <div className="text-xs text-gray-400 mt-1">
-          排序号: {spec.sortOrder}
+          排序号: {displaySortNumber !== undefined ? displaySortNumber : spec.sortOrder}
         </div>
       </div>
 

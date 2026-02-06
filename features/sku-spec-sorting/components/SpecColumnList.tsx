@@ -39,6 +39,12 @@ export interface SpecColumnListProps {
   
   /** 是否禁用所有操作 */
   disabled?: boolean;
+  
+  /** 当前页码 */
+  currentPage?: number;
+  
+  /** 每页大小 */
+  pageSize?: number;
 }
 
 /**
@@ -67,8 +73,13 @@ export const SpecColumnList: React.FC<SpecColumnListProps> = ({
   onDragEnd,
   loading = false,
   disabled = false,
+  currentPage = 1,
+  pageSize = 100,
 }) => {
   const dropRef = useRef<HTMLDivElement>(null);
+  
+  // 计算起始排序号
+  const startSortNumber = (currentPage - 1) * pageSize + 1;
   
   // 设置拖放区域 - 需求 3.2, 3.5
   const [{ isOver, canDrop }, drop] = useDrop({
@@ -168,6 +179,7 @@ export const SpecColumnList: React.FC<SpecColumnListProps> = ({
               onEdit={() => onEdit(spec)}
               onMove={handleMove}
               disabled={disabled}
+              displaySortNumber={startSortNumber + index}
             />
           ))
         )}

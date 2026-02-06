@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Button, message, Spin, Alert } from 'antd';
+import { Button, message, Spin, Alert, Pagination } from 'antd';
 import { Save, RefreshCw } from 'lucide-react';
 import type { JWT } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { SpecAttribute, SpecAttributeType } from './types';
@@ -59,6 +59,15 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
   const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
   const [hasChanges, setHasChanges] = useState<boolean>(false);
 
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize] = useState<number>(100);
+  
+  // 全量数据（用于分页）
+  const [allVersionSpecs, setAllVersionSpecs] = useState<SpecAttribute[]>([]);
+  const [allConfigSpecs, setAllConfigSpecs] = useState<SpecAttribute[]>([]);
+  const [allColorSpecs, setAllColorSpecs] = useState<SpecAttribute[]>([]);
+
   /**
    * 加载规格属性数据
    * 
@@ -76,9 +85,14 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
       // 按类型分组并排序 - 需求 1.2
       const categorized = categorizeAndSortSpecs(response.data);
 
-      setVersionSpecs(categorized.version);
-      setConfigSpecs(categorized.config);
-      setColorSpecs(categorized.color);
+      // 保存全量数据
+      setAllVersionSpecs(categorized.version);
+      setAllConfigSpecs(categorized.config);
+      setAllColorSpecs(categorized.color);
+      
+      // 设置当前页数据
+      updatePageData(categorized.version, categorized.config, categorized.color, currentPage);
+      
       setHasChanges(false);
     } catch (err) {
       // 需求 1.3: 显示错误提示信息并允许用户重试
@@ -92,7 +106,32 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
     } finally {
       setLoading(false);
     }
-  }, [auth]);
+  }, [auth, currentPage]);
+
+  /**
+   * 更新当前页显示的数据
+   */
+  const updatePageData = useCallback((
+    allVersion: SpecAttribute[],
+    allConfig: SpecAttribute[],
+    allColor: SpecAttribute[],
+    page: number
+  ) => {
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    
+    setVersionSpecs(allVersion.slice(startIndex, endIndex));
+    setConfigSpecs(allConfig.slice(startIndex, endIndex));
+    setColorSpecs(allColor.slice(startIndex, endIndex));
+  }, [pageSize]);
+
+  /**
+   * 处理分页变化
+   */
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    updatePageData(allVersionSpecs, allConfigSpecs, allColorSpecs, page);
+  }, [allVersionSpecs, allConfigSpecs, allColorSpecs, updatePageData]);
 
   // 组件挂载时加载数据
   useEffect(() => {
@@ -107,39 +146,51 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
    */
   const handleDragEnd = useCallback(
     (category: SpecAttributeType, draggedSpec: SpecAttribute, targetIndex: number) => {
-      // 获取当前类别的规格列表
-      let specs: SpecAttribute[];
-      let setSpecs: React.Dispatch<React.SetStateAction<SpecAttribute[]>>;
+      // 获取当前类别的全量规格列表
+      let allSpecs: SpecAttribute[];
+      let setAllSpecs: React.Dispatch<React.SetStateAction<SpecAttribute[]>>;
 
       switch (category) {
         case 'version':
-          specs = versionSpecs;
-          setSpecs = setVersionSpecs;
+          allSpecs = allVersionSpecs;
+          setAllSpecs = setAllVersionSpecs;
           break;
         case 'config':
-          specs = configSpecs;
-          setSpecs = setConfigSpecs;
+          allSpecs = allConfigSpecs;
+          setAllSpecs = setAllConfigSpecs;
           break;
         case 'color':
-          specs = colorSpecs;
-          setSpecs = setColorSpecs;
+          allSpecs = allColorSpecs;
+          setAllSpecs = setAllColorSpecs;
           break;
         default:
           return;
       }
 
-      // 找到被拖拽项的当前索引
-      const fromIndex = specs.findIndex((s) => s.id === draggedSpec.id);
-      if (fromIndex === -1 || fromIndex === targetIndex) {
+      // 计算在全量数据中的实际索引
+      const pageStartIndex = (currentPage - 1) * pageSize;
+      const actualFromIndex = allSpecs.findIndex((s) => s.id === draggedSpec.id);
+      const actualTargetIndex = pageStartIndex + targetIndex;
+      
+      if (actualFromIndex === -1 || actualFromIndex === actualTargetIndex) {
         return;
       }
 
       // 重新计算排序序号 - 需求 3.6
-      const reordered = recalculateSortOrders(specs, fromIndex, targetIndex);
-      setSpecs(reordered);
+      const reordered = recalculateSortOrders(allSpecs, actualFromIndex, actualTargetIndex);
+      setAllSpecs(reordered);
+      
+      // 更新当前页显示
+      updatePageData(
+        category === 'version' ? reordered : allVersionSpecs,
+        category === 'config' ? reordered : allConfigSpecs,
+        category === 'color' ? reordered : allColorSpecs,
+        currentPage
+      );
+      
       setHasChanges(true);
     },
-    [versionSpecs, configSpecs, colorSpecs]
+    [allVersionSpecs, allConfigSpecs, allColorSpecs, currentPage, pageSize, updatePageData]
   );
 
   /**
@@ -150,39 +201,48 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
    */
   const handleMoveUp = useCallback(
     (spec: SpecAttribute) => {
-      // 获取当前类别的规格列表
-      let specs: SpecAttribute[];
-      let setSpecs: React.Dispatch<React.SetStateAction<SpecAttribute[]>>;
+      // 获取当前类别的全量规格列表
+      let allSpecs: SpecAttribute[];
+      let setAllSpecs: React.Dispatch<React.SetStateAction<SpecAttribute[]>>;
 
       switch (spec.type) {
         case 'version':
-          specs = versionSpecs;
-          setSpecs = setVersionSpecs;
+          allSpecs = allVersionSpecs;
+          setAllSpecs = setAllVersionSpecs;
           break;
         case 'config':
-          specs = configSpecs;
-          setSpecs = setConfigSpecs;
+          allSpecs = allConfigSpecs;
+          setAllSpecs = setAllConfigSpecs;
           break;
         case 'color':
-          specs = colorSpecs;
-          setSpecs = setColorSpecs;
+          allSpecs = allColorSpecs;
+          setAllSpecs = setAllColorSpecs;
           break;
         default:
           return;
       }
 
-      // 找到当前项的索引
-      const index = specs.findIndex((s) => s.id === spec.id);
+      // 找到当前项在全量数据中的索引
+      const index = allSpecs.findIndex((s) => s.id === spec.id);
       if (index <= 0) {
         return; // 已经是第一项，无法上移
       }
 
       // 交换位置并重新计算排序序号 - 需求 4.2, 4.6
-      const reordered = swapSortOrders(specs, index, 'up');
-      setSpecs(reordered);
+      const reordered = swapSortOrders(allSpecs, index, 'up');
+      setAllSpecs(reordered);
+      
+      // 更新当前页显示
+      updatePageData(
+        spec.type === 'version' ? reordered : allVersionSpecs,
+        spec.type === 'config' ? reordered : allConfigSpecs,
+        spec.type === 'color' ? reordered : allColorSpecs,
+        currentPage
+      );
+      
       setHasChanges(true);
     },
-    [versionSpecs, configSpecs, colorSpecs]
+    [allVersionSpecs, allConfigSpecs, allColorSpecs, currentPage, updatePageData]
   );
 
   /**
@@ -193,39 +253,48 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
    */
   const handleMoveDown = useCallback(
     (spec: SpecAttribute) => {
-      // 获取当前类别的规格列表
-      let specs: SpecAttribute[];
-      let setSpecs: React.Dispatch<React.SetStateAction<SpecAttribute[]>>;
+      // 获取当前类别的全量规格列表
+      let allSpecs: SpecAttribute[];
+      let setAllSpecs: React.Dispatch<React.SetStateAction<SpecAttribute[]>>;
 
       switch (spec.type) {
         case 'version':
-          specs = versionSpecs;
-          setSpecs = setVersionSpecs;
+          allSpecs = allVersionSpecs;
+          setAllSpecs = setAllVersionSpecs;
           break;
         case 'config':
-          specs = configSpecs;
-          setSpecs = setConfigSpecs;
+          allSpecs = allConfigSpecs;
+          setAllSpecs = setAllConfigSpecs;
           break;
         case 'color':
-          specs = colorSpecs;
-          setSpecs = setColorSpecs;
+          allSpecs = allColorSpecs;
+          setAllSpecs = setAllColorSpecs;
           break;
         default:
           return;
       }
 
-      // 找到当前项的索引
-      const index = specs.findIndex((s) => s.id === spec.id);
-      if (index === -1 || index >= specs.length - 1) {
+      // 找到当前项在全量数据中的索引
+      const index = allSpecs.findIndex((s) => s.id === spec.id);
+      if (index === -1 || index >= allSpecs.length - 1) {
         return; // 已经是最后一项，无法下移
       }
 
       // 交换位置并重新计算排序序号 - 需求 4.3, 4.6
-      const reordered = swapSortOrders(specs, index, 'down');
-      setSpecs(reordered);
+      const reordered = swapSortOrders(allSpecs, index, 'down');
+      setAllSpecs(reordered);
+      
+      // 更新当前页显示
+      updatePageData(
+        spec.type === 'version' ? reordered : allVersionSpecs,
+        spec.type === 'config' ? reordered : allConfigSpecs,
+        spec.type === 'color' ? reordered : allColorSpecs,
+        currentPage
+      );
+      
       setHasChanges(true);
     },
-    [versionSpecs, configSpecs, colorSpecs]
+    [allVersionSpecs, allConfigSpecs, allColorSpecs, currentPage, updatePageData]
   );
 
   /**
@@ -240,13 +309,13 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
       setSaving(true);
       setError(null);
 
-      // 合并所有类型的规格属性
-      const allSpecs = [...versionSpecs, ...configSpecs, ...colorSpecs];
+      // 合并所有类型的规格属性（使用全量数据）
+      const allSpecs = [...allVersionSpecs, ...allConfigSpecs, ...allColorSpecs];
 
       // 按类型分别验证 - 需求 9.1, 9.2, 9.4
-      const versionValidation = validateSortOrders(versionSpecs);
-      const configValidation = validateSortOrders(configSpecs);
-      const colorValidation = validateSortOrders(colorSpecs);
+      const versionValidation = validateSortOrders(allVersionSpecs);
+      const configValidation = validateSortOrders(allConfigSpecs);
+      const colorValidation = validateSortOrders(allColorSpecs);
 
       const allErrors = [
         ...versionValidation.errors,
@@ -292,7 +361,7 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
     } finally {
       setSaving(false);
     }
-  }, [versionSpecs, configSpecs, colorSpecs, auth, loadSpecAttributes]);
+  }, [allVersionSpecs, allConfigSpecs, allColorSpecs, auth, loadSpecAttributes]);
 
   /**
    * 处理编辑按钮点击
@@ -436,6 +505,8 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
             }
             loading={loading}
             disabled={saving}
+            currentPage={currentPage}
+            pageSize={pageSize}
           />
 
           {/* 配置栏 */}
@@ -451,6 +522,8 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
             }
             loading={loading}
             disabled={saving}
+            currentPage={currentPage}
+            pageSize={pageSize}
           />
 
           {/* 颜色栏 */}
@@ -466,6 +539,20 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
             }
             loading={loading}
             disabled={saving}
+            currentPage={currentPage}
+            pageSize={pageSize}
+          />
+        </div>
+
+        {/* 分页控件 */}
+        <div className="mt-6 flex justify-center">
+          <Pagination
+            current={currentPage}
+            pageSize={pageSize}
+            total={Math.max(allVersionSpecs.length, allConfigSpecs.length, allColorSpecs.length)}
+            onChange={handlePageChange}
+            showSizeChanger={false}
+            showTotal={(total) => `共 ${total} 条数据`}
           />
         </div>
 

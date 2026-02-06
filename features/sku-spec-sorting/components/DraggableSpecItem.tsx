@@ -41,6 +41,9 @@ export interface DraggableSpecItemProps {
   
   /** 是否禁用所有操作 */
   disabled?: boolean;
+  
+  /** 显示的排序号（从1开始） */
+  displaySortNumber?: number;
 }
 
 /**
@@ -79,6 +82,7 @@ export const DraggableSpecItem: React.FC<DraggableSpecItemProps> = ({
   onEdit,
   onMove,
   disabled = false,
+  displaySortNumber,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -182,6 +186,7 @@ export const DraggableSpecItem: React.FC<DraggableSpecItemProps> = ({
         onMoveDown={onMoveDown}
         onEdit={onEdit}
         disabled={disabled}
+        displaySortNumber={displaySortNumber}
       />
     </div>
   );
