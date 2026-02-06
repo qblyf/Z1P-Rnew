@@ -1327,31 +1327,31 @@ function ClientPage() {
       label: (
         <span>
           <TagsOutlined />
+          版本管理
+        </span>
+      ),
+      key: 'version',
+      children: <SpecManage specName={SpecName.组合} title="版本" />,
+    },
+    {
+      label: (
+        <span>
+          <TagsOutlined />
+          配置管理
+        </span>
+      ),
+      key: 'config',
+      children: <SpecManage specName={SpecName.规格} title="配置" />,
+    },
+    {
+      label: (
+        <span>
+          <TagsOutlined />
           颜色管理
         </span>
       ),
       key: 'color',
       children: <SpecManage specName={SpecName.颜色} title="颜色" />,
-    },
-    {
-      label: (
-        <span>
-          <TagsOutlined />
-          规格管理
-        </span>
-      ),
-      key: 'spec',
-      children: <SpecManage specName={SpecName.规格} title="规格" />,
-    },
-    {
-      label: (
-        <span>
-          <TagsOutlined />
-          组合管理
-        </span>
-      ),
-      key: 'combo',
-      children: <SpecManage specName={SpecName.组合} title="组合" />,
     },
   ];
 
