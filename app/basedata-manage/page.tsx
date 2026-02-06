@@ -98,8 +98,26 @@ function BrandManage() {
   };
 
   return (
-    <div style={{ padding: '24px', backgroundColor: '#f5f7fa', minHeight: '100vh' }}>
-      {/* 页面标题 */}
+    <>
+      <style jsx>{`
+        :global(.compact-brand-table .ant-table-tbody > tr > td) {
+          padding: 4px 8px !important;
+          line-height: 1.3;
+        }
+        :global(.compact-brand-table .ant-table-thead > tr > th) {
+          padding: 8px 8px !important;
+          font-weight: 600;
+        }
+        :global(.compact-brand-table .ant-table-tbody > tr) {
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+        :global(.compact-brand-table .ant-table-tbody > tr:hover) {
+          background-color: #f5f7fa;
+        }
+      `}</style>
+      <div style={{ padding: '24px', backgroundColor: '#f5f7fa', minHeight: '100vh' }}>
+        {/* 页面标题 */}
       <div style={{ marginBottom: 24 }}>
         <Title level={4} style={{ margin: 0, color: '#1a1a2e' }}>
           <TagsOutlined style={{ marginRight: 8, color: '#1890ff' }} />
@@ -240,46 +258,45 @@ function BrandManage() {
         {brands ? (
           filteredBrands.length > 0 ? (
             <Table
-              size="middle"
+              size="small"
               rowKey="name"
               dataSource={filteredBrands}
               pagination={{
-                defaultPageSize: 10,
-                pageSize: 10,
-                pageSizeOptions: [10, 20, 50, 100],
+                defaultPageSize: 50,
+                pageSize: 50,
+                pageSizeOptions: [50, 100, 200],
                 showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 个品牌`,
                 showSizeChanger: true,
                 showQuickJumper: true,
                 position: ['bottomCenter'],
               }}
-              scroll={{ y: 400 }}
+              scroll={{ y: 'calc(100vh - 420px)' }}
               columns={[
                 {
                   title: '品牌名称',
                   dataIndex: 'name',
-                  width: 180,
+                  width: 160,
+                  fixed: 'left',
                   render: (name, record) => (
-                    <Space>
-                      <Tag 
-                        color={record.color || 'default'} 
-                        style={{ 
-                          borderRadius: 6,
-                          padding: '2px 12px',
-                          fontSize: 14,
-                          fontWeight: 500,
-                        }}
-                      >
-                        {name}
-                      </Tag>
-                    </Space>
+                    <Tag 
+                      color={record.color || 'default'} 
+                      style={{ 
+                        borderRadius: 4,
+                        padding: '0 8px',
+                        fontSize: 13,
+                        margin: 0,
+                      }}
+                    >
+                      {name}
+                    </Tag>
                   ),
                 },
                 {
                   title: '拼音码',
                   dataIndex: 'spell',
-                  width: 120,
+                  width: 100,
                   render: (spell) => (
-                    <Text type="secondary" style={{ fontFamily: 'monospace' }}>
+                    <Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 12 }}>
                       {spell || '-'}
                     </Text>
                   ),
@@ -287,15 +304,15 @@ function BrandManage() {
                 {
                   title: '排序',
                   dataIndex: 'order',
-                  width: 80,
+                  width: 70,
                   align: 'center',
                   sorter: (a, b) => (a.order || 0) - (b.order || 0),
                   render: (order) => (
                     <Text style={{ 
                       backgroundColor: '#f5f5f5', 
-                      padding: '2px 8px', 
-                      borderRadius: 4,
-                      fontSize: 13,
+                      padding: '1px 6px', 
+                      borderRadius: 3,
+                      fontSize: 12,
                     }}>
                       {order || 0}
                     </Text>
@@ -304,7 +321,7 @@ function BrandManage() {
                 {
                   title: '状态',
                   dataIndex: 'display',
-                  width: 100,
+                  width: 80,
                   align: 'center',
                   filters: [
                     { text: '展示中', value: true },
@@ -316,29 +333,32 @@ function BrandManage() {
                     return (
                       <Tag 
                         color={display ? 'success' : 'default'}
-                        style={{ borderRadius: 12, padding: '0 12px' }}
+                        style={{ borderRadius: 10, padding: '0 8px', fontSize: 12, margin: 0 }}
                       >
-                        {display ? '展示中' : '已隐藏'}
+                        {display ? '展示' : '隐藏'}
                       </Tag>
                     );
                   },
                 },
                 {
                   title: '操作',
-                  width: 100,
+                  width: 80,
                   align: 'center',
+                  fixed: 'right',
                   render: (_, record) => (
                     <Button
-                      type="text"
+                      type="link"
+                      size="small"
                       icon={<EditOutlined />}
                       onClick={() => handleEdit(record.name)}
-                      style={{ color: '#1890ff' }}
+                      style={{ padding: '0 4px' }}
                     >
                       编辑
                     </Button>
                   ),
                 },
               ]}
+              className="compact-brand-table"
               style={{ 
                 borderRadius: 8,
               }}
@@ -381,6 +401,7 @@ function BrandManage() {
         ) : null}
       </Drawer>
     </div>
+    </>
   );
 }
 
