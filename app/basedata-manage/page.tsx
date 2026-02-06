@@ -25,8 +25,6 @@ import {
   Typography,
   message,
   Pagination,
-  Dropdown,
-  MenuProps,
 } from 'antd';
 import { 
   EditOutlined, 
@@ -35,7 +33,6 @@ import {
   TagsOutlined,
   EyeOutlined,
   EyeInvisibleOutlined,
-  MoreOutlined,
 } from '@ant-design/icons';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import update from 'immutability-helper';
@@ -269,16 +266,6 @@ function BrandManage() {
             <>
               <Row gutter={[12, 12]}>
                 {paginatedBrands.map((brand) => {
-                  const display = (brand as any).display !== false;
-                  const menuItems: MenuProps['items'] = [
-                    {
-                      key: 'edit',
-                      label: '编辑',
-                      icon: <EditOutlined />,
-                      onClick: () => handleEdit(brand.name),
-                    },
-                  ];
-
                   return (
                     <Col 
                       key={brand.name} 
@@ -292,6 +279,7 @@ function BrandManage() {
                       <Card
                         className="brand-card"
                         size="small"
+                        onClick={() => handleEdit(brand.name)}
                         style={{
                           borderRadius: 8,
                           border: '1px solid #f0f0f0',
@@ -304,21 +292,21 @@ function BrandManage() {
                         <div style={{ 
                           display: 'flex', 
                           flexDirection: 'column',
-                          gap: 8,
+                          gap: 6,
                         }}>
                           {/* 品牌名称 */}
                           <div style={{ 
                             display: 'flex', 
                             alignItems: 'center',
-                            justifyContent: 'space-between',
+                            justifyContent: 'center',
                           }}>
                             <Tag 
                               color={brand.color || 'default'}
                               style={{
                                 margin: 0,
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: 500,
-                                maxWidth: 'calc(100% - 28px)',
+                                maxWidth: '100%',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap',
@@ -326,65 +314,34 @@ function BrandManage() {
                             >
                               {brand.name}
                             </Tag>
-                            <Dropdown menu={{ items: menuItems }} trigger={['click']}>
-                              <Button 
-                                type="text" 
-                                size="small"
-                                icon={<MoreOutlined />}
-                                style={{ 
-                                  padding: 0,
-                                  width: 24,
-                                  height: 24,
-                                  minWidth: 24,
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </Dropdown>
                           </div>
 
                           {/* 拼音码 */}
-                          {brand.spell && (
-                            <Text 
-                              type="secondary" 
-                              style={{ 
-                                fontSize: 11,
-                                fontFamily: 'monospace',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {brand.spell}
-                            </Text>
-                          )}
+                          <Text 
+                            type="secondary" 
+                            style={{ 
+                              fontSize: 12,
+                              fontFamily: 'monospace',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {brand.spell || '-'}
+                          </Text>
 
-                          {/* 底部信息 */}
-                          <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            marginTop: 4,
-                          }}>
-                            <Text 
-                              style={{ 
-                                fontSize: 11,
-                                color: '#999',
-                              }}
-                            >
-                              #{brand.order || 0}
-                            </Text>
-                            <Tag 
-                              color={display ? 'success' : 'default'}
-                              style={{
-                                margin: 0,
-                                fontSize: 11,
-                                padding: '0 6px',
-                                lineHeight: '18px',
-                              }}
-                            >
-                              {display ? '展示' : '隐藏'}
-                            </Tag>
-                          </div>
+                          {/* 排序号 */}
+                          <Text 
+                            type="secondary"
+                            style={{ 
+                              fontSize: 11,
+                              color: '#999',
+                              textAlign: 'center',
+                            }}
+                          >
+                            排序 {brand.order || 0}
+                          </Text>
                         </div>
                       </Card>
                     </Col>
