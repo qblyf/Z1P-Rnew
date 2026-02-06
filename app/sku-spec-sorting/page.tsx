@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { SpecSortingPage } from '@/features/sku-spec-sorting';
-import { useAuth } from '@/datahooks/auth';
+import { SpecSortingPage } from '../../features/sku-spec-sorting';
+import { useTokenContext } from '../../datahooks/auth';
 
 /**
  * SKU 规格排序设置页面
@@ -10,7 +10,7 @@ import { useAuth } from '@/datahooks/auth';
  * 路由: /sku-spec-sorting
  */
 export default function SkuSpecSortingPage() {
-  const { auth } = useAuth();
+  const { auth } = useTokenContext();
 
   if (!auth) {
     return (
