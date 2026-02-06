@@ -360,7 +360,7 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="spec-sorting-page min-h-screen bg-gray-100 p-6">
+      <div className="spec-sorting-page p-6">
         {/* 页面标题和操作栏 */}
         <div className="mb-6">
           <div className="flex items-center justify-between">
