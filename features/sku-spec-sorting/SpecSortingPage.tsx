@@ -59,14 +59,21 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
   const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
   const [hasChanges, setHasChanges] = useState<boolean>(false);
 
-  // 分页状态
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  // 独立分页状态
+  const [versionPage, setVersionPage] = useState<number>(1);
+  const [configPage, setConfigPage] = useState<number>(1);
+  const [colorPage, setColorPage] = useState<number>(1);
   const [pageSize] = useState<number>(100);
   
-  // 全量数据（用于分页）
+  // 全量数据（用于分页和变更追踪）
   const [allVersionSpecs, setAllVersionSpecs] = useState<SpecAttribute[]>([]);
   const [allConfigSpecs, setAllConfigSpecs] = useState<SpecAttribute[]>([]);
   const [allColorSpecs, setAllColorSpecs] = useState<SpecAttribute[]>([]);
+  
+  // 原始数据（用于检测变更）
+  const [originalVersionSpecs, setOriginalVersionSpecs] = useState<SpecAttribute[]>([]);
+  const [originalConfigSpecs, setOriginalConfigSpecs] = useState<SpecAttribute[]>([]);
+  const [originalColorSpecs, setOriginalColorSpecs] = useState<SpecAttribute[]>([]);
 
   /**
    * 加载规格属性数据
@@ -85,13 +92,19 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
       // 按类型分组并排序 - 需求 1.2
       const categorized = categorizeAndSortSpecs(response.data);
 
-      // 保存全量数据
+      // 保存全量数据和原始数据
       setAllVersionSpecs(categorized.version);
       setAllConfigSpecs(categorized.config);
       setAllColorSpecs(categorized.color);
       
+      setOriginalVersionSpecs(JSON.parse(JSON.stringify(categorized.version)));
+      setOriginalConfigSpecs(JSON.parse(JSON.stringify(categorized.config)));
+      setOriginalColorSpecs(JSON.parse(JSON.stringify(categorized.color)));
+      
       // 设置当前页数据
-      updatePageData(categorized.version, categorized.config, categorized.color, currentPage);
+      updateVersionPageData(categorized.version, versionPage);
+      updateConfigPageData(categorized.config, configPage);
+      updateColorPageData(categorized.color, colorPage);
       
       setHasChanges(false);
     } catch (err) {
@@ -106,32 +119,58 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
     } finally {
       setLoading(false);
     }
-  }, [auth, currentPage]);
+  }, [auth, versionPage, configPage, colorPage]);
 
   /**
-   * 更新当前页显示的数据
+   * 更新版本栏当前页数据
    */
-  const updatePageData = useCallback((
-    allVersion: SpecAttribute[],
-    allConfig: SpecAttribute[],
-    allColor: SpecAttribute[],
-    page: number
-  ) => {
+  const updateVersionPageData = useCallback((allVersion: SpecAttribute[], page: number) => {
     const startIndex = (page - 1) * pageSize;
     const endIndex = startIndex + pageSize;
-    
     setVersionSpecs(allVersion.slice(startIndex, endIndex));
+  }, [pageSize]);
+
+  /**
+   * 更新配置栏当前页数据
+   */
+  const updateConfigPageData = useCallback((allConfig: SpecAttribute[], page: number) => {
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
     setConfigSpecs(allConfig.slice(startIndex, endIndex));
+  }, [pageSize]);
+
+  /**
+   * 更新颜色栏当前页数据
+   */
+  const updateColorPageData = useCallback((allColor: SpecAttribute[], page: number) => {
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
     setColorSpecs(allColor.slice(startIndex, endIndex));
   }, [pageSize]);
 
   /**
-   * 处理分页变化
+   * 处理版本栏分页变化
    */
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page);
-    updatePageData(allVersionSpecs, allConfigSpecs, allColorSpecs, page);
-  }, [allVersionSpecs, allConfigSpecs, allColorSpecs, updatePageData]);
+  const handleVersionPageChange = useCallback((page: number) => {
+    setVersionPage(page);
+    updateVersionPageData(allVersionSpecs, page);
+  }, [allVersionSpecs, updateVersionPageData]);
+
+  /**
+   * 处理配置栏分页变化
+   */
+  const handleConfigPageChange = useCallback((page: number) => {
+    setConfigPage(page);
+    updateConfigPageData(allConfigSpecs, page);
+  }, [allConfigSpecs, updateConfigPageData]);
+
+  /**
+   * 处理颜色栏分页变化
+   */
+  const handleColorPageChange = useCallback((page: number) => {
+    setColorPage(page);
+    updateColorPageData(allColorSpecs, page);
+  }, [allColorSpecs, updateColorPageData]);
 
   // 组件挂载时加载数据
   useEffect(() => {
@@ -146,22 +185,30 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
    */
   const handleDragEnd = useCallback(
     (category: SpecAttributeType, draggedSpec: SpecAttribute, targetIndex: number) => {
-      // 获取当前类别的全量规格列表
+      // 获取当前类别的全量规格列表和页码
       let allSpecs: SpecAttribute[];
       let setAllSpecs: React.Dispatch<React.SetStateAction<SpecAttribute[]>>;
+      let currentPage: number;
+      let updatePageData: (specs: SpecAttribute[], page: number) => void;
 
       switch (category) {
         case 'version':
           allSpecs = allVersionSpecs;
           setAllSpecs = setAllVersionSpecs;
+          currentPage = versionPage;
+          updatePageData = updateVersionPageData;
           break;
         case 'config':
           allSpecs = allConfigSpecs;
           setAllSpecs = setAllConfigSpecs;
+          currentPage = configPage;
+          updatePageData = updateConfigPageData;
           break;
         case 'color':
           allSpecs = allColorSpecs;
           setAllSpecs = setAllColorSpecs;
+          currentPage = colorPage;
+          updatePageData = updateColorPageData;
           break;
         default:
           return;
@@ -181,16 +228,11 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
       setAllSpecs(reordered);
       
       // 更新当前页显示
-      updatePageData(
-        category === 'version' ? reordered : allVersionSpecs,
-        category === 'config' ? reordered : allConfigSpecs,
-        category === 'color' ? reordered : allColorSpecs,
-        currentPage
-      );
+      updatePageData(reordered, currentPage);
       
       setHasChanges(true);
     },
-    [allVersionSpecs, allConfigSpecs, allColorSpecs, currentPage, pageSize, updatePageData]
+    [allVersionSpecs, allConfigSpecs, allColorSpecs, versionPage, configPage, colorPage, pageSize, updateVersionPageData, updateConfigPageData, updateColorPageData]
   );
 
   /**
@@ -201,22 +243,30 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
    */
   const handleMoveUp = useCallback(
     (spec: SpecAttribute) => {
-      // 获取当前类别的全量规格列表
+      // 获取当前类别的全量规格列表和页码
       let allSpecs: SpecAttribute[];
       let setAllSpecs: React.Dispatch<React.SetStateAction<SpecAttribute[]>>;
+      let currentPage: number;
+      let updatePageData: (specs: SpecAttribute[], page: number) => void;
 
       switch (spec.type) {
         case 'version':
           allSpecs = allVersionSpecs;
           setAllSpecs = setAllVersionSpecs;
+          currentPage = versionPage;
+          updatePageData = updateVersionPageData;
           break;
         case 'config':
           allSpecs = allConfigSpecs;
           setAllSpecs = setAllConfigSpecs;
+          currentPage = configPage;
+          updatePageData = updateConfigPageData;
           break;
         case 'color':
           allSpecs = allColorSpecs;
           setAllSpecs = setAllColorSpecs;
+          currentPage = colorPage;
+          updatePageData = updateColorPageData;
           break;
         default:
           return;
@@ -233,16 +283,11 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
       setAllSpecs(reordered);
       
       // 更新当前页显示
-      updatePageData(
-        spec.type === 'version' ? reordered : allVersionSpecs,
-        spec.type === 'config' ? reordered : allConfigSpecs,
-        spec.type === 'color' ? reordered : allColorSpecs,
-        currentPage
-      );
+      updatePageData(reordered, currentPage);
       
       setHasChanges(true);
     },
-    [allVersionSpecs, allConfigSpecs, allColorSpecs, currentPage, updatePageData]
+    [allVersionSpecs, allConfigSpecs, allColorSpecs, versionPage, configPage, colorPage, updateVersionPageData, updateConfigPageData, updateColorPageData]
   );
 
   /**
@@ -253,22 +298,30 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
    */
   const handleMoveDown = useCallback(
     (spec: SpecAttribute) => {
-      // 获取当前类别的全量规格列表
+      // 获取当前类别的全量规格列表和页码
       let allSpecs: SpecAttribute[];
       let setAllSpecs: React.Dispatch<React.SetStateAction<SpecAttribute[]>>;
+      let currentPage: number;
+      let updatePageData: (specs: SpecAttribute[], page: number) => void;
 
       switch (spec.type) {
         case 'version':
           allSpecs = allVersionSpecs;
           setAllSpecs = setAllVersionSpecs;
+          currentPage = versionPage;
+          updatePageData = updateVersionPageData;
           break;
         case 'config':
           allSpecs = allConfigSpecs;
           setAllSpecs = setAllConfigSpecs;
+          currentPage = configPage;
+          updatePageData = updateConfigPageData;
           break;
         case 'color':
           allSpecs = allColorSpecs;
           setAllSpecs = setAllColorSpecs;
+          currentPage = colorPage;
+          updatePageData = updateColorPageData;
           break;
         default:
           return;
@@ -285,16 +338,11 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
       setAllSpecs(reordered);
       
       // 更新当前页显示
-      updatePageData(
-        spec.type === 'version' ? reordered : allVersionSpecs,
-        spec.type === 'config' ? reordered : allConfigSpecs,
-        spec.type === 'color' ? reordered : allColorSpecs,
-        currentPage
-      );
+      updatePageData(reordered, currentPage);
       
       setHasChanges(true);
     },
-    [allVersionSpecs, allConfigSpecs, allColorSpecs, currentPage, updatePageData]
+    [allVersionSpecs, allConfigSpecs, allColorSpecs, versionPage, configPage, colorPage, updateVersionPageData, updateConfigPageData, updateColorPageData]
   );
 
   /**
@@ -311,6 +359,7 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
 
       // 合并所有类型的规格属性（使用全量数据）
       const allSpecs = [...allVersionSpecs, ...allConfigSpecs, ...allColorSpecs];
+      const allOriginalSpecs = [...originalVersionSpecs, ...originalConfigSpecs, ...originalColorSpecs];
 
       // 按类型分别验证 - 需求 9.1, 9.2, 9.4
       const versionValidation = validateSortOrders(allVersionSpecs);
@@ -330,9 +379,21 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
         return;
       }
 
-      // 批量保存所有修改的规格属性 - 需求 5.1
+      // 找出有变更的项（只提交 sortOrder 有变化的项）
+      const changedSpecs = allSpecs.filter((spec) => {
+        const original = allOriginalSpecs.find((o) => o.id === spec.id);
+        return original && original.sortOrder !== spec.sortOrder;
+      });
+
+      if (changedSpecs.length === 0) {
+        message.info('没有需要保存的更改');
+        setHasChanges(false);
+        return;
+      }
+
+      // 批量保存修改的规格属性 - 需求 5.1
       const result = await batchUpdateSortOrders(
-        allSpecs.map((spec) => ({
+        changedSpecs.map((spec) => ({
           id: spec.id,
           sortOrder: spec.sortOrder,
         })),
@@ -341,7 +402,7 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
 
       if (result.success) {
         // 保存成功 - 需求 5.2
-        message.success('保存成功');
+        message.success(`保存成功，共更新 ${changedSpecs.length} 项`);
         setHasChanges(false);
         // 重新加载数据以确保与后端同步
         await loadSpecAttributes();
@@ -361,7 +422,7 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
     } finally {
       setSaving(false);
     }
-  }, [allVersionSpecs, allConfigSpecs, allColorSpecs, auth, loadSpecAttributes]);
+  }, [allVersionSpecs, allConfigSpecs, allColorSpecs, originalVersionSpecs, originalConfigSpecs, originalColorSpecs, auth, loadSpecAttributes]);
 
   /**
    * 处理编辑按钮点击
@@ -493,67 +554,100 @@ export const SpecSortingPage: React.FC<SpecSortingPageProps> = ({ auth }) => {
         {/* 三栏布局 - 需求 2.1 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* 版本栏 */}
-          <SpecColumnList
-            title="版本"
-            specs={versionSpecs}
-            category="version"
-            onMoveUp={handleMoveUp}
-            onMoveDown={handleMoveDown}
-            onEdit={handleEdit}
-            onDragEnd={(draggedSpec, targetIndex) =>
-              handleDragEnd('version', draggedSpec, targetIndex)
-            }
-            loading={loading}
-            disabled={saving}
-            currentPage={currentPage}
-            pageSize={pageSize}
-          />
+          <div className="flex flex-col">
+            <SpecColumnList
+              title="版本"
+              specs={versionSpecs}
+              category="version"
+              onMoveUp={handleMoveUp}
+              onMoveDown={handleMoveDown}
+              onEdit={handleEdit}
+              onDragEnd={(draggedSpec, targetIndex) =>
+                handleDragEnd('version', draggedSpec, targetIndex)
+              }
+              loading={loading}
+              disabled={saving}
+              currentPage={versionPage}
+              pageSize={pageSize}
+            />
+            {allVersionSpecs.length > pageSize && (
+              <div className="mt-4 flex justify-center">
+                <Pagination
+                  current={versionPage}
+                  pageSize={pageSize}
+                  total={allVersionSpecs.length}
+                  onChange={handleVersionPageChange}
+                  showSizeChanger={false}
+                  size="small"
+                  showTotal={(total) => `共 ${total} 条`}
+                />
+              </div>
+            )}
+          </div>
 
           {/* 配置栏 */}
-          <SpecColumnList
-            title="配置"
-            specs={configSpecs}
-            category="config"
-            onMoveUp={handleMoveUp}
-            onMoveDown={handleMoveDown}
-            onEdit={handleEdit}
-            onDragEnd={(draggedSpec, targetIndex) =>
-              handleDragEnd('config', draggedSpec, targetIndex)
-            }
-            loading={loading}
-            disabled={saving}
-            currentPage={currentPage}
-            pageSize={pageSize}
-          />
+          <div className="flex flex-col">
+            <SpecColumnList
+              title="配置"
+              specs={configSpecs}
+              category="config"
+              onMoveUp={handleMoveUp}
+              onMoveDown={handleMoveDown}
+              onEdit={handleEdit}
+              onDragEnd={(draggedSpec, targetIndex) =>
+                handleDragEnd('config', draggedSpec, targetIndex)
+              }
+              loading={loading}
+              disabled={saving}
+              currentPage={configPage}
+              pageSize={pageSize}
+            />
+            {allConfigSpecs.length > pageSize && (
+              <div className="mt-4 flex justify-center">
+                <Pagination
+                  current={configPage}
+                  pageSize={pageSize}
+                  total={allConfigSpecs.length}
+                  onChange={handleConfigPageChange}
+                  showSizeChanger={false}
+                  size="small"
+                  showTotal={(total) => `共 ${total} 条`}
+                />
+              </div>
+            )}
+          </div>
 
           {/* 颜色栏 */}
-          <SpecColumnList
-            title="颜色"
-            specs={colorSpecs}
-            category="color"
-            onMoveUp={handleMoveUp}
-            onMoveDown={handleMoveDown}
-            onEdit={handleEdit}
-            onDragEnd={(draggedSpec, targetIndex) =>
-              handleDragEnd('color', draggedSpec, targetIndex)
-            }
-            loading={loading}
-            disabled={saving}
-            currentPage={currentPage}
-            pageSize={pageSize}
-          />
-        </div>
-
-        {/* 分页控件 */}
-        <div className="mt-6 flex justify-center">
-          <Pagination
-            current={currentPage}
-            pageSize={pageSize}
-            total={Math.max(allVersionSpecs.length, allConfigSpecs.length, allColorSpecs.length)}
-            onChange={handlePageChange}
-            showSizeChanger={false}
-            showTotal={(total) => `共 ${total} 条数据`}
-          />
+          <div className="flex flex-col">
+            <SpecColumnList
+              title="颜色"
+              specs={colorSpecs}
+              category="color"
+              onMoveUp={handleMoveUp}
+              onMoveDown={handleMoveDown}
+              onEdit={handleEdit}
+              onDragEnd={(draggedSpec, targetIndex) =>
+                handleDragEnd('color', draggedSpec, targetIndex)
+              }
+              loading={loading}
+              disabled={saving}
+              currentPage={colorPage}
+              pageSize={pageSize}
+            />
+            {allColorSpecs.length > pageSize && (
+              <div className="mt-4 flex justify-center">
+                <Pagination
+                  current={colorPage}
+                  pageSize={pageSize}
+                  total={allColorSpecs.length}
+                  onChange={handleColorPageChange}
+                  showSizeChanger={false}
+                  size="small"
+                  showTotal={(total) => `共 ${total} 条`}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 编辑抽屉 - 需求 8.2 */}
