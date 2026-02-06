@@ -735,6 +735,8 @@ function ClientPage() {
         </BrandListProvider>
       ),
     },
+    // TODO: 版本、配置、颜色管理待实现
+    // 需要根据SDK的实际类型定义重新设计
   ];
 
   return (
