@@ -19,12 +19,14 @@ import {
   Space,
   Spin,
   Switch,
-  Table,
   Tabs,
   TabsProps,
   Tag,
   Typography,
   message,
+  Pagination,
+  Dropdown,
+  MenuProps,
 } from 'antd';
 import { 
   EditOutlined, 
@@ -33,6 +35,7 @@ import {
   TagsOutlined,
   EyeOutlined,
   EyeInvisibleOutlined,
+  MoreOutlined,
 } from '@ant-design/icons';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import update from 'immutability-helper';
@@ -52,6 +55,8 @@ function BrandManage() {
   const [search, setSearch] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isAddMode, setIsAddMode] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(60);
 
   // 过滤品牌列表
   const filteredBrands = useMemo(() => {
@@ -63,6 +68,13 @@ function BrandManage() {
       (b.spell && b.spell.toLowerCase().includes(s))
     );
   }, [brands, search]);
+
+  // 分页数据
+  const paginatedBrands = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredBrands.slice(start, end);
+  }, [filteredBrands, currentPage, pageSize]);
 
   // 统计数据
   const stats = useMemo(() => {
@@ -100,20 +112,17 @@ function BrandManage() {
   return (
     <>
       <style jsx>{`
-        :global(.compact-brand-table .ant-table-tbody > tr > td) {
-          padding: 4px 8px !important;
-          line-height: 1.3;
-        }
-        :global(.compact-brand-table .ant-table-thead > tr > th) {
-          padding: 8px 8px !important;
-          font-weight: 600;
-        }
-        :global(.compact-brand-table .ant-table-tbody > tr) {
+        :global(.brand-card) {
+          transition: all 0.3s ease;
           cursor: pointer;
-          transition: background-color 0.2s;
+          height: 100%;
         }
-        :global(.compact-brand-table .ant-table-tbody > tr:hover) {
-          background-color: #f5f7fa;
+        :global(.brand-card:hover) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+        }
+        :global(.brand-card .ant-card-body) {
+          padding: 12px !important;
         }
       `}</style>
       <div style={{ padding: '24px', backgroundColor: '#f5f7fa', minHeight: '100vh' }}>
@@ -257,112 +266,155 @@ function BrandManage() {
         {/* 品牌列表 */}
         {brands ? (
           filteredBrands.length > 0 ? (
-            <Table
-              size="small"
-              rowKey="name"
-              dataSource={filteredBrands}
-              pagination={{
-                defaultPageSize: 50,
-                pageSize: 50,
-                pageSizeOptions: [50, 100, 200],
-                showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 个品牌`,
-                showSizeChanger: true,
-                showQuickJumper: true,
-                position: ['bottomCenter'],
-              }}
-              scroll={{ y: 'calc(100vh - 420px)' }}
-              columns={[
-                {
-                  title: '品牌名称',
-                  dataIndex: 'name',
-                  width: 160,
-                  fixed: 'left',
-                  render: (name, record) => (
-                    <Tag 
-                      color={record.color || 'default'} 
-                      style={{ 
-                        borderRadius: 4,
-                        padding: '0 8px',
-                        fontSize: 13,
-                        margin: 0,
-                      }}
+            <>
+              <Row gutter={[12, 12]}>
+                {paginatedBrands.map((brand) => {
+                  const display = (brand as any).display !== false;
+                  const menuItems: MenuProps['items'] = [
+                    {
+                      key: 'edit',
+                      label: '编辑',
+                      icon: <EditOutlined />,
+                      onClick: () => handleEdit(brand.name),
+                    },
+                  ];
+
+                  return (
+                    <Col 
+                      key={brand.name} 
+                      xs={12} 
+                      sm={8} 
+                      md={6} 
+                      lg={4} 
+                      xl={3}
+                      xxl={2}
                     >
-                      {name}
-                    </Tag>
-                  ),
-                },
-                {
-                  title: '拼音码',
-                  dataIndex: 'spell',
-                  width: 100,
-                  render: (spell) => (
-                    <Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 12 }}>
-                      {spell || '-'}
-                    </Text>
-                  ),
-                },
-                {
-                  title: '排序',
-                  dataIndex: 'order',
-                  width: 70,
-                  align: 'center',
-                  sorter: (a, b) => (a.order || 0) - (b.order || 0),
-                  render: (order) => (
-                    <Text style={{ 
-                      backgroundColor: '#f5f5f5', 
-                      padding: '1px 6px', 
-                      borderRadius: 3,
-                      fontSize: 12,
-                    }}>
-                      {order || 0}
-                    </Text>
-                  ),
-                },
-                {
-                  title: '状态',
-                  dataIndex: 'display',
-                  width: 80,
-                  align: 'center',
-                  filters: [
-                    { text: '展示中', value: true },
-                    { text: '已隐藏', value: false },
-                  ],
-                  onFilter: (value, record) => (record as any).display === value,
-                  render: (_, record) => {
-                    const display = (record as any).display !== false;
-                    return (
-                      <Tag 
-                        color={display ? 'success' : 'default'}
-                        style={{ borderRadius: 10, padding: '0 8px', fontSize: 12, margin: 0 }}
+                      <Card
+                        className="brand-card"
+                        size="small"
+                        style={{
+                          borderRadius: 8,
+                          border: '1px solid #f0f0f0',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+                        }}
+                        bodyStyle={{
+                          padding: 12,
+                        }}
                       >
-                        {display ? '展示' : '隐藏'}
-                      </Tag>
-                    );
-                  },
-                },
-                {
-                  title: '操作',
-                  width: 80,
-                  align: 'center',
-                  fixed: 'right',
-                  render: (_, record) => (
-                    <Button
-                      type="link"
-                      size="small"
-                      icon={<EditOutlined />}
-                      onClick={() => handleEdit(record.name)}
-                      style={{ padding: '0 4px' }}
-                    >
-                      编辑
-                    </Button>
-                  ),
-                },
-              ]}
-              className="compact-brand-table"
-              style={{ 
-                borderRadius: 8,
-              }}
-            />
+                        <div style={{ 
+                          display: 'flex', 
+                          flexDirection: 'column',
+                          gap: 8,
+                        }}>
+                          {/* 品牌名称 */}
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                          }}>
+                            <Tag 
+                              color={brand.color || 'default'}
+                              style={{
+                                margin: 0,
+                                fontSize: 13,
+                                fontWeight: 500,
+                                maxWidth: 'calc(100% - 28px)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {brand.name}
+                            </Tag>
+                            <Dropdown menu={{ items: menuItems }} trigger={['click']}>
+                              <Button 
+                                type="text" 
+                                size="small"
+                                icon={<MoreOutlined />}
+                                style={{ 
+                                  padding: 0,
+                                  width: 24,
+                                  height: 24,
+                                  minWidth: 24,
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </Dropdown>
+                          </div>
+
+                          {/* 拼音码 */}
+                          {brand.spell && (
+                            <Text 
+                              type="secondary" 
+                              style={{ 
+                                fontSize: 11,
+                                fontFamily: 'monospace',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {brand.spell}
+                            </Text>
+                          )}
+
+                          {/* 底部信息 */}
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginTop: 4,
+                          }}>
+                            <Text 
+                              style={{ 
+                                fontSize: 11,
+                                color: '#999',
+                              }}
+                            >
+                              #{brand.order || 0}
+                            </Text>
+                            <Tag 
+                              color={display ? 'success' : 'default'}
+                              style={{
+                                margin: 0,
+                                fontSize: 11,
+                                padding: '0 6px',
+                                lineHeight: '18px',
+                              }}
+                            >
+                              {display ? '展示' : '隐藏'}
+                            </Tag>
+                          </div>
+                        </div>
+                      </Card>
+                    </Col>
+                  );
+                })}
+              </Row>
+
+              {/* 分页 */}
+              <div style={{ 
+                marginTop: 24, 
+                display: 'flex', 
+                justifyContent: 'center' 
+              }}>
+                <Pagination
+                  current={currentPage}
+                  pageSize={pageSize}
+                  total={filteredBrands.length}
+                  onChange={(page, size) => {
+                    setCurrentPage(page);
+                    setPageSize(size);
+                  }}
+                  showSizeChanger
+                  showQuickJumper
+                  pageSizeOptions={[60, 120, 180, 240]}
+                  showTotal={(total, range) => 
+                    `第 ${range[0]}-${range[1]} 个，共 ${total} 个品牌`
+                  }
+                />
+              </div>
+            </>
           ) : (
             <Empty 
               description="没有找到匹配的品牌" 
