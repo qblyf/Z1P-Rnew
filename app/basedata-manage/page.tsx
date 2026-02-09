@@ -53,6 +53,8 @@ import {
 } from '@zsqk/z1-sdk/es/z1p/spu-spec-attribute';
 import { SpecName } from '@zsqk/z1-sdk/es/z1p/spu-spec-attribute-types';
 import type { SpuSpecAttribute } from '@zsqk/z1-sdk/es/z1p/spu-spec-attribute-types';
+import { getSPUListNew } from '@zsqk/z1-sdk/es/z1p/product';
+import { SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 
 const { Title, Text } = Typography;
 
@@ -898,9 +900,10 @@ interface DraggableSpecCardProps {
   index: number;
   moveCard: (dragIndex: number, hoverIndex: number) => void;
   onEdit: (zid: string) => void;
+  usageCount?: number;
 }
 
-function DraggableSpecCard({ spec, index, moveCard, onEdit }: DraggableSpecCardProps) {
+function DraggableSpecCard({ spec, index, moveCard, onEdit, usageCount }: DraggableSpecCardProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   const [{ handlerId }, drop] = useDrop<
@@ -1028,6 +1031,21 @@ function DraggableSpecCard({ spec, index, moveCard, onEdit }: DraggableSpecCardP
           >
             排序 {spec.sortWeight}
           </Text>
+
+          {/* 使用次数 */}
+          {usageCount !== undefined && (
+            <Text
+              type="secondary"
+              style={{
+                fontSize: 11,
+                color: usageCount > 0 ? '#52c41a' : '#999',
+                textAlign: 'center',
+                fontWeight: usageCount > 0 ? 500 : 400,
+              }}
+            >
+              使用 {usageCount} 次
+            </Text>
+          )}
         </div>
       </Card>
     </div>
@@ -1053,6 +1071,55 @@ function SpecManage({ specName, title }: SpecManageProps) {
   const [pageSize, setPageSize] = useState(60);
   const [hasChanges, setHasChanges] = useState(false);
   const [originalSpecs, setOriginalSpecs] = useState<SpuSpecAttribute[]>([]);
+  const [usageCounts, setUsageCounts] = useState<Map<string, number>>(new Map());
+
+  // 加载使用次数统计
+  const loadUsageCounts = useCallback(async () => {
+    if (!token) return new Map<string, number>();
+    try {
+      // 获取所有SPU数据
+      const spuList = await getSPUListNew(
+        {
+          states: [SPUState.在用],
+          limit: 10000, // 获取所有数据
+          offset: 0,
+          orderBy: [
+            { key: 'p."id"', sort: 'DESC' }
+          ],
+        },
+        ['id', 'name', 'skuIDs']
+      );
+
+      // 统计每个规格值的使用次数
+      const counts = new Map<string, number>();
+      
+      for (const spu of spuList) {
+        if (spu.skuIDs && Array.isArray(spu.skuIDs)) {
+          for (const sku of spu.skuIDs) {
+            let specValue: string | undefined;
+            
+            // 根据规格类型获取对应的字段
+            if (specName === SpecName.组合 && 'combo' in sku) {
+              specValue = sku.combo;
+            } else if (specName === SpecName.规格 && 'spec' in sku) {
+              specValue = sku.spec;
+            } else if (specName === SpecName.颜色 && 'color' in sku) {
+              specValue = sku.color;
+            }
+            
+            if (specValue) {
+              counts.set(specValue, (counts.get(specValue) || 0) + 1);
+            }
+          }
+        }
+      }
+      
+      return counts;
+    } catch (error) {
+      console.error('加载使用次数失败:', error);
+      return new Map<string, number>();
+    }
+  }, [token, specName]);
 
   // 加载规格数据
   const loadSpecs = useCallback(async () => {
@@ -1068,13 +1135,17 @@ function SpecManage({ specName, title }: SpecManageProps) {
       setFilteredSpecs(typeSpecs);
       setOriginalSpecs(JSON.parse(JSON.stringify(typeSpecs)));
       setHasChanges(false);
+      
+      // 加载使用次数
+      const counts = await loadUsageCounts();
+      setUsageCounts(counts);
     } catch (error) {
       message.error('加载失败');
       console.error(error);
     } finally {
       setLoading(false);
     }
-  }, [token, specName]);
+  }, [token, specName, loadUsageCounts]);
 
   useEffect(() => {
     loadSpecs();
@@ -1104,10 +1175,15 @@ function SpecManage({ specName, title }: SpecManageProps) {
 
   // 统计数据
   const stats = useMemo(() => {
+    const totalUsage = Array.from(usageCounts.values()).reduce((sum, count) => sum + count, 0);
+    const usedCount = specs.filter(spec => (usageCounts.get(spec.value) || 0) > 0).length;
     return {
       total: specs.length,
+      used: usedCount,
+      unused: specs.length - usedCount,
+      totalUsage,
     };
-  }, [specs]);
+  }, [specs, usageCounts]);
 
   const handleEdit = (zid: string) => {
     setSelected(zid);
@@ -1243,7 +1319,7 @@ function SpecManage({ specName, title }: SpecManageProps) {
 
         {/* 统计卡片 */}
         <Row gutter={16} style={{ marginBottom: 24 }}>
-          <Col xs={24} sm={8}>
+          <Col xs={24} sm={12} md={6}>
             <Card
               size="small"
               style={{
@@ -1269,6 +1345,96 @@ function SpecManage({ specName, title }: SpecManageProps) {
                   justifyContent: 'center'
                 }}>
                   <TagsOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+                </div>
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card
+              size="small"
+              style={{
+                borderRadius: 12,
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <Text type="secondary" style={{ fontSize: 13 }}>已使用</Text>
+                  <Title level={3} style={{ margin: '4px 0 0', color: '#52c41a' }}>
+                    {stats.used}
+                  </Title>
+                </div>
+                <div style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  backgroundColor: '#f6ffed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <EyeOutlined style={{ fontSize: 24, color: '#52c41a' }} />
+                </div>
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card
+              size="small"
+              style={{
+                borderRadius: 12,
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <Text type="secondary" style={{ fontSize: 13 }}>未使用</Text>
+                  <Title level={3} style={{ margin: '4px 0 0', color: '#faad14' }}>
+                    {stats.unused}
+                  </Title>
+                </div>
+                <div style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  backgroundColor: '#fffbe6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <EyeInvisibleOutlined style={{ fontSize: 24, color: '#faad14' }} />
+                </div>
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card
+              size="small"
+              style={{
+                borderRadius: 12,
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <Text type="secondary" style={{ fontSize: 13 }}>总使用次数</Text>
+                  <Title level={3} style={{ margin: '4px 0 0', color: '#722ed1' }}>
+                    {stats.totalUsage}
+                  </Title>
+                </div>
+                <div style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  backgroundColor: '#f9f0ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <TagsOutlined style={{ fontSize: 24, color: '#722ed1' }} />
                 </div>
               </div>
             </Card>
@@ -1345,6 +1511,7 @@ function SpecManage({ specName, title }: SpecManageProps) {
                         index={index}
                         moveCard={moveCard}
                         onEdit={handleEdit}
+                        usageCount={usageCounts.get(spec.value)}
                       />
                     </Col>
                   );
