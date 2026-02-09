@@ -964,8 +964,35 @@ function DraggableSpecCard({ spec, index, moveCard, onEdit, usageCount }: Dragga
       style={{
         opacity: isDragging ? 0.5 : 1,
         cursor: 'move',
+        position: 'relative',
       }}
     >
+      {/* 使用次数气泡 */}
+      {usageCount !== undefined && (
+        <div
+          style={{
+            position: 'absolute',
+            top: -6,
+            right: -6,
+            minWidth: 24,
+            height: 24,
+            padding: '0 6px',
+            backgroundColor: usageCount > 0 ? '#52c41a' : '#d9d9d9',
+            color: '#fff',
+            borderRadius: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            fontWeight: 600,
+            zIndex: 1,
+            boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+            pointerEvents: 'none',
+          }}
+        >
+          {usageCount}
+        </div>
+      )}
       <Card
         className="spec-card"
         size="small"
@@ -1031,21 +1058,6 @@ function DraggableSpecCard({ spec, index, moveCard, onEdit, usageCount }: Dragga
           >
             排序 {spec.sortWeight}
           </Text>
-
-          {/* 使用次数 */}
-          {usageCount !== undefined && (
-            <Text
-              type="secondary"
-              style={{
-                fontSize: 11,
-                color: usageCount > 0 ? '#52c41a' : '#999',
-                textAlign: 'center',
-                fontWeight: usageCount > 0 ? 500 : 400,
-              }}
-            >
-              使用 {usageCount} 次
-            </Text>
-          )}
         </div>
       </Card>
     </div>
