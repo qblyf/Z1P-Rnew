@@ -26,10 +26,27 @@ export function MenuStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // 根据当前路径自动设置选中的一级菜单
+  // 只在初始化或路径变化时设置，不覆盖用户的手动选择
   useEffect(() => {
     const parentMenu = findParentMenuByPath(pathname);
-    if (parentMenu && parentMenu.id !== selectedParentMenuId) {
-      setSelectedParentMenuId(parentMenu.id);
+    if (parentMenu) {
+      // 只在以下情况更新：
+      // 1. 还没有选中任何菜单（初始化）
+      // 2. 当前选中的菜单不包含当前路径（用户导航到了其他菜单的页面）
+      if (!selectedParentMenuId) {
+        setSelectedParentMenuId(parentMenu.id);
+      } else {
+        // 检查当前选中的菜单是否包含当前路径
+        const currentSelectedMenu = MENU_CONFIG.find(m => m.id === selectedParentMenuId);
+        const currentMenuHasPath = currentSelectedMenu?.children?.some(
+          child => child.href === pathname
+        );
+        
+        // 如果当前选中的菜单不包含当前路径，则切换到正确的菜单
+        if (!currentMenuHasPath && parentMenu.id !== selectedParentMenuId) {
+          setSelectedParentMenuId(parentMenu.id);
+        }
+      }
     }
   }, [pathname, findParentMenuByPath, selectedParentMenuId]);
 
