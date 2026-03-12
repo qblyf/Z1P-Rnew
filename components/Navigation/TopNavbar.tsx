@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { useNavigation } from '../../datahooks/navigation';
+import { useMenuState } from '../../datahooks/menuState';
 import { UserProfile } from './UserProfile';
 import { getIcon } from '../../utils/getIcon';
 
 export function TopNavbar() {
-  const { menuConfig, parentMenu } = useNavigation();
+  const { menuConfig } = useNavigation();
+  const { selectedParentMenuId, setSelectedParentMenuId } = useMenuState();
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
@@ -31,11 +33,11 @@ export function TopNavbar() {
         {/* Primary Menu (一级菜单) */}
         <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
           {menuConfig.map((item) => {
-            const isActive = parentMenu?.id === item.id;
+            const isActive = selectedParentMenuId === item.id;
             return (
-              <Link
+              <button
                 key={item.id}
-                href={item.children?.[0]?.href || '#'}
+                onClick={() => setSelectedParentMenuId(item.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                   isActive
                     ? 'bg-blue-50 text-blue-600 font-medium'
@@ -44,7 +46,7 @@ export function TopNavbar() {
               >
                 {getIcon(item.icon, 18)}
                 <span className="text-sm">{item.label}</span>
-              </Link>
+              </button>
             );
           })}
         </nav>

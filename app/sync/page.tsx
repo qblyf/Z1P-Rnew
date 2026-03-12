@@ -62,8 +62,25 @@ function ClientPage() {
   const [disabled, setDisabled] = useState(false);
   
   // 账套列表和名称映射
-  const [tenantList, setTenantList] = useState<Array<{ id: string; name: string }>>([]);
+  const [tenantList, setTenantList] = useState<Array<{ id: string; name: string; tenantID?: string }>>([]);
   const [tenantNameMap, setTenantNameMap] = useState<Record<string, string>>({});
+  
+  // clientName 到 tenantID 的映射表（临时解决方案）
+  // TODO: 这个映射应该从后端 API 获取
+  const clientNameToTenantID: Record<string, string> = {
+    '高远控股': 'newgy',
+    'ZSQK test': 'zsqk-test',
+    '桂讯': 'guixun',
+    '高远': 'gaoyuan',
+    '好目标': 'haomubiao',
+    '掌上乾坤正式版': 'zsqk',
+    '晋城小米': 'jincheng-xiaomi',
+    '吕梁小米': 'lvliang-xiaomi',
+    '佰成': 'baicheng',
+    '济源迪信通': 'jiyuan-dixintong',
+    '长发数码': 'changfa-shuma',
+    '平诺': 'pingnuo',
+  };
   
   // 选中的账套列表
   const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
@@ -75,21 +92,36 @@ function ClientPage() {
     
     getSysSettings({ auth: token })
       .then(res => {
-        const tenants = res.map(v => ({
-          id: v.clientName, // 使用 clientName 作为 tenantID
-          name: v.clientName
-        }));
-        setTenantList(tenants);
+        console.log('getSysSettings 返回数据:', res);
+        const tenants = res.map(v => {
+          const tenantID = clientNameToTenantID[v.clientName];
+          if (!tenantID) {
+            console.warn(`未找到 clientName "${v.clientName}" 对应的 tenantID`);
+          }
+          return {
+            id: tenantID || v.clientName, // 使用映射的 tenantID，如果没有则使用 clientName
+            name: v.clientName,
+            tenantID: tenantID
+          };
+        });
+        
+        // 过滤掉没有 tenantID 的账套
+        const validTenants = tenants.filter(t => t.tenantID);
+        if (validTenants.length < tenants.length) {
+          console.warn(`有 ${tenants.length - validTenants.length} 个账套没有配置 tenantID 映射，已过滤`);
+        }
+        
+        setTenantList(validTenants);
         
         // 创建名称映射
         const nameMap: Record<string, string> = {};
-        tenants.forEach(t => {
+        validTenants.forEach(t => {
           nameMap[t.id] = t.name;
         });
         setTenantNameMap(nameMap);
         
         // 默认全选
-        setSelectedTenants(tenants.map(t => t.id));
+        setSelectedTenants(validTenants.map(t => t.id));
       })
       .catch(err => {
         console.error('获取账套列表失败:', err);
@@ -165,6 +197,7 @@ function ClientPage() {
         // 步骤4: 使用选中的账套列表
         const tenantIDs = selectedTenants;
         console.log(`准备同步 ${tenantIDs.length} 个账套:`, tenantIDs);
+        console.log('账套列表详情:', tenantList.filter(t => tenantIDs.includes(t.id)));
         
         // 初始化账套状态
         const initialStatus: Record<string, any> = {};
@@ -314,6 +347,18 @@ function ClientPage() {
         subTitle="将数据同步到各个账套中"
       />
       <Content>
+        {/* 临时解决方案警告 */}
+        {tenantList.length === 0 && (
+          <Alert
+            message="账套配置提示"
+            description="当前使用硬编码的 clientName 到 tenantID 映射表。如果有新账套无法同步，请联系开发人员更新映射配置。"
+            type="warning"
+            showIcon
+            closable
+            style={{ marginBottom: 16 }}
+          />
+        )}
+        
         <Row gutter={[16, 16]}>
           {/* 左侧：同步控制和进度 */}
           <Col xs={24} lg={10}>

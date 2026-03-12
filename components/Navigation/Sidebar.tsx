@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigation } from '../../datahooks/navigation';
+import { useMenuState } from '../../datahooks/menuState';
+import { useMemo } from 'react';
 import { getIcon } from '../../utils/getIcon';
 
 interface SidebarProps {
@@ -11,10 +13,16 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
-  const { parentMenu, currentMenu } = useNavigation();
+  const { currentMenu, menuConfig } = useNavigation();
+  const { selectedParentMenuId } = useMenuState();
 
-  // 如果没有父级菜单（一级菜单），不显示侧边栏
-  if (!parentMenu || !parentMenu.children || parentMenu.children.length === 0) {
+  // 根据选中的一级菜单获取对应的菜单项
+  const selectedParentMenu = useMemo(() => {
+    return menuConfig.find((item) => item.id === selectedParentMenuId);
+  }, [menuConfig, selectedParentMenuId]);
+
+  // 如果没有选中的一级菜单或没有子菜单，不显示侧边栏
+  if (!selectedParentMenu || !selectedParentMenu.children || selectedParentMenu.children.length === 0) {
     return null;
   }
 
@@ -29,7 +37,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         collapsed ? 'justify-center' : ''
       }`}>
         {!collapsed && (
-          <h2 className="text-sm font-semibold text-gray-900 px-2">{parentMenu.label}</h2>
+          <h2 className="text-sm font-semibold text-gray-900 px-2">{selectedParentMenu.label}</h2>
         )}
         <button
           onClick={onToggle}
@@ -47,7 +55,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* 二级菜单列表 */}
       <div className="p-2">
         <nav className="space-y-1">
-          {parentMenu.children.map((item) => {
+          {selectedParentMenu.children.map((item) => {
             const isActive = currentMenu?.id === item.id;
             
             return (

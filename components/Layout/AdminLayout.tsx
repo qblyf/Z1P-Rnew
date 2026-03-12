@@ -4,7 +4,6 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Sidebar } from '../Navigation/Sidebar';
 import { TopNavbar } from '../Navigation/TopNavbar';
-import { Breadcrumb } from '../Navigation/Breadcrumb';
 import { TabBar } from '../Navigation/TabBar';
 import { useTokenContext } from '../../datahooks/auth';
 
@@ -76,11 +75,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         
         {/* 内容区域 */}
         <main className="flex-1 flex flex-col overflow-hidden">
-          {/* 固定区域：面包屑和标签页 */}
+          {/* 固定区域：标签页 */}
           <div className="flex-shrink-0 bg-white">
-            <div className="px-6 pt-4 pb-2">
-              <Breadcrumb />
-            </div>
             <TabBar />
           </div>
           
