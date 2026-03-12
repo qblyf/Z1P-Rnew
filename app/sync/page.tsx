@@ -12,7 +12,6 @@ import { CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, Sy
 import { PageHeader } from '@ant-design/pro-components';
 import { Suspense, useMemo, useState } from 'react';
 import { Content } from '../../components/style/Content';
-import { postAwait } from '../../error';
 import PageWrap from '../../components/PageWrap';
 
 // 账套配置 - 从配置文件中获取所有账套ID
@@ -25,29 +24,45 @@ const ALL_TENANT_IDS = [
   'znyxt', 'hwyxt', 'xmyxt', 'pgyxt', 'yysyxt'
 ] as const;
 
-// 账套名称映射（用于显示友好的名称）
-const TENANT_NAMES: Record<string, string> = {
-  'newgy': '高远控股',
-  'gx': '广西',
-  'zsqk': '中晟',
-  'gy': '高远',
-  'gx0775': '广西0775',
-  'haombo': '好博',
-  'zsqkp': '中晟科普',
-  'jcxiaomi': '金昌小米',
-  'llxiaomi': '临洮小米',
-  'baicheng': '白城',
-  'jiyuandixintong': '吉源地信通',
-  'changfasm': '长发商贸',
-  'pingnuo': '苹诺',
-  'kaisheng': '凯盛',
-  'linji': '临济',
-  'sulian': '苏联',
-  'znyxt': '智能云系统',
-  'hwyxt': '华为云系统',
-  'xmyxt': '小米云系统',
-  'pgyxt': '苹果云系统',
-  'yysyxt': '应用商业系统'
+// 尝试从配置文件中获取账套名称，如果失败则使用备用映射
+const getTenantName = (tenantId: string): string => {
+  // 尝试从配置文件中读取（如果存在）
+  try {
+    // 这里可以尝试导入实际的配置文件
+    // const { z1ClientsObj } = require('../../z1clients');
+    // if (z1ClientsObj[tenantId]?.name) {
+    //   return z1ClientsObj[tenantId].name;
+    // }
+  } catch (error) {
+    // 配置文件不存在或读取失败，使用备用映射
+  }
+  
+  // 备用名称映射
+  const FALLBACK_TENANT_NAMES: Record<string, string> = {
+    'newgy': '高远控股',
+    'gx': '广西',
+    'zsqk': '中晟',
+    'gy': '高远',
+    'gx0775': '广西0775',
+    'haombo': '好博',
+    'zsqkp': '中晟科普',
+    'jcxiaomi': '金昌小米',
+    'llxiaomi': '临洮小米',
+    'baicheng': '白城',
+    'jiyuandixintong': '济源迪信通', // 修正：原为"吉源地信通"
+    'changfasm': '长发商贸',
+    'pingnuo': '苹诺',
+    'kaisheng': '凯盛',
+    'linji': '临济',
+    'sulian': '苏联',
+    'znyxt': '智能云系统',
+    'hwyxt': '华为云系统',
+    'xmyxt': '小米云系统',
+    'pgyxt': '苹果云系统',
+    'yysyxt': '应用商业系统'
+  };
+  
+  return FALLBACK_TENANT_NAMES[tenantId] || tenantId;
 };
 
 export default function () {
@@ -96,143 +111,151 @@ function ClientPage() {
 
   const fn = useMemo(() => {
     console.log('SyncButton init');
-    return () => {
-      postAwait(
-        async () => {
-          setDisabled(true);
-          setProductSyncInfo(undefined);
-          setProgress(0);
-          setCurrentStepIndex(0);
-          setTenantSyncStatus({});
+    return async () => {
+      setDisabled(true);
+      setProductSyncInfo(undefined);
+      setProgress(0);
+      setCurrentStepIndex(0);
+      setTenantSyncStatus({});
+      
+      // 设置超时处理
+      const timeoutId = setTimeout(() => {
+        setMsg('同步超时，请检查网络连接后重试');
+        setCurrentStep('');
+        setProgress(0);
+        setCurrentStepIndex(-1);
+        setDisabled(false);
+      }, 180000); // 3分钟超时
+      
+      try {
+        // 步骤1: 拉取数据
+        setCurrentStep('正在从公库拉取数据...');
+        setCurrentStepIndex(0);
+        setProgress(10);
+        const data = await pullAllData();
+        
+        // 步骤2: 生成同步数据相关信息  
+        setCurrentStep('正在整理同步数据...');
+        setCurrentStepIndex(1);
+        setProgress(30);
+        const syncDataResult = await addSyncData({ data });
+        const syncDataID = syncDataResult.syncDataID;
+        
+        // 步骤3: 生成同步日志
+        setCurrentStep('正在生成同步日志...');
+        setCurrentStepIndex(2);
+        setProgress(40);
+        const logID = await addSyncLogWithData({ syncDataID, data });
+        
+        // 步骤4: 获取需要同步的账套列表
+        // 使用完整的账套列表
+        const syncClientLogIDs = syncDataResult.syncClientLogIDs || [];
+        
+        // 如果SDK返回了具体的客户端日志ID，使用对应数量的账套
+        // 否则使用所有配置的账套
+        const tenantIDs = syncClientLogIDs.length > 0 
+          ? ALL_TENANT_IDS.slice(0, syncClientLogIDs.length)
+          : ALL_TENANT_IDS;
+          
+        console.log(`准备同步 ${tenantIDs.length} 个账套:`, tenantIDs);
+        
+        // 初始化账套状态
+        const initialStatus: Record<string, any> = {};
+        tenantIDs.forEach(id => {
+          initialStatus[id] = { status: 'waiting' };
+        });
+        setTenantSyncStatus(initialStatus);
+        
+        setCurrentStep('正在向各账套同步数据...');
+        setCurrentStepIndex(3);
+        const totalSets = tenantIDs.length;
+        const syncResults: Array<{
+          name: string;
+          errMsg?: string;
+          resCode: string;
+          status: string;
+        }> = [];
+        
+        // 步骤5: 循环调用 syncProductSingle 向各账套写数据
+        for (let i = 0; i < totalSets; i++) {
+          const tenantID = tenantIDs[i];
+          const currentProgress = 40 + Math.floor((i / totalSets) * 50);
+          setProgress(currentProgress);
+          setCurrentStep(`正在同步账套 ${getTenantName(tenantID)} (${i + 1}/${totalSets})...`);
+          
+          // 更新当前账套状态为同步中
+          setTenantSyncStatus(prev => ({
+            ...prev,
+            [tenantID]: { 
+              status: 'syncing', 
+              startTime: Date.now() 
+            }
+          }));
           
           try {
-            // 步骤1: 拉取数据
-            setCurrentStep('正在从公库拉取数据...');
-            setCurrentStepIndex(0);
-            setProgress(10);
-            const data = await pullAllData();
-            
-            // 步骤2: 生成同步数据相关信息  
-            setCurrentStep('正在整理同步数据...');
-            setCurrentStepIndex(1);
-            setProgress(30);
-            const syncDataResult = await addSyncData({ data });
-            const syncDataID = syncDataResult.syncDataID;
-            
-            // 步骤3: 生成同步日志
-            setCurrentStep('正在生成同步日志...');
-            setCurrentStepIndex(2);
-            setProgress(40);
-            const logID = await addSyncLogWithData({ syncDataID, data });
-            
-            // 步骤4: 获取需要同步的账套列表
-            // 使用完整的账套列表
-            const syncClientLogIDs = syncDataResult.syncClientLogIDs || [];
-            
-            // 如果SDK返回了具体的客户端日志ID，使用对应数量的账套
-            // 否则使用所有配置的账套
-            const tenantIDs = syncClientLogIDs.length > 0 
-              ? ALL_TENANT_IDS.slice(0, syncClientLogIDs.length)
-              : ALL_TENANT_IDS;
-              
-            console.log(`准备同步 ${tenantIDs.length} 个账套:`, tenantIDs);
-            
-            // 初始化账套状态
-            const initialStatus: Record<string, any> = {};
-            tenantIDs.forEach(id => {
-              initialStatus[id] = { status: 'waiting' };
+            const result = await syncProductSingle({ 
+              tenantID, 
+              syncDataID, 
+              data,
+              logID 
             });
-            setTenantSyncStatus(initialStatus);
             
-            setCurrentStep('正在向各账套同步数据...');
-            setCurrentStepIndex(3);
-            const totalSets = tenantIDs.length;
-            const syncResults: Array<{
-              name: string;
-              errMsg?: string;
-              resCode: string;
-              status: string;
-            }> = [];
-            
-            // 步骤5: 循环调用 syncProductSingle 向各账套写数据
-            for (let i = 0; i < totalSets; i++) {
-              const tenantID = tenantIDs[i];
-              const currentProgress = 40 + Math.floor((i / totalSets) * 50);
-              setProgress(currentProgress);
-              setCurrentStep(`正在同步账套 ${TENANT_NAMES[tenantID] || tenantID} (${i + 1}/${totalSets})...`);
-              
-              // 更新当前账套状态为同步中
-              setTenantSyncStatus(prev => ({
-                ...prev,
-                [tenantID]: { 
-                  status: 'syncing', 
-                  startTime: Date.now() 
-                }
-              }));
-              
-              try {
-                const result = await syncProductSingle({ 
-                  tenantID, 
-                  syncDataID, 
-                  data,
-                  logID 
-                });
-                
-                // 更新账套状态为成功
-                setTenantSyncStatus(prev => ({
-                  ...prev,
-                  [tenantID]: { 
-                    status: 'success', 
-                    startTime: prev[tenantID]?.startTime,
-                    endTime: Date.now(),
-                    message: result.errMsg || '同步成功'
-                  }
-                }));
-                
-                syncResults.push({
-                  name: TENANT_NAMES[tenantID] || tenantID,
-                  resCode: result.resCode === 'complete' ? '已成功' : '失败',
-                  status: '已完成',
-                  errMsg: result.errMsg || '',
-                });
-              } catch (error) {
-                // 更新账套状态为失败
-                const errorMsg = error instanceof Error ? error.message : '未知错误';
-                setTenantSyncStatus(prev => ({
-                  ...prev,
-                  [tenantID]: { 
-                    status: 'error', 
-                    startTime: prev[tenantID]?.startTime,
-                    endTime: Date.now(),
-                    message: errorMsg
-                  }
-                }));
-                
-                syncResults.push({
-                  name: TENANT_NAMES[tenantID] || tenantID,
-                  resCode: '失败',
-                  status: '已完成',
-                  errMsg: errorMsg,
-                });
+            // 更新账套状态为成功
+            setTenantSyncStatus(prev => ({
+              ...prev,
+              [tenantID]: { 
+                status: 'success', 
+                startTime: prev[tenantID]?.startTime,
+                endTime: Date.now(),
+                message: result.errMsg || '同步成功'
               }
-            }
+            }));
             
-            setProductSyncInfo(syncResults);
-            setProgress(100);
-            setCurrentStepIndex(4);
-            setCurrentStep('');
-            setMsg('已完成同步请求');
+            syncResults.push({
+              name: getTenantName(tenantID),
+              resCode: result.resCode === 'complete' ? '已成功' : '失败',
+              status: '已完成',
+              errMsg: result.errMsg || '',
+            });
           } catch (error) {
-            setMsg(`同步失败: ${error instanceof Error ? error.message : '未知错误'}`);
-            setCurrentStep('');
-            setProgress(0);
-            setCurrentStepIndex(-1);
-          } finally {
-            setDisabled(false);
+            // 更新账套状态为失败
+            const errorMsg = error instanceof Error ? error.message : '未知错误';
+            setTenantSyncStatus(prev => ({
+              ...prev,
+              [tenantID]: { 
+                status: 'error', 
+                startTime: prev[tenantID]?.startTime,
+                endTime: Date.now(),
+                message: errorMsg
+              }
+            }));
+            
+            syncResults.push({
+              name: getTenantName(tenantID),
+              resCode: '失败',
+              status: '已完成',
+              errMsg: errorMsg,
+            });
           }
-        },
-        { timeoutThreshold: 180000 } // 超时时间3分钟
-      )();
+        }
+        
+        setProductSyncInfo(syncResults);
+        setProgress(100);
+        setCurrentStepIndex(4);
+        setCurrentStep('');
+        setMsg('已完成同步请求');
+        
+        // 清除超时定时器
+        clearTimeout(timeoutId);
+      } catch (error) {
+        clearTimeout(timeoutId);
+        setMsg(`同步失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        setCurrentStep('');
+        setProgress(0);
+        setCurrentStepIndex(-1);
+      } finally {
+        setDisabled(false);
+      }
     };
   }, []);
 
@@ -440,7 +463,7 @@ function ClientPage() {
                             title={
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span style={{ fontWeight: 500 }}>
-                                  {TENANT_NAMES[tenantId] || tenantId}
+                                  {getTenantName(tenantId)}
                                 </span>
                                 {duration && (
                                   <span style={{ 
