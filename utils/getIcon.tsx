@@ -8,6 +8,15 @@ import {
   LogOut,
   Settings,
   Search,
+  List,
+  Grid,
+  CheckCircle,
+  Zap,
+  Table,
+  FolderOpen,
+  RefreshCw,
+  Users,
+  History,
   LucideIcon,
 } from 'lucide-react';
 
@@ -21,6 +30,15 @@ const iconMap: Record<string, LucideIcon> = {
   LogOut,
   Settings,
   Search,
+  List,
+  Grid,
+  CheckCircle,
+  Zap,
+  Table,
+  FolderOpen,
+  RefreshCw,
+  Users,
+  History,
 };
 
 export function getIcon(iconName?: string, size: number = 20) {

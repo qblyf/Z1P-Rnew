@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigation } from '../../datahooks/navigation';
+import { getIcon } from '../../utils/getIcon';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -20,7 +21,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside 
       className={`bg-white border-r border-gray-200 h-full overflow-y-auto transition-all duration-300 ${
-        collapsed ? 'w-12' : 'w-64'
+        collapsed ? 'w-16' : 'w-64'
       }`}
     >
       {/* 折叠按钮 */}
@@ -32,7 +33,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         )}
         <button
           onClick={onToggle}
-          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
           title={collapsed ? '展开侧边栏' : '收起侧边栏'}
         >
           {collapsed ? (
@@ -53,14 +54,22 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <Link
                 key={item.id}
                 href={item.href || '#'}
-                className={`block px-3 py-2 text-sm rounded-lg transition-colors ${
+                className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors ${
                   isActive
                     ? 'bg-blue-50 text-blue-600 font-medium'
                     : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                } ${collapsed ? 'text-center' : ''}`}
+                } ${collapsed ? 'justify-center' : ''}`}
                 title={collapsed ? item.label : undefined}
               >
-                {collapsed ? item.label.charAt(0) : item.label}
+                {/* 图标 */}
+                <div className="flex-shrink-0">
+                  {getIcon(item.icon, 18)}
+                </div>
+                
+                {/* 文字标签 - 仅在展开时显示 */}
+                {!collapsed && (
+                  <span className="truncate">{item.label}</span>
+                )}
               </Link>
             );
           })}
