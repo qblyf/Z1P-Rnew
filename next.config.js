@@ -49,7 +49,7 @@ const nextConfig = {
   // 禁用静态页面生成 - 所有页面都使用 SSR
   // 这避免了预渲染时的浏览器 API 错误
   experimental: {
-    isrMemoryCacheSize: 0,
+    // isrMemoryCacheSize 已在 Next.js 14+ 中移除
   },
 
   
