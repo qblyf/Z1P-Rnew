@@ -74,6 +74,11 @@ export const MENU_CONFIG: MenuItem[] = [
         href: '/basedata-manage',
       },
       {
+        id: 'sync',
+        label: '数据同步',
+        href: '/sync',
+      },
+      {
         id: 'data-export',
         label: '数据导出',
         href: '/data-export',
@@ -89,11 +94,6 @@ export const MENU_CONFIG: MenuItem[] = [
         id: 'tenant-manage',
         label: '账套管理',
         href: '/tenant-manage',
-      },
-      {
-        id: 'sync',
-        label: '数据同步',
-        href: '/sync',
       },
       {
         id: 'log',
