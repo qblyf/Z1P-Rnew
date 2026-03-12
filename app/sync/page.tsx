@@ -8,7 +8,7 @@ import {
 import { addSyncLogWithData } from '@zsqk/z1-sdk/es/z1p/sync-log';
 import { getSysSettings } from '@zsqk/z1-sdk/es/z1p/sys-setting';
 
-import { Button, Descriptions, Table, Progress, Space, Card, Row, Col, Tag, Steps, List, Avatar, Spin, Alert } from 'antd';
+import { Button, Descriptions, Table, Progress, Space, Card, Row, Col, Tag, Steps, List, Avatar, Spin, Alert, Checkbox, Divider } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, SyncOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { PageHeader } from '@ant-design/pro-components';
 import { Suspense, useMemo, useState, useEffect } from 'react';
@@ -64,6 +64,10 @@ function ClientPage() {
   // 账套列表和名称映射
   const [tenantList, setTenantList] = useState<Array<{ id: string; name: string }>>([]);
   const [tenantNameMap, setTenantNameMap] = useState<Record<string, string>>({});
+  
+  // 选中的账套列表
+  const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
+  const [selectAll, setSelectAll] = useState(true);
 
   // 获取账套列表
   useEffect(() => {
@@ -83,17 +87,43 @@ function ClientPage() {
           nameMap[t.id] = t.name;
         });
         setTenantNameMap(nameMap);
+        
+        // 默认全选
+        setSelectedTenants(tenants.map(t => t.id));
       })
       .catch(err => {
         console.error('获取账套列表失败:', err);
       });
   }, [token]);
 
+  // 处理全选/取消全选
+  const handleSelectAll = (checked: boolean) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedTenants(tenantList.map(t => t.id));
+    } else {
+      setSelectedTenants([]);
+    }
+  };
+
+  // 处理单个账套选择
+  const handleTenantSelect = (tenantId: string, checked: boolean) => {
+    if (checked) {
+      const newSelected = [...selectedTenants, tenantId];
+      setSelectedTenants(newSelected);
+      setSelectAll(newSelected.length === tenantList.length);
+    } else {
+      const newSelected = selectedTenants.filter(id => id !== tenantId);
+      setSelectedTenants(newSelected);
+      setSelectAll(false);
+    }
+  };
+
   const fn = useMemo(() => {
     console.log('SyncButton init');
     return async () => {
-      if (tenantList.length === 0) {
-        setMsg('账套列表为空，请稍后重试');
+      if (selectedTenants.length === 0) {
+        setMsg('请至少选择一个账套进行同步');
         return;
       }
 
@@ -132,8 +162,8 @@ function ClientPage() {
         setProgress(40);
         const logID = await addSyncLogWithData({ syncDataID, data });
         
-        // 步骤4: 使用从 getSysSettings 获取的账套列表
-        const tenantIDs = tenantList.map(t => t.id);
+        // 步骤4: 使用选中的账套列表
+        const tenantIDs = selectedTenants;
         console.log(`准备同步 ${tenantIDs.length} 个账套:`, tenantIDs);
         
         // 初始化账套状态
@@ -235,7 +265,7 @@ function ClientPage() {
         setDisabled(false);
       }
     };
-  }, [tenantList, tenantNameMap]);
+  }, [selectedTenants, tenantNameMap]);
 
   // 同步步骤配置
   const syncSteps = [
@@ -297,22 +327,85 @@ function ClientPage() {
                 <Descriptions.Item label="账套数量">
                   <strong>{tenantList.length}</strong> 个账套
                 </Descriptions.Item>
+                <Descriptions.Item label="已选账套">
+                  <strong style={{ color: selectedTenants.length === 0 ? '#ff4d4f' : '#1890ff' }}>
+                    {selectedTenants.length}
+                  </strong> 个账套
+                </Descriptions.Item>
                 <Descriptions.Item label="注意事项">
                   <span style={{ color: '#fa8c16' }}>⚠️</span> 同步时会锁表，请在数据修改完成后进行
                 </Descriptions.Item>
               </Descriptions>
               
+              {/* 账套选择区域 */}
+              <Divider orientation="left" style={{ margin: '16px 0 12px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 500 }}>选择同步账套</span>
+              </Divider>
+              
+              <div style={{ 
+                maxHeight: '200px', 
+                overflow: 'auto', 
+                border: '1px solid #f0f0f0',
+                borderRadius: '4px',
+                padding: '8px',
+                background: '#fafafa'
+              }}>
+                <Checkbox
+                  checked={selectAll}
+                  indeterminate={selectedTenants.length > 0 && selectedTenants.length < tenantList.length}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  style={{ 
+                    marginBottom: '8px', 
+                    fontWeight: 500,
+                    display: 'block',
+                    padding: '4px 8px',
+                    background: 'white',
+                    borderRadius: '4px'
+                  }}
+                >
+                  全选 ({tenantList.length} 个账套)
+                </Checkbox>
+                <Divider style={{ margin: '8px 0' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                  {tenantList.map(tenant => (
+                    <Checkbox
+                      key={tenant.id}
+                      checked={selectedTenants.includes(tenant.id)}
+                      onChange={(e) => handleTenantSelect(tenant.id, e.target.checked)}
+                      style={{ 
+                        padding: '4px 8px',
+                        background: 'white',
+                        borderRadius: '4px',
+                        fontSize: '12px'
+                      }}
+                    >
+                      {tenant.name}
+                    </Checkbox>
+                  ))}
+                </div>
+              </div>
+              
               <div style={{ marginTop: 16 }}>
                 <Button 
-                  disabled={disabled} 
+                  disabled={disabled || selectedTenants.length === 0} 
                   onClick={fn} 
                   type="primary" 
                   size="large"
                   block
                   icon={disabled ? <SyncOutlined spin /> : <DatabaseOutlined />}
                 >
-                  {disabled ? '正在同步...' : '开始数据同步'}
+                  {disabled ? '正在同步...' : `开始同步 (${selectedTenants.length} 个账套)`}
                 </Button>
+                {selectedTenants.length === 0 && (
+                  <div style={{ 
+                    marginTop: '8px', 
+                    color: '#ff4d4f', 
+                    fontSize: '12px',
+                    textAlign: 'center'
+                  }}>
+                    请至少选择一个账套
+                  </div>
+                )}
               </div>
 
               {/* 同步步骤 */}
