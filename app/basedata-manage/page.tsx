@@ -1581,7 +1581,7 @@ function SpecManage({ specName, title }: SpecManageProps) {
           {isAddMode ? (
             <SpecAdd specName={specName} title={title} onSuccess={handleSuccess} />
           ) : selected ? (
-            <SpecEdit zid={selected} title={title} onSuccess={handleSuccess} />
+            <SpecEdit zid={selected} title={title} onSuccess={handleSuccess} specName={specName} />
           ) : null}
         </Drawer>
       </div>
@@ -1589,8 +1589,8 @@ function SpecManage({ specName, title }: SpecManageProps) {
   );
 }
 
-function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void }) {
-  const { zid, title, onSuccess } = props;
+function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; specName: SpecName }) {
+  const { zid, title, onSuccess, specName } = props;
   const [input, setInput] = useState<{
     value?: string;
     label?: string[];
@@ -1599,6 +1599,9 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void })
   const [preData, setPreData] = useState<SpuSpecAttribute>();
   const [loading, setLoading] = useState(false);
   const [labelInput, setLabelInput] = useState('');
+  const [activeTab, setActiveTab] = useState('basic');
+  const [spuList, setSpuList] = useState<any[]>([]);
+  const [spuLoading, setSpuLoading] = useState(false);
 
   const { token } = useTokenContext();
 
@@ -1616,6 +1619,60 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void })
     lessAwait(fn)();
   }, [zid, token]);
 
+  // 加载使用该规格的SPU列表
+  const loadSpuList = useCallback(async () => {
+    if (!token || !preData) return;
+    try {
+      setSpuLoading(true);
+      // 获取所有SPU数据
+      const allSpus = await getSPUListNew(
+        {
+          states: [SPUState.在用],
+          limit: 10000,
+          offset: 0,
+          orderBy: [
+            { key: 'p."id"', sort: 'DESC' }
+          ],
+        },
+        ['id', 'name', 'skuIDs']
+      );
+
+      // 筛选包含该规格值的SPU
+      const filteredSpus = allSpus.filter((spu) => {
+        if (!spu.skuIDs || !Array.isArray(spu.skuIDs)) return false;
+        
+        return spu.skuIDs.some((sku: any) => {
+          let specValue: string | undefined;
+          
+          // 根据规格类型获取对应的字段
+          if (specName === SpecName.组合 && 'combo' in sku) {
+            specValue = sku.combo;
+          } else if (specName === SpecName.规格 && 'spec' in sku) {
+            specValue = sku.spec;
+          } else if (specName === SpecName.颜色 && 'color' in sku) {
+            specValue = sku.color;
+          }
+          
+          return specValue === preData.value;
+        });
+      });
+
+      setSpuList(filteredSpus);
+    } catch (error) {
+      console.error('加载SPU列表失败:', error);
+      message.error('加载SPU列表失败');
+    } finally {
+      setSpuLoading(false);
+    }
+  }, [token, preData, specName]);
+
+  // 当切换到使用列表标签页时加载数据
+  useEffect(() => {
+    if (activeTab === 'usage' && spuList.length === 0) {
+      loadSpuList();
+    }
+  }, [activeTab, spuList.length, loadSpuList]);
+
   if (!token) {
     throw new Error('因外层组件处理, 所以不该到达此处');
   }
@@ -1631,92 +1688,180 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void })
 
   const currentLabel = input.label ?? preData.label;
 
+  const tabItems: TabsProps['items'] = [
+    {
+      key: 'basic',
+      label: '基本信息',
+      children: (
+        <Form layout="vertical" style={{ marginTop: 8 }}>
+          <Form.Item
+            label={`${title}值`}
+            tooltip={`${title}的具体值，如"红色"、"128GB"等`}
+          >
+            <Input
+              value={input.value ?? preData.value}
+              onChange={e => {
+                setInput(update(input, { value: { $set: e.target.value } }));
+              }}
+              placeholder={`输入${title}值`}
+              style={{
+                borderRadius: 8,
+              }}
+            />
+          </Form.Item>
+
+          <Form.Item label="规格描述" tooltip="多个描述用逗号分隔">
+            <Input
+              value={labelInput}
+              onChange={e => {
+                setLabelInput(e.target.value);
+                const labels = e.target.value.split(',').map(l => l.trim()).filter(l => l);
+                setInput(update(input, { label: { $set: labels } }));
+              }}
+              placeholder="输入描述，用逗号分隔"
+              style={{ borderRadius: 8 }}
+            />
+            {currentLabel.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                {currentLabel.map((label, idx) => (
+                  <Tag key={idx} style={{ marginTop: 4 }}>{label}</Tag>
+                ))}
+              </div>
+            )}
+          </Form.Item>
+
+          <Form.Item label="排序权重" tooltip="数值越大越靠前显示 (0-999)">
+            <InputNumber
+              value={input.sortWeight ?? preData.sortWeight}
+              onChange={v => {
+                setInput(update(input, { sortWeight: { $set: v ?? undefined } }));
+              }}
+              placeholder="输入排序权重"
+              style={{ width: '100%', borderRadius: 8 }}
+              min={0}
+              max={999}
+            />
+          </Form.Item>
+
+          <Form.Item style={{ marginTop: 32, marginBottom: 0 }}>
+            <Button
+              type="primary"
+              loading={loading}
+              block
+              size="large"
+              disabled={input.value !== undefined && !input.value.trim()}
+              style={{ borderRadius: 8 }}
+              onClick={postAwait(async () => {
+                if (input.value !== undefined && !input.value.trim()) {
+                  message.warning(`${title}值不能为空`);
+                  return;
+                }
+                setLoading(true);
+                try {
+                  await editSpuSpecAttribute(
+                    {
+                      zid: preData.zid,
+                      value: input.value,
+                      label: input.label,
+                      sortWeight: input.sortWeight,
+                    },
+                    { auth: token }
+                  );
+                  message.success('修改成功');
+                  onSuccess?.();
+                } finally {
+                  setLoading(false);
+                }
+              })}
+            >
+              保存修改
+            </Button>
+          </Form.Item>
+        </Form>
+      ),
+    },
+    {
+      key: 'usage',
+      label: (
+        <span>
+          使用列表
+          {spuList.length > 0 && (
+            <Tag color="blue" style={{ marginLeft: 8 }}>
+              {spuList.length}
+            </Tag>
+          )}
+        </span>
+      ),
+      children: (
+        <div style={{ marginTop: 8 }}>
+          {spuLoading ? (
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <Spin />
+              <div style={{ marginTop: 12, color: '#999' }}>加载SPU列表...</div>
+            </div>
+          ) : spuList.length > 0 ? (
+            <div>
+              <div style={{ marginBottom: 16, color: '#666', fontSize: 14 }}>
+                共有 <Text strong style={{ color: '#1890ff' }}>{spuList.length}</Text> 个SPU使用了该{title}
+              </div>
+              <div style={{ 
+                maxHeight: '500px', 
+                overflowY: 'auto',
+                border: '1px solid #f0f0f0',
+                borderRadius: 8,
+              }}>
+                {spuList.map((spu, index) => (
+                  <div
+                    key={spu.id}
+                    style={{
+                      padding: '12px 16px',
+                      borderBottom: index < spuList.length - 1 ? '1px solid #f0f0f0' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'background-color 0.2s',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fafafa';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 500, marginBottom: 4 }}>
+                        {spu.name}
+                      </div>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        ID: {spu.id}
+                      </Text>
+                    </div>
+                    <Tag color="blue">
+                      {spu.skuIDs?.length || 0} SKU
+                    </Tag>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <Empty
+              description={`暂无SPU使用该${title}`}
+              style={{ padding: '60px 0' }}
+            />
+          )}
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <Form layout="vertical" style={{ marginTop: 8 }}>
-      <Form.Item
-        label={`${title}值`}
-        tooltip={`${title}的具体值，如"红色"、"128GB"等`}
-      >
-        <Input
-          value={input.value ?? preData.value}
-          onChange={e => {
-            setInput(update(input, { value: { $set: e.target.value } }));
-          }}
-          placeholder={`输入${title}值`}
-          style={{
-            borderRadius: 8,
-          }}
-        />
-      </Form.Item>
-
-      <Form.Item label="规格描述" tooltip="多个描述用逗号分隔">
-        <Input
-          value={labelInput}
-          onChange={e => {
-            setLabelInput(e.target.value);
-            const labels = e.target.value.split(',').map(l => l.trim()).filter(l => l);
-            setInput(update(input, { label: { $set: labels } }));
-          }}
-          placeholder="输入描述，用逗号分隔"
-          style={{ borderRadius: 8 }}
-        />
-        {currentLabel.length > 0 && (
-          <div style={{ marginTop: 8 }}>
-            {currentLabel.map((label, idx) => (
-              <Tag key={idx} style={{ marginTop: 4 }}>{label}</Tag>
-            ))}
-          </div>
-        )}
-      </Form.Item>
-
-      <Form.Item label="排序权重" tooltip="数值越大越靠前显示 (0-999)">
-        <InputNumber
-          value={input.sortWeight ?? preData.sortWeight}
-          onChange={v => {
-            setInput(update(input, { sortWeight: { $set: v ?? undefined } }));
-          }}
-          placeholder="输入排序权重"
-          style={{ width: '100%', borderRadius: 8 }}
-          min={0}
-          max={999}
-        />
-      </Form.Item>
-
-      <Form.Item style={{ marginTop: 32, marginBottom: 0 }}>
-        <Button
-          type="primary"
-          loading={loading}
-          block
-          size="large"
-          disabled={input.value !== undefined && !input.value.trim()}
-          style={{ borderRadius: 8 }}
-          onClick={postAwait(async () => {
-            if (input.value !== undefined && !input.value.trim()) {
-              message.warning(`${title}值不能为空`);
-              return;
-            }
-            setLoading(true);
-            try {
-              await editSpuSpecAttribute(
-                {
-                  zid: preData.zid,
-                  value: input.value,
-                  label: input.label,
-                  sortWeight: input.sortWeight,
-                },
-                { auth: token }
-              );
-              message.success('修改成功');
-              onSuccess?.();
-            } finally {
-              setLoading(false);
-            }
-          })}
-        >
-          保存修改
-        </Button>
-      </Form.Item>
-    </Form>
+    <Tabs
+      activeKey={activeTab}
+      onChange={setActiveTab}
+      items={tabItems}
+      style={{ marginTop: -8 }}
+    />
   );
 }
 
