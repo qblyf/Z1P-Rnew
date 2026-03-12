@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
 export interface TabItem {
@@ -87,23 +87,27 @@ export function TabsProvider({ children }: { children: ReactNode }) {
   // 监听路由变化，自动更新激活的标签页
   useEffect(() => {
     const currentTab = tabs.find((t) => t.path === pathname);
-    if (currentTab) {
+    if (currentTab && currentTab.key !== activeKey) {
       setActiveKey(currentTab.key);
     }
-  }, [pathname, tabs]);
+  }, [pathname, tabs, activeKey]);
+
+  // 使用 useMemo 缓存 context 值，避免不必要的重新渲染
+  const contextValue = useMemo(
+    () => ({
+      tabs,
+      activeKey,
+      addTab,
+      removeTab,
+      setActiveTab,
+      clearOtherTabs,
+      clearAllTabs,
+    }),
+    [tabs, activeKey, addTab, removeTab, setActiveTab, clearOtherTabs, clearAllTabs]
+  );
 
   return (
-    <TabsContext.Provider
-      value={{
-        tabs,
-        activeKey,
-        addTab,
-        removeTab,
-        setActiveTab,
-        clearOtherTabs,
-        clearAllTabs,
-      }}
-    >
+    <TabsContext.Provider value={contextValue}>
       {children}
     </TabsContext.Provider>
   );
