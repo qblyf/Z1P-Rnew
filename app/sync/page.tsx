@@ -7,7 +7,7 @@ import {
 } from '@zsqk/z1-sdk/es/z1p/sync-data';
 import { addSyncLogWithData } from '@zsqk/z1-sdk/es/z1p/sync-log';
 
-import { Button, Descriptions, Table, Progress, Space, Card, Row, Col, Tag, Steps, List, Avatar, Spin, Alert, Checkbox, Divider } from 'antd';
+import { Button, Descriptions, Table, Progress, Space, Card, Row, Col, Tag, Steps, List, Avatar, Alert, Checkbox } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, SyncOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { PageHeader } from '@ant-design/pro-components';
 import { Suspense, useMemo, useState, useEffect } from 'react';
@@ -73,23 +73,6 @@ function ClientPage() {
   }>>([]);
   const [tenantIDMap, setTenantIDMap] = useState<Record<string, string>>({});
   
-  // clientName 到 tenantID 的映射表
-  // 这个映射基于实际的账套配置
-  const clientNameToTenantID: Record<string, string> = {
-    '高远控股': 'newgy',
-    'ZSQK test': 'zsqk-test',
-    '桂讯': 'guixun',
-    '高远': 'gaoyuan',
-    '好目标': 'haomubiao',
-    '掌上乾坤正式版': 'zsqk',
-    '晋城小米': 'jincheng-xiaomi',
-    '吕梁小米': 'lvliang-xiaomi',
-    '佰成': 'baicheng',
-    '济源迪信通': 'jiyuan-dixintong',
-    '长发数码': 'changfa-shuma',
-    '平诺': 'pingnuo',
-  };
-  
   // 选中的账套列表
   const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(true);
@@ -98,7 +81,7 @@ function ClientPage() {
   useEffect(() => {
     if (!token) return;
     
-    // 使用 API 路由获取账套列表，避免直接调用有问题的 SDK
+    // 使用 API 路由获取账套列表
     fetch(`/api/tenants?token=${encodeURIComponent(token)}`)
       .then(res => res.json())
       .then(result => {
@@ -112,9 +95,10 @@ function ClientPage() {
           setMsg('提示：使用备用账套列表');
         }
         
+        // 直接使用 API 返回的账套列表，不再过滤
         const tenants = result.data.map((v: any) => {
-          // 从 remarks 中提取 tenantID，或使用映射表
-          let tenantID = clientNameToTenantID[v.name];
+          // 从 remarks 中提取 tenantID
+          let tenantID = v.id; // 使用 API 返回的 id 作为 tenantID
           
           // 如果 remarks 中包含 tenantID 信息，优先使用
           if (v.remarks && v.remarks.includes('tenantID:')) {
@@ -124,60 +108,30 @@ function ClientPage() {
             }
           }
           
-          if (!tenantID) {
-            console.warn(`未找到 clientName "${v.name}" 对应的 tenantID，请更新映射表`);
-          }
-          
           return {
-            id: tenantID || v.name,
-            tenantID: tenantID || v.name,
+            id: tenantID,
+            tenantID: tenantID,
             clientName: v.name,
             remarks: v.remarks
           };
         });
         
-        // 只保留有效的账套（有 tenantID 映射的）
-        const validTenants = tenants.filter((t: any) => clientNameToTenantID[t.clientName]);
-        
-        if (validTenants.length < tenants.length) {
-          console.warn(`有 ${tenants.length - validTenants.length} 个账套没有配置 tenantID 映射，已过滤`);
-          console.warn('未映射的账套:', tenants.filter((t: any) => !clientNameToTenantID[t.clientName]).map((t: any) => t.clientName));
-        }
-        
-        setTenantList(validTenants);
+        console.log(`成功加载 ${tenants.length} 个账套`);
+        setTenantList(tenants);
         
         // 创建 tenantID 映射（用于显示）
         const idMap: Record<string, string> = {};
-        validTenants.forEach((t: any) => {
+        tenants.forEach((t: any) => {
           idMap[t.tenantID] = t.clientName;
         });
         setTenantIDMap(idMap);
         
         // 默认全选
-        setSelectedTenants(validTenants.map((t: any) => t.tenantID));
+        setSelectedTenants(tenants.map((t: any) => t.tenantID));
       })
       .catch(err => {
         console.error('获取账套列表失败:', err);
         setMsg(`获取账套列表失败: ${err.message}`);
-        
-        // 最后的后备方案：使用硬编码的账套列表
-        console.warn('使用硬编码账套列表作为最后的后备方案');
-        const fallbackTenants = Object.entries(clientNameToTenantID).map(([clientName, tenantID]) => ({
-          id: tenantID,
-          tenantID: tenantID,
-          clientName: clientName,
-          remarks: ''
-        }));
-        
-        setTenantList(fallbackTenants);
-        
-        const idMap: Record<string, string> = {};
-        fallbackTenants.forEach(t => {
-          idMap[t.tenantID] = t.clientName;
-        });
-        setTenantIDMap(idMap);
-        
-        setSelectedTenants(fallbackTenants.map(t => t.tenantID));
       });
   }, [token]);
 
