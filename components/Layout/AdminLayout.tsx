@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { Sidebar } from '../Navigation/Sidebar';
 import { TopNavbar } from '../Navigation/TopNavbar';
 import { TabBar } from '../Navigation/TabBar';
@@ -14,7 +14,7 @@ interface AdminLayoutProps {
 // 不需要认证的页面列表
 const PUBLIC_PAGES = ['/qr-login-desk', '/qr-login-mobile'];
 
-export function AdminLayout({ children }: AdminLayoutProps) {
+export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { token, isTokenExpired } = useTokenContext();
@@ -90,4 +90,4 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       </div>
     </div>
   );
-}
+});

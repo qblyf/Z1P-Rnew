@@ -4,19 +4,16 @@ import { useTabs } from '../../datahooks/tabs';
 import { CloseOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
+import { memo, useCallback, useMemo } from 'react';
 
-export function TabBar() {
+export const TabBar = memo(function TabBar() {
   const { tabs, activeKey, setActiveTab, removeTab, clearOtherTabs, clearAllTabs } = useTabs();
 
-  if (tabs.length === 0) {
-    return null;
-  }
-
-  const handleContextMenu = (e: React.MouseEvent, tabKey: string) => {
+  const handleContextMenu = useCallback((e: React.MouseEvent, tabKey: string) => {
     e.preventDefault();
-  };
+  }, []);
 
-  const getContextMenuItems = (tabKey: string): MenuProps['items'] => {
+  const getContextMenuItems = useCallback((tabKey: string): MenuProps['items'] => {
     const tab = tabs.find((t) => t.key === tabKey);
     const closableTabs = tabs.filter((t) => t.closable);
     
@@ -40,7 +37,13 @@ export function TabBar() {
         onClick: () => clearAllTabs(),
       },
     ];
-  };
+  }, [tabs, removeTab, clearOtherTabs, clearAllTabs]);
+
+  const hasClosableTabs = useMemo(() => tabs.some((t) => t.closable), [tabs]);
+
+  if (tabs.length === 0) {
+    return null;
+  }
 
   return (
     <div className="bg-white border-b border-gray-200 px-4 flex items-center gap-1 overflow-x-auto overflow-y-hidden h-10 flex-shrink-0">
@@ -85,7 +88,7 @@ export function TabBar() {
       })}
       
       {/* 关闭所有按钮 */}
-      {tabs.some((t) => t.closable) && (
+      {hasClosableTabs && (
         <div
           className="ml-2 px-2 py-1 text-gray-400 hover:text-gray-600 cursor-pointer"
           title="关闭所有标签页"
@@ -96,4 +99,4 @@ export function TabBar() {
       )}
     </div>
   );
-}
+});
