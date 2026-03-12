@@ -84,7 +84,8 @@ export function TableMatchComponent() {
               states: [SPUState.在用],
               limit: batchSize,
               offset,
-              orderBy: [{ key: 'p."created_at"', sort: 'DESC' }],
+              // 移除 orderBy 以避免 PostgreSQL SELECT DISTINCT 错误
+              // orderBy: [{ key: 'p."created_at"', sort: 'DESC' }],
             },
             ['id', 'name', 'brand', 'skuIDs']
           );
