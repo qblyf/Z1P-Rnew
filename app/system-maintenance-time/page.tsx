@@ -22,6 +22,7 @@ import {
 } from '../../components/render/RenderDate';
 import { UnixTimestamp } from '@zsqk/z1-sdk/es/types/basetypes';
 import { BatchEditSystemMaintenanceTime } from '../../components/BatchEditSystemMaintenanceTime';
+import { Z1P_ENDPOINT } from '../../constants';
 
 /** 后端商品数据返回类型 */
 type Data = {
@@ -63,7 +64,11 @@ function SystemMaintenanceTime(): JSX.Element {
     if (!token) {
       return;
     }
-    const res = await getSysSettings({ auth: token });
+    const res = await getSysSettings({ 
+      auth: token,
+      // @ts-ignore - SDK 类型定义可能不完整，但运行时需要 endpoint
+      endpoint: Z1P_ENDPOINT 
+    });
     const data = res.map((v, i) => {
       return {
         key: i + 1,

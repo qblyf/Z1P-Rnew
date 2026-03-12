@@ -7,6 +7,7 @@ import { useTokenContext } from '../datahooks/auth';
 import dayjs, { Dayjs } from 'dayjs';
 import { sysSettingEditBatch } from '@zsqk/z1-sdk/es/z1p/sys-setting';
 import { UnixTimestamp } from '@zsqk/z1-sdk/es/types/basetypes';
+import { Z1P_ENDPOINT } from '../constants';
 
 /** 后端商品数据返回类型 */
 type Data = {
@@ -186,7 +187,11 @@ export function EditSystemMaintenanceTime(props: {
                   clientName: editInfo.clientName,
                 },
               ],
-              { auth: token }
+              { 
+                auth: token,
+                // @ts-ignore - SDK 类型定义可能不完整，但运行时需要 endpoint
+                endpoint: Z1P_ENDPOINT 
+              }
             );
             onOk('ok');
           })}
