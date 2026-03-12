@@ -15,6 +15,7 @@ import { Suspense, useMemo, useState, useEffect } from 'react';
 import { Content } from '../../components/style/Content';
 import PageWrap from '../../components/PageWrap';
 import { useTokenContext } from '../../datahooks/auth';
+import { usePageTab } from '../../datahooks/usePageTab';
 
 export default function () {
   return (
@@ -40,6 +41,9 @@ export default function () {
  * @author Lian Zheren <lzr@go0356.com>
  */
 function ClientPage() {
+  // 注册页面标签页
+  usePageTab('数据同步');
+  
   const { token } = useTokenContext();
   const [msg, setMsg] = useState('');
   const [currentStep, setCurrentStep] = useState('');
@@ -62,11 +66,16 @@ function ClientPage() {
   const [disabled, setDisabled] = useState(false);
   
   // 账套列表和名称映射
-  const [tenantList, setTenantList] = useState<Array<{ id: string; name: string; tenantID?: string }>>([]);
-  const [tenantNameMap, setTenantNameMap] = useState<Record<string, string>>({});
+  const [tenantList, setTenantList] = useState<Array<{ 
+    id: string; 
+    tenantID: string;
+    clientName: string;
+    remarks?: string;
+  }>>([]);
+  const [tenantIDMap, setTenantIDMap] = useState<Record<string, string>>({});
   
-  // clientName 到 tenantID 的映射表（临时解决方案）
-  // TODO: 这个映射应该从后端 API 获取
+  // clientName 到 tenantID 的映射表
+  // 这个映射基于实际的账套配置
   const clientNameToTenantID: Record<string, string> = {
     '高远控股': 'newgy',
     'ZSQK test': 'zsqk-test',
@@ -93,35 +102,41 @@ function ClientPage() {
     getSysSettings({ auth: token })
       .then(res => {
         console.log('getSysSettings 返回数据:', res);
+        
         const tenants = res.map(v => {
           const tenantID = clientNameToTenantID[v.clientName];
+          
           if (!tenantID) {
-            console.warn(`未找到 clientName "${v.clientName}" 对应的 tenantID`);
+            console.warn(`未找到 clientName "${v.clientName}" 对应的 tenantID，请更新映射表`);
           }
+          
           return {
-            id: tenantID || v.clientName, // 使用映射的 tenantID，如果没有则使用 clientName
-            name: v.clientName,
-            tenantID: tenantID
+            id: tenantID || v.clientName,
+            tenantID: tenantID || v.clientName,
+            clientName: v.clientName,
+            remarks: v.remarks
           };
         });
         
-        // 过滤掉没有 tenantID 的账套
-        const validTenants = tenants.filter(t => t.tenantID);
+        // 只保留有效的账套（有 tenantID 映射的）
+        const validTenants = tenants.filter(t => clientNameToTenantID[t.clientName]);
+        
         if (validTenants.length < tenants.length) {
           console.warn(`有 ${tenants.length - validTenants.length} 个账套没有配置 tenantID 映射，已过滤`);
+          console.warn('未映射的账套:', tenants.filter(t => !clientNameToTenantID[t.clientName]).map(t => t.clientName));
         }
         
         setTenantList(validTenants);
         
-        // 创建名称映射
-        const nameMap: Record<string, string> = {};
+        // 创建 tenantID 映射（用于显示）
+        const idMap: Record<string, string> = {};
         validTenants.forEach(t => {
-          nameMap[t.id] = t.name;
+          idMap[t.tenantID] = t.clientName;
         });
-        setTenantNameMap(nameMap);
+        setTenantIDMap(idMap);
         
         // 默认全选
-        setSelectedTenants(validTenants.map(t => t.id));
+        setSelectedTenants(validTenants.map(t => t.tenantID));
       })
       .catch(err => {
         console.error('获取账套列表失败:', err);

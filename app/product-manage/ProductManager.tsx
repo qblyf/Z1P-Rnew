@@ -27,6 +27,7 @@ import {
   useSPUCateListContext,
 } from '../../datahooks/product';
 import { useEditMode } from '../../datahooks/useEditMode';
+import { usePageTab } from '../../datahooks/usePageTab';
 import { ResponsiveProductLayout } from '../../components/Layout/ResponsiveProductLayout';
 import PageWrap from '../../components/PageWrap';
 import { lessAwait } from '../../error';
@@ -53,6 +54,9 @@ function updateSPUCateList(
 }
 
 export default function ProductManagerWithHeader() {
+  // 注册页面标签页
+  usePageTab('商品管理');
+  
   return (
     <PageWrap ppKey="product-manage">
       <SPUCateListProvider>

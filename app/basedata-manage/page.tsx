@@ -45,6 +45,7 @@ import { lessAwait, postAwait } from '../../error';
 import { BrandListProvider, useBrandListContext } from '../../datahooks/brand';
 import Head from 'next/head';
 import PageWrap from '../../components/PageWrap';
+import { usePageTab } from '../../datahooks/usePageTab';
 import { useTokenContext } from '../../datahooks/auth';
 import {
   allSpuSpecAttribute,
@@ -1984,6 +1985,9 @@ export default function () {
  * @author Lian Zheren <lzr@go0356.com>
  */
 function ClientPage() {
+  // 注册页面标签页
+  usePageTab('基础数据管理');
+  
   const items: TabsProps['items'] = [
     {
       label: (

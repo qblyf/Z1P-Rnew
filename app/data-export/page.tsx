@@ -11,6 +11,7 @@ import { Content } from '../../components/style/Content';
 import Head from 'next/head';
 import { usePermission } from '../../datahooks/permission';
 import PageWrap from '../../components/PageWrap';
+import { usePageTab } from '../../datahooks/usePageTab';
 import { PageHeader } from '@ant-design/pro-components';
 
 /**
@@ -103,6 +104,9 @@ export default function () {
  * @author Lian Zheren <lzr@go0356.com>
  */
 function ClientPage() {
+  // 注册页面标签页
+  usePageTab('数据导出');
+  
   const items: TabsProps['items'] = [
     {
       label: 'SKU 数据 (1)',

@@ -13,6 +13,7 @@ import { BrandListProvider, useBrandListContext } from '../../datahooks/brand';
 import { SPUCateListProvider, SpuIDProvider, SPUListProvider, useSpuIDContext } from '../../datahooks/product';
 import { usePermission } from '../../datahooks/permission';
 import PageWrap from '../../components/PageWrap';
+import { usePageTab } from '../../datahooks/usePageTab';
 import { useTokenContext } from '../../datahooks/auth';
 import SPUEdit from '../../components/SPUEdit';
 
@@ -445,6 +446,9 @@ function SPUEditWrapper({ spuId }: { spuId: number }) {
  * [页面] SPU 列表
  */
 export default function () {
+  // 注册页面标签页
+  usePageTab('SPU 列表');
+  
   const [list, setList] = useState<SPUListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
