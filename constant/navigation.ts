@@ -78,11 +78,6 @@ export const MENU_CONFIG: MenuItem[] = [
         label: '数据导出',
         href: '/data-export',
       },
-      {
-        id: 'data-sync',
-        label: '数据同步',
-        href: 'https://p.z1.pub/sync',
-      },
     ],
   },
   {
@@ -90,6 +85,16 @@ export const MENU_CONFIG: MenuItem[] = [
     label: '系统管理',
     icon: 'Settings',
     children: [
+      {
+        id: 'tenant-manage',
+        label: '账套管理',
+        href: '/tenant-manage',
+      },
+      {
+        id: 'sync',
+        label: '数据同步',
+        href: '/sync',
+      },
       {
         id: 'log',
         label: '更新日志',

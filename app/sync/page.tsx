@@ -10,60 +10,13 @@ import { addSyncLogWithData } from '@zsqk/z1-sdk/es/z1p/sync-log';
 import { Button, Descriptions, Table, Progress, Space, Card, Row, Col, Tag, Steps, List, Avatar, Spin, Alert } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, SyncOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { PageHeader } from '@ant-design/pro-components';
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useMemo, useState, useEffect } from 'react';
 import { Content } from '../../components/style/Content';
 import PageWrap from '../../components/PageWrap';
+import { getTenantConfigs, getTenantName, DEFAULT_TENANT_IDS } from '../../utils/tenantConfig';
 
-// 账套配置 - 从配置文件中获取所有账套ID
-// 这个列表应该与 z1clients.ts 中的配置保持一致
-const ALL_TENANT_IDS = [
-  'newgy', 'gx', 'zsqk', 'gy', 'gx0775', 
-  'haombo', 'zsqkp', 'jcxiaomi', 'llxiaomi',
-  'baicheng', 'jiyuandixintong', 'changfasm', 
-  'pingnuo', 'kaisheng', 'linji', 'sulian',
-  'znyxt', 'hwyxt', 'xmyxt', 'pgyxt', 'yysyxt'
-] as const;
-
-// 尝试从配置文件中获取账套名称，如果失败则使用备用映射
-const getTenantName = (tenantId: string): string => {
-  // 尝试从配置文件中读取（如果存在）
-  try {
-    // 这里可以尝试导入实际的配置文件
-    // const { z1ClientsObj } = require('../../z1clients');
-    // if (z1ClientsObj[tenantId]?.name) {
-    //   return z1ClientsObj[tenantId].name;
-    // }
-  } catch (error) {
-    // 配置文件不存在或读取失败，使用备用映射
-  }
-  
-  // 备用名称映射
-  const FALLBACK_TENANT_NAMES: Record<string, string> = {
-    'newgy': '高远控股',
-    'gx': '广西',
-    'zsqk': '中晟',
-    'gy': '高远',
-    'gx0775': '广西0775',
-    'haombo': '好博',
-    'zsqkp': '中晟科普',
-    'jcxiaomi': '金昌小米',
-    'llxiaomi': '临洮小米',
-    'baicheng': '白城',
-    'jiyuandixintong': '济源迪信通', // 修正：原为"吉源地信通"
-    'changfasm': '长发商贸',
-    'pingnuo': '苹诺',
-    'kaisheng': '凯盛',
-    'linji': '临济',
-    'sulian': '苏联',
-    'znyxt': '智能云系统',
-    'hwyxt': '华为云系统',
-    'xmyxt': '小米云系统',
-    'pgyxt': '苹果云系统',
-    'yysyxt': '应用商业系统'
-  };
-  
-  return FALLBACK_TENANT_NAMES[tenantId] || tenantId;
-};
+// 账套配置 - 从配置工具中获取
+const ALL_TENANT_IDS = DEFAULT_TENANT_IDS;
 
 export default function () {
   return (
