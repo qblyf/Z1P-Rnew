@@ -1,6 +1,6 @@
 'use client'
 
-import { Avatar, Button, Col, Input, List, Row } from 'antd';
+import { Avatar, Button, Col, Input, List, Row, message } from 'antd';
 import { PageHeader } from '@ant-design/pro-components';
 import { type TextAreaRef } from 'antd/lib/input/TextArea';
 import Head from 'next/head';
@@ -101,7 +101,7 @@ export default function () {
                     return;
                   }
                   if (chatContext.length > 10) {
-                    alert('抱歉, 我们本次只能聊这么多了');
+                    message.warning('抱歉, 我们本次只能聊这么多了');
                     return;
                   }
                   const str = ele.resizableTextArea.textArea.value;
@@ -139,7 +139,7 @@ export default function () {
                       console.log(v);
                     })
                     .catch(err => {
-                      alert(`暂无法回答 ${err}`);
+                      message.error(`暂无法回答 ${err}`);
                     })
                     .finally(() => {
                       setLoading(false);

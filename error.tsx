@@ -221,25 +221,21 @@ export function getAwait<
   fetchFromApi: T,
   {
     timeoutThreshold = repeatClickIntervalTime,
-    successInfoStay = successInfoStayTime,
     finallyCallback,
+    showSuccess = true,
   }: {
     /** 超时时间, 默认为 repeatClickIntervalTime */
     timeoutThreshold?: number;
-    successInfoStay?: number;
     finallyCallback?: (state?: Error, res?: Awaited<R>) => void;
+    /** 是否显示成功提示，默认为 true */
+    showSuccess?: boolean;
   } = {}
 ) {
   return async (...rest: Parameters<T>): Promise<void> => {
     /** 是否已超时 */
     let stop = false;
-    const m = Modal.info({
-      title: '处理中...',
-      content: '正在处理请求, 请稍等.',
-      icon: <ClockCircleTwoTone />,
-      keyboard: false,
-      okButtonProps: { loading: true },
-    });
+    const key = Math.random().toString();
+    message.loading({ content: '正在处理请求, 请稍等.', key }, 0);
 
     try {
       const data = await Promise.race([
@@ -251,38 +247,27 @@ export function getAwait<
           }, timeoutThreshold);
         }),
       ]);
-      m.update({
-        title: '完成',
-        content: '请求处理成功.',
-        icon: <CheckCircleTwoTone twoToneColor="#52c41a" />,
-        keyboard: true,
-        okButtonProps: undefined,
-      });
-      wait(successInfoStay).then(() => m.destroy());
+      message.destroy(key);
+      if (showSuccess) {
+        message.success('请求处理成功.');
+      }
       if (typeof finallyCallback === 'function') {
         finallyCallback(undefined, data);
       }
     } catch (err) {
+      message.destroy(key);
       let errorMsg = '';
-      let color = '';
       if (stop) {
         errorMsg = '请求处理超时, 可以重试.';
-        color = '#52c41a';
+        message.warning(errorMsg);
       } else if (err instanceof Error) {
         errorMsg = `请求处理失败: ${err.name} ${err.message}`;
-        color = 'red';
+        message.error(errorMsg);
       } else {
         errorMsg = '请求处理失败.';
-        color = 'red';
+        message.error(errorMsg);
         console.error(err);
       }
-      m.update({
-        title: '失败',
-        content: errorMsg,
-        icon: <WarningTwoTone twoToneColor={color} />,
-        keyboard: true,
-        okButtonProps: undefined,
-      });
       if (typeof finallyCallback === 'function') {
         finallyCallback(new Error(errorMsg));
       }

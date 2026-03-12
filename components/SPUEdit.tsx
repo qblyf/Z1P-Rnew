@@ -289,7 +289,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                           danger
                           onClick={postAwait(async () => {
                             // Note: 启用功能需要后端 API 支持
-                            alert('启用功能开发中，请联系管理员');
+                            message.info('启用功能开发中，请联系管理员');
                           })}
                           disabled
                         >
@@ -301,7 +301,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                           onClick={postAwait(
                             async () => {
                               // Note: 停用功能需要后端 API 支持
-                              alert('停用功能开发中，请联系管理员');
+                              message.info('停用功能开发中，请联系管理员');
                             },
                             { confirmText: `停用 SPU 前请确认 SPU 下没有任何在用的 SKU.` }
                           )}
