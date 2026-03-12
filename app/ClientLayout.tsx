@@ -11,6 +11,7 @@ import Head from 'next/head';
 import { Z1P_ENDPOINT } from '../constants';
 import { CanvasWatermark } from '../components/CanvasWatermark';
 import { TokenProvider, useTokenContext } from '../datahooks/auth';
+import { TabsProvider } from '../datahooks/tabs';
 import { AdminLayout } from '../components/Layout/AdminLayout';
 
 import { WPK_BID } from '../constant/for-dev';
@@ -75,10 +76,12 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
       <ConfigProvider locale={zhCN}>
         <TokenProvider>
-          <NameCanvasWatermark />
-          <AdminLayout>
-            <AntdRegistry>{children}</AntdRegistry>
-          </AdminLayout>
+          <TabsProvider>
+            <NameCanvasWatermark />
+            <AdminLayout>
+              <AntdRegistry>{children}</AntdRegistry>
+            </AdminLayout>
+          </TabsProvider>
         </TokenProvider>
       </ConfigProvider>
     </>

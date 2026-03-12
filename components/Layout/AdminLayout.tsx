@@ -1,10 +1,11 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Sidebar } from '../Navigation/Sidebar';
 import { TopNavbar } from '../Navigation/TopNavbar';
 import { Breadcrumb } from '../Navigation/Breadcrumb';
+import { TabBar } from '../Navigation/TabBar';
 import { useTokenContext } from '../../datahooks/auth';
 
 interface AdminLayoutProps {
@@ -18,6 +19,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { token, isTokenExpired } = useTokenContext();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
 
   useEffect(() => {
     // 如果是公开页面，不需要检查认证
@@ -66,18 +72,23 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {/* 主内容区域 */}
       <div className="flex flex-1 overflow-hidden">
         {/* 左侧边栏 - 二级菜单 */}
-        <Sidebar />
+        <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
         
         {/* 内容区域 */}
-        <main className="flex-1 overflow-auto">
-          <div className="p-6">
-            {/* 面包屑 */}
-            <div className="mb-4">
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {/* 固定区域：面包屑和标签页 */}
+          <div className="flex-shrink-0 bg-white">
+            <div className="px-6 pt-4 pb-2">
               <Breadcrumb />
             </div>
-            
-            {/* 页面内容 */}
-            {children}
+            <TabBar />
+          </div>
+          
+          {/* 可滚动的内容区域 */}
+          <div className="flex-1 overflow-auto">
+            <div className="p-6">
+              {children}
+            </div>
           </div>
         </main>
       </div>

@@ -16,7 +16,8 @@ import {
   Alert,
   Tooltip,
   Row,
-  Col
+  Col,
+  message
 } from 'antd';
 import { 
   PlusOutlined, 
@@ -32,13 +33,16 @@ import { PageHeader } from '@ant-design/pro-components';
 import { Content } from '../../components/style/Content';
 import PageWrap from '../../components/PageWrap';
 import { 
-  getTenantConfigs, 
   TENANT_STATES, 
   type TenantConfig 
 } from '../../utils/tenantConfig';
 import { useTokenContext } from '../../datahooks/auth';
+import { usePageTab } from '../../datahooks/usePageTab';
 
 export default function TenantManagePage() {
+  // 注册页面标签页
+  usePageTab('租户管理');
+  
   const [tenants, setTenants] = useState<TenantConfig[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -56,27 +60,26 @@ export default function TenantManagePage() {
   }, [token]);
 
   const loadTenants = async () => {
+    if (!token) {
+      console.warn('未登录，无法加载账套列表');
+      return;
+    }
+    
     setLoading(true);
     try {
-      // 优先从 SDK API 加载所有账套信息（如果有 token）
-      const apiUrl = token 
-        ? `/api/tenants?token=${encodeURIComponent(token)}`
-        : '/api/tenants';
-      
-      const response = await fetch(apiUrl);
+      // 从 SDK API 加载所有账套信息
+      const response = await fetch(`/api/tenants?token=${encodeURIComponent(token)}`);
       const result = await response.json();
       
       if (result.success && result.data) {
         setTenants(result.data);
-        console.log(`成功加载 ${result.total} 个账套 (来源: ${result.source || 'unknown'})`);
+        console.log(`成功加载 ${result.total} 个账套`);
       } else {
         throw new Error(result.message || '加载失败');
       }
     } catch (error) {
       console.error('加载账套失败:', error);
-      // 如果 API 失败，使用本地配置作为后备
-      const configs = await getTenantConfigs();
-      setTenants(configs);
+      message.error('加载账套列表失败，请刷新页面重试');
     } finally {
       setLoading(false);
     }
@@ -250,9 +253,19 @@ export default function TenantManagePage() {
         ]}
       />
       <Content>
+        {!token && (
+          <Alert
+            message="需要登录"
+            description="请先登录系统以查看账套列表"
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        )}
+        
         <Alert
           message="账套管理说明"
-          description="账套是Z1平台的核心配置单元，包含数据库连接、域名配置、第三方服务配置等。请谨慎操作，确保配置正确。"
+          description="账套是Z1平台的核心配置单元，包含数据库连接、域名配置、第三方服务配置等。数据来源于系统维护时间配置。"
           type="info"
           showIcon
           style={{ marginBottom: 16 }}
