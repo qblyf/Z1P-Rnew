@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigation } from '../../datahooks/navigation';
 import { useMenuState } from '../../datahooks/menuState';
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { getIcon } from '../../utils/getIcon';
 
 interface SidebarProps {
@@ -12,7 +12,7 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export const Sidebar = memo(function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { currentMenu, menuConfig } = useNavigation();
   const { selectedParentMenuId } = useMenuState();
 
@@ -85,4 +85,4 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </div>
     </aside>
   );
-}
+});

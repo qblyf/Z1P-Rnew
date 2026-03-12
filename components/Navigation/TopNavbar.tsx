@@ -5,10 +5,15 @@ import { useNavigation } from '../../datahooks/navigation';
 import { useMenuState } from '../../datahooks/menuState';
 import { UserProfile } from './UserProfile';
 import { getIcon } from '../../utils/getIcon';
+import { memo, useCallback } from 'react';
 
-export function TopNavbar() {
+export const TopNavbar = memo(function TopNavbar() {
   const { menuConfig } = useNavigation();
   const { selectedParentMenuId, setSelectedParentMenuId } = useMenuState();
+
+  const handleMenuClick = useCallback((id: string) => {
+    setSelectedParentMenuId(id);
+  }, [setSelectedParentMenuId]);
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
@@ -37,7 +42,7 @@ export function TopNavbar() {
             return (
               <button
                 key={item.id}
-                onClick={() => setSelectedParentMenuId(item.id)}
+                onClick={() => handleMenuClick(item.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                   isActive
                     ? 'bg-blue-50 text-blue-600 font-medium'
@@ -58,4 +63,4 @@ export function TopNavbar() {
       </div>
     </header>
   );
-}
+});

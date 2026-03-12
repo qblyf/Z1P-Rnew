@@ -1,11 +1,12 @@
 import { usePathname } from 'next/navigation';
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { MENU_CONFIG, MenuItem } from '../constant/navigation';
 
 export function useNavigation() {
   const pathname = usePathname();
 
-  const findMenuByPath = (items: MenuItem[], path: string): MenuItem | null => {
+  // 使用 useCallback 缓存查找函数
+  const findMenuByPath = useCallback((items: MenuItem[], path: string): MenuItem | null => {
     for (const item of items) {
       if (item.href === path) return item;
       if (item.children) {
@@ -14,9 +15,9 @@ export function useNavigation() {
       }
     }
     return null;
-  };
+  }, []);
 
-  const findParentMenu = (items: MenuItem[], targetId: string): MenuItem | null => {
+  const findParentMenu = useCallback((items: MenuItem[], targetId: string): MenuItem | null => {
     for (const item of items) {
       if (item.children?.some((child) => child.id === targetId)) {
         return item;
@@ -27,16 +28,16 @@ export function useNavigation() {
       }
     }
     return null;
-  };
+  }, []);
 
   const currentMenu = useMemo(() => {
     return findMenuByPath(MENU_CONFIG, pathname);
-  }, [pathname]);
+  }, [pathname, findMenuByPath]);
 
   const parentMenu = useMemo(() => {
     if (!currentMenu) return null;
     return findParentMenu(MENU_CONFIG, currentMenu.id);
-  }, [currentMenu]);
+  }, [currentMenu, findParentMenu]);
 
   const breadcrumbs = useMemo(() => {
     const crumbs: MenuItem[] = [];
@@ -45,11 +46,12 @@ export function useNavigation() {
     return crumbs;
   }, [parentMenu, currentMenu]);
 
-  return {
+  // 使用 useMemo 缓存返回值
+  return useMemo(() => ({
     currentMenu,
     parentMenu,
     breadcrumbs,
     pathname,
     menuConfig: MENU_CONFIG,
-  };
+  }), [currentMenu, parentMenu, breadcrumbs, pathname]);
 }
