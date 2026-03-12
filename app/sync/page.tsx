@@ -89,16 +89,12 @@ function ClientPage() {
           throw new Error(result.message || '获取账套列表失败');
         }
         
-        console.log('获取账套列表:', result.data);
-        if (result.warning) {
-          console.warn('API 警告:', result.warning);
-          setMsg('提示：使用备用账套列表');
-        }
+        console.log(`✅ 获取账套列表: ${result.data.length} 个账套`);
         
-        // 直接使用 API 返回的账套列表，不再过滤
+        // 直接使用 API 返回的账套列表
         const tenants = result.data.map((v: any) => {
           // 从 remarks 中提取 tenantID
-          let tenantID = v.id; // 使用 API 返回的 id 作为 tenantID
+          let tenantID = v.id;
           
           // 如果 remarks 中包含 tenantID 信息，优先使用
           if (v.remarks && v.remarks.includes('tenantID:')) {
@@ -116,7 +112,7 @@ function ClientPage() {
           };
         });
         
-        console.log(`成功加载 ${tenants.length} 个账套`);
+        console.log(`✅ 成功加载 ${tenants.length} 个账套`);
         setTenantList(tenants);
         
         // 创建 tenantID 映射（用于显示）
@@ -130,7 +126,7 @@ function ClientPage() {
         setSelectedTenants(tenants.map((t: any) => t.tenantID));
       })
       .catch(err => {
-        console.error('获取账套列表失败:', err);
+        console.error('❌ 获取账套列表失败:', err);
         setMsg(`获取账套列表失败: ${err.message}`);
       });
   }, [token]);

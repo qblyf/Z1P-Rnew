@@ -13,6 +13,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');
+    const debug = searchParams.get('debug') === 'true';
     
     if (!token) {
       return NextResponse.json(
@@ -25,53 +26,14 @@ export async function GET(request: Request) {
       );
     }
     
-    let sysSettings;
+    // 从 SDK 获取所有账套信息
+    const { getSysSettings } = await import('@zsqk/z1-sdk/es/z1p/sys-setting');
+    const sysSettings = await getSysSettings({ auth: token });
     
-    try {
-      // 从 SDK 获取所有账套信息
-      const { getSysSettings } = await import('@zsqk/z1-sdk/es/z1p/sys-setting');
-      sysSettings = await getSysSettings({ auth: token });
-    } catch (sdkError) {
-      // 如果 SDK 查询失败（比如 SQL 错误），使用硬编码的账套列表
-      console.error('SDK getSysSettings 失败，使用备用账套列表:', sdkError);
-      
-      // 硬编码的账套映射表
-      const fallbackTenants = [
-        { clientName: '高远控股', tenantID: 'newgy' },
-        { clientName: 'ZSQK test', tenantID: 'zsqk-test' },
-        { clientName: '桂讯', tenantID: 'guixun' },
-        { clientName: '高远', tenantID: 'gaoyuan' },
-        { clientName: '好目标', tenantID: 'haomubiao' },
-        { clientName: '掌上乾坤正式版', tenantID: 'zsqk' },
-        { clientName: '晋城小米', tenantID: 'jincheng-xiaomi' },
-        { clientName: '吕梁小米', tenantID: 'lvliang-xiaomi' },
-        { clientName: '佰成', tenantID: 'baicheng' },
-        { clientName: '济源迪信通', tenantID: 'jiyuan-dixintong' },
-        { clientName: '长发数码', tenantID: 'changfa-shuma' },
-        { clientName: '平诺', tenantID: 'pingnuo' },
-      ];
-      
-      const tenants = fallbackTenants.map((item) => ({
-        id: item.tenantID,
-        name: item.clientName,
-        domain: `${item.tenantID}.example.com`,
-        state: 'valid' as const,
-        remarks: `tenantID: ${item.tenantID}`,
-        lastSyncAt: 0,
-        maintenanceInfo: {
-          routineStart: undefined,
-          routineEnd: undefined,
-          specialStart: undefined,
-          specialEnd: undefined,
-        }
-      }));
-      
-      return NextResponse.json({
-        success: true,
-        data: tenants,
-        total: tenants.length,
-        warning: 'Using fallback tenant list due to database query error'
-      });
+    console.log(`✅ 成功从 SDK 获取 ${sysSettings.length} 个账套`);
+    
+    if (debug) {
+      console.log('账套详情:', JSON.stringify(sysSettings, null, 2));
     }
     
     // 将 SDK 返回的数据转换为统一格式
