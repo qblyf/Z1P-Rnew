@@ -143,7 +143,7 @@ export default function SKUList(props: {
       } finally {
         setLoading(false);
       }
-    })();
+    }, { showSuccess: false })();
   }, [spuID, spuList, token]);
 
   // 按需加载单个 SKU 详情（69码和官网价）

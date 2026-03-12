@@ -124,7 +124,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
       const spu = await getSPUInfo(spuID);
       setPreData(transSpuDataToEditingData(spu));
       setInput({});
-    })();
+    }, { showSuccess: false })();
   }, [spuID, transSpuDataToEditingData]);
 
   const { token } = useTokenContext();

@@ -306,10 +306,13 @@ export function lessAwait<
   {
     timeoutThreshold = repeatClickIntervalTime,
     finallyCallback,
+    showSuccess = true,
   }: {
     /** 超时时间, 默认为 repeatClickIntervalTime */
     timeoutThreshold?: number;
     finallyCallback?: (state?: Error, res?: Awaited<R>) => void;
+    /** 是否显示成功提示，默认为 true */
+    showSuccess?: boolean;
   } = {}
 ) {
   const key = Math.random().toString();
@@ -329,7 +332,9 @@ export function lessAwait<
         }),
       ]);
       message.destroy(key); // 先销毁loading消息
-      showMergedSuccessMessage('请求处理成功.', key);
+      if (showSuccess) {
+        showMergedSuccessMessage('请求处理成功.', key);
+      }
       if (typeof finallyCallback === 'function') {
         finallyCallback(undefined, data);
       }

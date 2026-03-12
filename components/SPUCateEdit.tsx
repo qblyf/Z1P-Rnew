@@ -51,6 +51,7 @@ export default function SPUCateEdit() {
     }
     // 拉取 spuCateID 的数据
     lessAwait(getSPUCateInfo, {
+      showSuccess: false,
       finallyCallback: (_err, v) => {
         if (!v) {
           return;

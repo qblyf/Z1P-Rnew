@@ -137,24 +137,24 @@ function ClientPage() {
         });
         
         // 只保留有效的账套（有 tenantID 映射的）
-        const validTenants = tenants.filter(t => clientNameToTenantID[t.clientName]);
+        const validTenants = tenants.filter((t: any) => clientNameToTenantID[t.clientName]);
         
         if (validTenants.length < tenants.length) {
           console.warn(`有 ${tenants.length - validTenants.length} 个账套没有配置 tenantID 映射，已过滤`);
-          console.warn('未映射的账套:', tenants.filter(t => !clientNameToTenantID[t.clientName]).map(t => t.clientName));
+          console.warn('未映射的账套:', tenants.filter((t: any) => !clientNameToTenantID[t.clientName]).map((t: any) => t.clientName));
         }
         
         setTenantList(validTenants);
         
         // 创建 tenantID 映射（用于显示）
         const idMap: Record<string, string> = {};
-        validTenants.forEach(t => {
+        validTenants.forEach((t: any) => {
           idMap[t.tenantID] = t.clientName;
         });
         setTenantIDMap(idMap);
         
         // 默认全选
-        setSelectedTenants(validTenants.map(t => t.tenantID));
+        setSelectedTenants(validTenants.map((t: any) => t.tenantID));
       })
       .catch(err => {
         console.error('获取账套列表失败:', err);

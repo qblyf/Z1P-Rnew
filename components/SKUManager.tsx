@@ -175,7 +175,7 @@ export default function SKUManager(props: {
       setPreCombos([...combo]);
 
       setSPU(spu);
-    })();
+    }, { showSuccess: false })();
   }, [spuID]);
 
   // 使用 useCallback 稳定回调函数的引用，避免无限循环

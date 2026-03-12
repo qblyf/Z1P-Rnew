@@ -66,7 +66,7 @@ export function SKUEdit(props: {
     lessAwait(async () => {
       const sku = await getSKUInfo(selectedSkuID);
       setPreData(sku);
-    })();
+    }, { showSuccess: false })();
   }, [selectedSkuID]);
 
   useEffect(() => {
