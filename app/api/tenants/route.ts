@@ -35,22 +35,42 @@ export async function GET(request: Request) {
     // 从 SDK 获取所有账套信息
     const endpoint = getEndpoint();
     
+    console.log('🔍 API 路由调试信息:');
+    console.log('  - endpoint 值:', endpoint);
+    console.log('  - endpoint 类型:', typeof endpoint);
+    console.log('  - endpoint 是否为空:', !endpoint);
+    
+    if (!endpoint) {
+      console.error('❌ endpoint 为空，无法调用 SDK');
+      return NextResponse.json(
+        {
+          success: false,
+          error: '服务器配置错误',
+          message: '缺少 API endpoint 配置，请检查环境变量'
+        },
+        { status: 500 }
+      );
+    }
+    
     if (debug) {
-      console.log('🔍 API 路由环境检查:');
-      console.log('  - 使用的 endpoint:', endpoint);
+      console.log('  - token 前10位:', token.substring(0, 10) + '...');
     }
     
     const { getSysSettings } = await import('@zsqk/z1-sdk/es/z1p/sys-setting');
+    
+    console.log('📡 准备调用 getSysSettings...');
     const sysSettings = await getSysSettings({ 
       auth: token,
       // @ts-ignore - SDK 类型定义可能不完整，但运行时需要 endpoint
       endpoint: endpoint
     });
     
+    console.log('✅ SDK 调用成功，返回数据数量:', sysSettings.length);
+    
     console.log(`✅ 成功从 SDK 获取 ${sysSettings.length} 个账套`);
     
     if (debug) {
-      console.log('账套详情:', JSON.stringify(sysSettings, null, 2));
+      console.log('📋 账套详情:', JSON.stringify(sysSettings, null, 2));
     }
     
     // 将 SDK 返回的数据转换为统一格式
@@ -76,12 +96,22 @@ export async function GET(request: Request) {
       total: tenants.length
     });
   } catch (error) {
-    console.error('获取账套列表失败:', error);
+    console.error('❌ 获取账套列表失败:', error);
+    console.error('错误详情:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
     return NextResponse.json(
       {
         success: false,
         error: '获取账套列表失败',
-        message: error instanceof Error ? error.message : '未知错误'
+        message: error instanceof Error ? error.message : '未知错误',
+        details: error instanceof Error ? {
+          name: error.name,
+          message: error.message
+        } : undefined
       },
       { status: 500 }
     );
