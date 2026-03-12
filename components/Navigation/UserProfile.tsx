@@ -34,27 +34,27 @@ export function UserProfile() {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
       >
-        <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
           {userInitial}
         </div>
-        <span className="hidden sm:inline text-sm font-medium text-slate-700">
+        <span className="hidden sm:inline text-sm font-medium text-gray-700">
           {userName}
         </span>
         <ChevronDown
           size={16}
-          className={`text-slate-600 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`text-gray-600 transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50">
-          <div className="px-4 py-2 border-b border-slate-200">
-            <p className="text-sm font-medium text-slate-800">{userName}</p>
+        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+          <div className="px-4 py-2 border-b border-gray-200">
+            <p className="text-sm font-medium text-gray-800">{userName}</p>
             {payload?.phoneNum && (
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 {payload.phoneNum.slice(-4)}
               </p>
             )}
@@ -65,7 +65,7 @@ export function UserProfile() {
               setIsOpen(false);
               // 可以添加个人设置页面
             }}
-            className="w-full flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-100 transition-colors"
+            className="w-full flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors"
           >
             <User size={16} />
             <span className="text-sm">个人设置</span>
@@ -76,7 +76,7 @@ export function UserProfile() {
               setIsOpen(false);
               window.open('https://pre-p.z1.pub/', '_blank');
             }}
-            className="w-full flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-100 transition-colors border-t border-slate-200 mt-2 pt-2"
+            className="w-full flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors border-t border-gray-200 mt-2 pt-2"
           >
             <ArrowLeft size={16} />
             <span className="text-sm">返回旧版</span>
@@ -84,7 +84,7 @@ export function UserProfile() {
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors border-t border-slate-200 mt-2 pt-2"
+            className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors border-t border-gray-200 mt-2 pt-2"
           >
             <LogOut size={16} />
             <span className="text-sm">退出登录</span>

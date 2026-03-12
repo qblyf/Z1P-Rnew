@@ -10,21 +10,21 @@ export function Breadcrumb() {
   if (!currentMenu) return null;
 
   return (
-    <div className="flex items-center gap-2 text-sm text-slate-600">
-      <Link href="/" className="flex items-center gap-1 hover:text-slate-800 transition-colors">
+    <div className="flex items-center gap-2 text-sm text-gray-600">
+      <Link href="/" className="flex items-center gap-1 hover:text-blue-600 transition-colors">
         <Home size={16} />
         <span>首页</span>
       </Link>
 
       {breadcrumbs.map((item, index) => (
         <div key={item.id} className="flex items-center gap-2">
-          <ChevronRight size={16} className="text-slate-400" />
-          {item.href ? (
-            <Link href={item.href} className="hover:text-slate-800 transition-colors">
+          <ChevronRight size={16} className="text-gray-400" />
+          {item.href && index < breadcrumbs.length - 1 ? (
+            <Link href={item.href} className="hover:text-blue-600 transition-colors">
               {item.label}
             </Link>
           ) : (
-            <span className="text-slate-800 font-medium">{item.label}</span>
+            <span className="text-gray-900 font-medium">{item.label}</span>
           )}
         </div>
       ))}

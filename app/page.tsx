@@ -47,8 +47,8 @@ function UpdateLog(): JSX.Element {
 
   return (
     <div className="text-center">
-      <p className="text-slate-600 text-sm font-medium mb-2">最新更新日期</p>
-      <p className="text-2xl font-bold text-slate-800">{lastUpdateLogDate}</p>
+      <p className="text-gray-600 text-sm font-medium mb-2">最新更新日期</p>
+      <p className="text-2xl font-bold text-gray-900">{lastUpdateLogDate}</p>
     </div>
   );
 }
@@ -96,9 +96,9 @@ function ClientPage() {
   // 如果没有 token，显示加载状态
   if (!token) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-slate-600 text-lg">正在检查登录状态...</p>
+          <p className="text-gray-600 text-lg">正在检查登录状态...</p>
         </div>
       </div>
     );
@@ -172,41 +172,47 @@ function ClientPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gray-50">
       <Head>
         <title>Z1 平台数据管理系统</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       {/* 主要内容 */}
-      <main className="max-w-7xl mx-auto px-6 py-12">
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* 欢迎区域 */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">欢迎使用 Z1 数据管理平台</h1>
+          <p className="text-gray-600">企业级数据管理和分析解决方案</p>
+        </div>
+
         {/* 功能卡片网格 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           {menuItems.map((item) => (
             <Link key={item.id} href={item.href}>
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all cursor-pointer h-full group">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer h-full group">
                 <div className="flex items-start justify-between mb-4">
                   <div className={`p-3 rounded-lg bg-gradient-to-br ${item.color}`}>
                     <div className="text-white">{item.icon}</div>
                   </div>
                   <ArrowUpRight
                     size={16}
-                    className="text-slate-400 group-hover:text-emerald-500 transition-colors"
+                    className="text-gray-400 group-hover:text-blue-500 transition-colors"
                   />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 mb-2">{item.title}</h3>
-                <p className="text-slate-600 text-sm">{item.description}</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-gray-600 text-sm">{item.description}</p>
               </div>
             </Link>
           ))}
         </div>
 
         {/* 更新日志卡片 */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-slate-800">最新更新</h2>
+            <h2 className="text-2xl font-semibold text-gray-900">最新更新</h2>
             <Link href="/log">
-              <span className="text-emerald-600 hover:text-emerald-700 font-medium text-sm">
+              <span className="text-blue-600 hover:text-blue-700 font-medium text-sm">
                 查看全部 →
               </span>
             </Link>
@@ -218,20 +224,20 @@ function ClientPage() {
       </main>
 
       {/* 页脚 */}
-      <footer className="bg-white border-t border-slate-200 mt-12">
+      <footer className="bg-white border-t border-gray-200 mt-12">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-slate-600 text-sm">
+            <p className="text-gray-600 text-sm">
               © 2025 Z1 平台数据管理系统. All rights reserved.
             </p>
             <div className="flex gap-6">
               <Link href="/test?gen=1">
-                <span className="text-slate-600 hover:text-slate-800 text-sm transition-colors">
+                <span className="text-gray-600 hover:text-gray-800 text-sm transition-colors">
                   创建调试模式
                 </span>
               </Link>
               <Link href="/test?clear=1">
-                <span className="text-slate-600 hover:text-slate-800 text-sm transition-colors">
+                <span className="text-gray-600 hover:text-gray-800 text-sm transition-colors">
                   离开调试模式
                 </span>
               </Link>

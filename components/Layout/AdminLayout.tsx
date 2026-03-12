@@ -1,8 +1,9 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
-import { Navbar } from '../Navigation/Navbar';
+import { useEffect, useState } from 'react';
+import { Sidebar } from '../Navigation/Sidebar';
+import { TopNavbar } from '../Navigation/TopNavbar';
 import { useTokenContext } from '../../datahooks/auth';
 
 interface AdminLayoutProps {
@@ -16,6 +17,20 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { token, isTokenExpired } = useTokenContext();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
 
   useEffect(() => {
     // 如果是公开页面，不需要检查认证
@@ -57,10 +72,36 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
-      <Navbar />
-      <div className="flex-1 flex flex-col">
-        {children}
+    <div className="flex h-screen bg-gray-50">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block">
+        <Sidebar collapsed={sidebarCollapsed} />
+      </div>
+      
+      {/* Mobile Sidebar */}
+      <Sidebar 
+        isMobile={true}
+        isOpen={mobileMenuOpen}
+        onClose={closeMobileMenu}
+      />
+      
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <TopNavbar 
+          collapsed={sidebarCollapsed} 
+          onToggleCollapse={() => {
+            if (window.innerWidth >= 1024) {
+              toggleSidebar();
+            } else {
+              toggleMobileMenu();
+            }
+          }} 
+        />
+        <main className="flex-1 overflow-auto">
+          <div className="p-6">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   );
