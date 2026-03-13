@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import { Z1P_ENDPOINT } from '../../../constants';
 
 // 标记为动态路由，因为需要读取 request.url
 export const dynamic = 'force-dynamic';
+
+// 直接定义 endpoint，确保在 Vercel 上也能正常工作
+const API_ENDPOINT = process.env.NEXT_PUBLIC_Z1P_ENDPOINT || 'https://p-api.z1.pub';
 
 /**
  * GET /api/tenants
@@ -34,9 +36,26 @@ export async function GET(request: Request) {
     }
     
     // 从 SDK 获取所有账套信息
+    const endpoint = API_ENDPOINT;
+    
     console.log('🔍 API 路由调试信息:');
-    console.log('  - endpoint 值:', Z1P_ENDPOINT);
-    console.log('  - endpoint 类型:', typeof Z1P_ENDPOINT);
+    console.log('  - process.env.NEXT_PUBLIC_Z1P_ENDPOINT:', process.env.NEXT_PUBLIC_Z1P_ENDPOINT);
+    console.log('  - API_ENDPOINT 值:', API_ENDPOINT);
+    console.log('  - endpoint 最终值:', endpoint);
+    console.log('  - endpoint 类型:', typeof endpoint);
+    console.log('  - endpoint 长度:', endpoint?.length);
+    
+    if (!endpoint) {
+      console.error('❌ endpoint 为空');
+      return NextResponse.json(
+        {
+          success: false,
+          error: '服务器配置错误',
+          message: 'endpoint 配置为空，请检查环境变量 NEXT_PUBLIC_Z1P_ENDPOINT'
+        },
+        { status: 500 }
+      );
+    }
     
     if (debug) {
       console.log('  - token 前10位:', token.substring(0, 10) + '...');
@@ -45,10 +64,11 @@ export async function GET(request: Request) {
     const { getSysSettings } = await import('@zsqk/z1-sdk/es/z1p/sys-setting');
     
     console.log('📡 准备调用 getSysSettings...');
+    console.log('  - 传递的 endpoint:', endpoint);
     const sysSettings = await getSysSettings({ 
       auth: token,
       // @ts-ignore - SDK 类型定义可能不完整，但运行时需要 endpoint
-      endpoint: Z1P_ENDPOINT
+      endpoint: endpoint
     });
     
     console.log('✅ SDK 调用成功，返回数据数量:', sysSettings.length);
