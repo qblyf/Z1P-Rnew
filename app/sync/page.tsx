@@ -300,7 +300,7 @@ function ClientPage() {
             }));
             
             syncResults.push({
-              name: `${tenantIDMap[tenantID] || tenantID} (${tenantID})`,
+              name: tenantIDMap[tenantID] ? `${tenantID} (${tenantIDMap[tenantID]})` : tenantID,
               resCode: result.resCode === 'complete' ? '已成功' : '失败',
               status: '已完成',
               errMsg: result.errMsg || '',
@@ -325,7 +325,7 @@ function ClientPage() {
             }));
             
             syncResults.push({
-              name: `${tenantIDMap[tenantID] || tenantID} (${tenantID})`,
+              name: tenantIDMap[tenantID] ? `${tenantID} (${tenantIDMap[tenantID]})` : tenantID,
               resCode: '失败',
               status: '已完成',
               errMsg: errorMsg,
@@ -666,16 +666,17 @@ function ClientPage() {
                             <div style={{ 
                               fontWeight: 500, 
                               fontSize: '13px',
-                              marginBottom: '2px'
+                              marginBottom: '2px',
+                              color: '#1890ff'
                             }}>
-                              {tenant.clientName}
+                              {tenant.tenantID || <span style={{ color: '#ff4d4f' }}>(未设置)</span>}
                             </div>
                             <div style={{
-                              color: '#999',
+                              color: '#666',
                               fontSize: '11px',
                               marginBottom: status ? '4px' : 0
                             }}>
-                              tenantID: {tenant.tenantID || <span style={{ color: '#ff4d4f' }}>(未设置)</span>}
+                              {tenant.clientName}
                             </div>
                             {showDebugInfo && tenant.remarks && (
                               <div style={{
@@ -737,9 +738,9 @@ function ClientPage() {
               scroll={{ y: 300 }}
               columns={[
                 {
-                  title: '账套名称',
+                  title: '账套 (tenantID)',
                   dataIndex: 'name',
-                  width: 200,
+                  width: 250,
                   fixed: 'left',
                 },
                 {
