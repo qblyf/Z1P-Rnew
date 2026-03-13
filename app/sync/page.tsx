@@ -84,7 +84,20 @@ function ClientPage() {
     
     // 使用 API 路由获取账套列表
     fetch(`/api/tenants?token=${encodeURIComponent(token)}`)
-      .then(res => res.json())
+      .then(async res => {
+        // 检查响应类型
+        const contentType = res.headers.get('content-type');
+        console.log('📡 API 响应状态:', res.status);
+        console.log('📡 API 响应类型:', contentType);
+        
+        if (!contentType?.includes('application/json')) {
+          const text = await res.text();
+          console.error('❌ API 返回了非 JSON 响应:', text.substring(0, 500));
+          throw new Error('API 返回了错误的响应格式，请检查服务器日志');
+        }
+        
+        return res.json();
+      })
       .then(result => {
         if (!result.success) {
           throw new Error(result.message || '获取账套列表失败');
