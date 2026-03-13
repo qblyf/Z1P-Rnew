@@ -63,6 +63,7 @@ function ClientPage() {
     }>
   >();
   const [disabled, setDisabled] = useState(false);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
   
   // 账套列表和名称映射
   const [tenantList, setTenantList] = useState<Array<{ 
@@ -92,27 +93,14 @@ function ClientPage() {
         console.log(`✅ 获取账套列表: ${result.data.length} 个账套`);
         
         // 直接使用 API 返回的账套列表
-        const tenants = result.data.map((v: any) => {
-          // 从 remarks 中提取 tenantID
-          let tenantID = v.id;
-          
-          // 如果 remarks 中包含 tenantID 信息，优先使用
-          if (v.remarks && v.remarks.includes('tenantID:')) {
-            const match = v.remarks.match(/tenantID:\s*(\S+)/);
-            if (match) {
-              tenantID = match[1];
-            }
-          }
-          
-          return {
-            id: tenantID,
-            tenantID: tenantID,
-            clientName: v.name,
-            remarks: v.remarks
-          };
-        });
+        const tenants = result.data.map((v: any) => ({
+          id: v.tenantID || v.id,
+          tenantID: v.tenantID || v.id,
+          clientName: v.name,
+          remarks: v.remarks
+        }));
         
-        console.log(`✅ 成功加载 ${tenants.length} 个账套`);
+        console.log(`✅ 成功加载 ${tenants.length} 个账套:`, tenants);
         setTenantList(tenants);
         
         // 创建 tenantID 映射（用于显示）
@@ -255,7 +243,7 @@ function ClientPage() {
             }));
             
             syncResults.push({
-              name: tenantID,
+              name: `${tenantIDMap[tenantID] || tenantID} (${tenantID})`,
               resCode: result.resCode === 'complete' ? '已成功' : '失败',
               status: '已完成',
               errMsg: result.errMsg || '',
@@ -274,7 +262,7 @@ function ClientPage() {
             }));
             
             syncResults.push({
-              name: tenantID,
+              name: `${tenantIDMap[tenantID] || tenantID} (${tenantID})`,
               resCode: '失败',
               status: '已完成',
               errMsg: errorMsg,
@@ -361,6 +349,22 @@ function ClientPage() {
                 </Descriptions.Item>
                 <Descriptions.Item label="账套数量">
                   <strong>{tenantList.length}</strong> 个账套
+                  {showDebugInfo && (
+                    <Button 
+                      type="link" 
+                      size="small"
+                      onClick={() => {
+                        fetch(`/api/tenants?token=${encodeURIComponent(token!)}&raw=true`)
+                          .then(res => res.json())
+                          .then(data => {
+                            console.log('原始 SDK 数据:', data);
+                            alert('原始数据已输出到控制台，请按 F12 查看');
+                          });
+                      }}
+                    >
+                      查看原始数据
+                    </Button>
+                  )}
                 </Descriptions.Item>
                 <Descriptions.Item label="已选账套">
                   <strong style={{ color: selectedTenants.length === 0 ? '#ff4d4f' : '#1890ff' }}>
@@ -369,6 +373,14 @@ function ClientPage() {
                 </Descriptions.Item>
                 <Descriptions.Item label="注意事项">
                   <span style={{ color: '#fa8c16' }}>⚠️</span> 同步时会锁表，请在数据修改完成后进行
+                  <Button 
+                    type="link" 
+                    size="small"
+                    onClick={() => setShowDebugInfo(!showDebugInfo)}
+                    style={{ marginLeft: 8 }}
+                  >
+                    {showDebugInfo ? '隐藏' : '显示'}调试信息
+                  </Button>
                 </Descriptions.Item>
               </Descriptions>
               
@@ -538,10 +550,27 @@ function ClientPage() {
                             <div style={{ 
                               fontWeight: 500, 
                               fontSize: '13px',
+                              marginBottom: '2px'
+                            }}>
+                              {tenant.clientName}
+                            </div>
+                            <div style={{
+                              color: '#999',
+                              fontSize: '11px',
                               marginBottom: status ? '4px' : 0
                             }}>
-                              {tenant.tenantID}
+                              tenantID: {tenant.tenantID}
                             </div>
+                            {showDebugInfo && tenant.remarks && (
+                              <div style={{
+                                color: '#666',
+                                fontSize: '10px',
+                                fontStyle: 'italic',
+                                marginBottom: status ? '4px' : 0
+                              }}>
+                                备注: {tenant.remarks}
+                              </div>
+                            )}
                             {status && (
                               <div style={{
                                 color: status.status === 'error' ? '#ff4d4f' : '#666',
