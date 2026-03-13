@@ -23,6 +23,23 @@ export async function GET(request: Request) {
     const token = searchParams.get('token');
     const debug = searchParams.get('debug') === 'true';
     const raw = searchParams.get('raw') === 'true';
+    const test = searchParams.get('test') === 'true';
+    
+    // 测试模式：只返回基本信息，不调用 SDK
+    if (test) {
+      const endpoint = API_ENDPOINT;
+      return NextResponse.json({
+        success: true,
+        test: true,
+        data: {
+          endpoint: endpoint,
+          hasToken: !!token,
+          tokenLength: token?.length || 0,
+          envValue: process.env.NEXT_PUBLIC_Z1P_ENDPOINT,
+          apiEndpoint: API_ENDPOINT
+        }
+      });
+    }
     
     if (!token) {
       return NextResponse.json(

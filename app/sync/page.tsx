@@ -363,20 +363,58 @@ function ClientPage() {
                 <Descriptions.Item label="账套数量">
                   <strong>{tenantList.length}</strong> 个账套
                   {showDebugInfo && (
-                    <Button 
-                      type="link" 
-                      size="small"
-                      onClick={() => {
-                        fetch(`/api/tenants?token=${encodeURIComponent(token!)}&raw=true`)
-                          .then(res => res.json())
-                          .then(data => {
-                            console.log('原始 SDK 数据:', data);
-                            alert('原始数据已输出到控制台，请按 F12 查看');
-                          });
-                      }}
-                    >
-                      查看原始数据
-                    </Button>
+                    <>
+                      <Button 
+                        type="link" 
+                        size="small"
+                        onClick={() => {
+                          fetch(`/api/tenants?token=${encodeURIComponent(token!)}&raw=true`)
+                            .then(res => res.json())
+                            .then(data => {
+                              console.log('原始 SDK 数据:', data);
+                              alert('原始数据已输出到控制台，请按 F12 查看');
+                            });
+                        }}
+                      >
+                        查看原始数据
+                      </Button>
+                      <Button 
+                        type="link" 
+                        size="small"
+                        onClick={() => {
+                          fetch(`/api/tenants?token=${encodeURIComponent(token!)}&test=true`)
+                            .then(res => res.json())
+                            .then(data => {
+                              console.log('测试结果:', data);
+                              alert(`测试结果:\nendpoint: ${data.data?.endpoint}\nhasToken: ${data.data?.hasToken}`);
+                            })
+                            .catch(err => {
+                              console.error('测试失败:', err);
+                              alert('测试失败: ' + err.message);
+                            });
+                        }}
+                      >
+                        测试 API
+                      </Button>
+                      <Button 
+                        type="link" 
+                        size="small"
+                        onClick={() => {
+                          fetch(`/api/tenants-test?token=${encodeURIComponent(token!)}`)
+                            .then(res => res.json())
+                            .then(data => {
+                              console.log('简化测试结果:', data);
+                              alert(`简化测试:\nendpoint: ${data.data?.endpoint}`);
+                            })
+                            .catch(err => {
+                              console.error('简化测试失败:', err);
+                              alert('简化测试失败: ' + err.message);
+                            });
+                        }}
+                      >
+                        简化测试
+                      </Button>
+                    </>
                   )}
                 </Descriptions.Item>
                 <Descriptions.Item label="已选账套">
