@@ -1,18 +1,8 @@
 import { NextResponse } from 'next/server';
+import { Z1P_ENDPOINT } from '../../../constants';
 
 // 标记为动态路由，因为需要读取 request.url
 export const dynamic = 'force-dynamic';
-
-// 在 API 路由中直接获取 endpoint
-// Next.js API 路由运行在服务端，需要确保 endpoint 有值
-const getEndpoint = () => {
-  const endpoint = process.env.NEXT_PUBLIC_Z1P_ENDPOINT || 'https://p-api.z1.pub';
-  console.log('🔍 getEndpoint 调用:', {
-    env: process.env.NEXT_PUBLIC_Z1P_ENDPOINT,
-    result: endpoint
-  });
-  return endpoint;
-};
 
 /**
  * GET /api/tenants
@@ -44,24 +34,9 @@ export async function GET(request: Request) {
     }
     
     // 从 SDK 获取所有账套信息
-    const endpoint = getEndpoint();
-    
     console.log('🔍 API 路由调试信息:');
-    console.log('  - endpoint 值:', endpoint);
-    console.log('  - endpoint 类型:', typeof endpoint);
-    console.log('  - endpoint 是否为空:', !endpoint);
-    
-    if (!endpoint) {
-      console.error('❌ endpoint 为空，无法调用 SDK');
-      return NextResponse.json(
-        {
-          success: false,
-          error: '服务器配置错误',
-          message: '缺少 API endpoint 配置，请检查环境变量'
-        },
-        { status: 500 }
-      );
-    }
+    console.log('  - endpoint 值:', Z1P_ENDPOINT);
+    console.log('  - endpoint 类型:', typeof Z1P_ENDPOINT);
     
     if (debug) {
       console.log('  - token 前10位:', token.substring(0, 10) + '...');
@@ -73,7 +48,7 @@ export async function GET(request: Request) {
     const sysSettings = await getSysSettings({ 
       auth: token,
       // @ts-ignore - SDK 类型定义可能不完整，但运行时需要 endpoint
-      endpoint: endpoint
+      endpoint: Z1P_ENDPOINT
     });
     
     console.log('✅ SDK 调用成功，返回数据数量:', sysSettings.length);
