@@ -150,11 +150,7 @@ export default function SPUAdd() {
           <DatePicker
             style={{ width: '100%' }}
             allowClear
-            value={
-              input.marketTime
-                ? dayjs(input.marketTime)
-                : undefined
-            }
+            value={input.marketTime ? dayjs(input.marketTime) : undefined}
             onChange={v => {
               const vStr: string | undefined = v
                 ? v.format('YYYY-MM-DD')
@@ -305,16 +301,11 @@ export default function SPUAdd() {
           />
         </Form.Item>
 
-        <Form.Item 
-          label="搜索关键词" 
-          tooltip="用于网站搜索商品时的关键词匹配"
-        >
+        <Form.Item label="搜索关键词" tooltip="用于网站搜索商品时的关键词匹配">
           <SearchKeywordsManager
             keywords={input.keywords}
             onChange={keywords => {
-              setInput(
-                update(input, { keywords: { $set: keywords } })
-              );
+              setInput(update(input, { keywords: { $set: keywords } }));
             }}
           />
         </Form.Item>
@@ -344,17 +335,15 @@ export default function SPUAdd() {
               );
               init();
               // update spu list - 只添加 spuList 需要的字段
-              const newSpu = { 
-                id, 
+              const newSpu = {
+                id,
                 name: input.name,
                 brand: input.brand,
                 series: input.series,
                 generation: input.generation,
-                order: Number(order)
+                order: Number(order),
               };
-              setSpuList(
-                update(spuList, { $push: [newSpu as any] }) as any
-              );
+              setSpuList(update(spuList, { $push: [newSpu as any] }) as any);
             })}
           >
             提交修改

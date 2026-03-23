@@ -315,12 +315,11 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                   />
                 </Form.Item>
 
-                <Form.Item 
-                  label="搜索关键词" 
+                <Form.Item
+                  label="搜索关键词"
                   tooltip="用于网站搜索商品时的关键词匹配"
                 >
                   <div>
-                
                     <SearchKeywordsManager
                       keywords={input.keywords ?? preData.keywords}
                       onChange={keywords => {
