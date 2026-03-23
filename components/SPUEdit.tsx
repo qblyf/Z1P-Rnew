@@ -1,9 +1,9 @@
 import { SPU } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import {
   editSPUInfo,
+  getSKUsInfo as getSKUsInfoAPI,
   getSPUInfo,
   invalidateSPUInfo,
-  getSKUsInfo as getSKUsInfoAPI,
 } from '@zsqk/z1-sdk/es/z1p/product';
 import { getSKUsInfo } from '../data/product';
 import { paramsDetail } from '@zsqk/z1-sdk/es/z1p/params-value';
@@ -12,16 +12,16 @@ import {
   Badge,
   Button,
   DatePicker,
+  Drawer,
   Form,
   Input,
   InputNumber,
+  message,
   Select,
   Space,
   Tabs,
-  Drawer,
-  message,
 } from 'antd';
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import TextArea from 'antd/lib/input/TextArea';
 import update from 'immutability-helper';
 import pinyin from 'tiny-pinyin';
@@ -39,6 +39,7 @@ import { ChangeTable } from './ChangeTable';
 import SKUManager from './SKUManager';
 import { SKUEdit } from './SKUEdit';
 import SPUParamConfig from './SPUParamConfig';
+import SearchKeywordsManager from './SearchKeywordsManager';
 import './SPUEdit.css';
 
 type SPUEditing = Omit<SPU, 'images'> & {
@@ -88,6 +89,8 @@ export default function SPUEdit(props: { defaultTab?: string }) {
   const transSpuDataToEditingData = useCallback((spu: SPU): SPUEditing => {
     return {
       ...spu,
+      // 确保keywords字段存在且格式正确
+      keywords: spu.keywords || [],
       images: {
         thumbnail: spu.images.thumbnail
           ? {
@@ -118,14 +121,17 @@ export default function SPUEdit(props: { defaultTab?: string }) {
   }, []);
 
   useEffect(() => {
-    lessAwait(async () => {
-      if (!spuID) {
-        return;
-      }
-      const spu = await getSPUInfo(spuID);
-      setPreData(transSpuDataToEditingData(spu));
-      setInput({});
-    }, { showSuccess: false })();
+    lessAwait(
+      async () => {
+        if (!spuID) {
+          return;
+        }
+        const spu = await getSPUInfo(spuID);
+        setPreData(transSpuDataToEditingData(spu));
+        setInput({});
+      },
+      { showSuccess: false }
+    )();
   }, [spuID, transSpuDataToEditingData]);
 
   const { token } = useTokenContext();
@@ -138,336 +144,256 @@ export default function SPUEdit(props: { defaultTab?: string }) {
   }
 
   // 检查商城信息是否已维护（主图或图文详情至少有一个）
-  const hasMallInfo = (preData.images.mainImages && preData.images.mainImages.length > 0) ||
+  const hasMallInfo =
+    (preData.images.mainImages && preData.images.mainImages.length > 0) ||
     (preData.images.detailsImages && preData.images.detailsImages.length > 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          className="spu-edit-tabs"
-          style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-          items={[
-            {
-              key: 'basic',
-              label: '基本信息',
-              children: (
-                <Form layout="vertical" autoComplete="off">
-                  <Form.Item label="名称" tooltip="SPU 分类的名称, 唯一">
-                    <Input
-                      value={input.name ?? preData.name}
-                      onChange={e => {
-                        const v = e.target.value;
-                        setInput(
-                          update(input, {
-                            name: { $set: v },
-                            spell: { $set: pinyin.convertToFirstLetter(v) },
-                          })
-                        );
-                      }}
-                    />
-                  </Form.Item>
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        className="spu-edit-tabs"
+        style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+        items={[
+          {
+            key: 'basic',
+            label: '基本信息',
+            children: (
+              <Form layout="vertical" autoComplete="off">
+                <Form.Item label="名称" tooltip="SPU 分类的名称, 唯一">
+                  <Input
+                    value={input.name ?? preData.name}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setInput(
+                        update(input, {
+                          name: { $set: v },
+                          spell: { $set: pinyin.convertToFirstLetter(v) },
+                        })
+                      );
+                    }}
+                  />
+                </Form.Item>
 
-                  <Form.Item label="上市时间">
-                    <DatePicker
-                      style={{ width: '100%' }}
-                      allowClear
-                      value={
-                        input.marketTime
-                          ? dayjs(input.marketTime)
-                          : preData.marketTime && dayjs(preData.marketTime).isValid()
-                            ? dayjs(preData.marketTime)
-                            : undefined
-                      }
-                      onChange={v => {
-                        const vStr: string | undefined = v
-                          ? v.format('YYYY-MM-DD')
-                          : undefined;
-                        setInput(
-                          update(input, {
-                            marketTime: { $set: vStr },
-                          })
-                        );
-                      }}
-                    />
-                  </Form.Item>
+                <Form.Item label="上市时间">
+                  <DatePicker
+                    style={{ width: '100%' }}
+                    allowClear
+                    value={
+                      input.marketTime
+                        ? dayjs(input.marketTime)
+                        : preData.marketTime &&
+                            dayjs(preData.marketTime).isValid()
+                          ? dayjs(preData.marketTime)
+                          : undefined
+                    }
+                    onChange={v => {
+                      const vStr: string | undefined = v
+                        ? v.format('YYYY-MM-DD')
+                        : undefined;
+                      setInput(
+                        update(input, {
+                          marketTime: { $set: vStr },
+                        })
+                      );
+                    }}
+                  />
+                </Form.Item>
 
-                  <Form.Item label="拼音码" tooltip="名称的拼音码, 方便进行查找">
-                    <Input
-                      value={input.spell ?? preData.spell}
-                      onChange={e => {
-                        setInput(update(input, { spell: { $set: e.target.value } }));
-                      }}
-                    />
-                  </Form.Item>
+                <Form.Item label="拼音码" tooltip="名称的拼音码, 方便进行查找">
+                  <Input
+                    value={input.spell ?? preData.spell}
+                    onChange={e => {
+                      setInput(
+                        update(input, { spell: { $set: e.target.value } })
+                      );
+                    }}
+                  />
+                </Form.Item>
 
-                  <Form.Item label="SPU 分类" tooltip="选择一个上级分类">
-                    <SelectSPUCate
-                      selectedSPUCateID={input.cateID ?? preData.cateID}
-                      onSelect={id => {
-                        setInput(update(input, { cateID: { $set: id } }));
-                      }}
-                    />
-                  </Form.Item>
+                <Form.Item
+                  label="型号代码"
+                  tooltip="商品的型号代码, 方便进行查找"
+                >
+                  <Input
+                    value={(input.modelCode ?? preData.modelCode) ?? ''}
+                    onChange={e => {
+                      setInput(
+                        update(input, { modelCode: { $set: e.target.value } })
+                      );
+                    }}
+                  />
+                </Form.Item>
 
-                  <Form.Item label="排序号" tooltip="从高到低显示">
-                    <InputNumber
-                      style={{ width: '100%' }}
-                      value={input.order ?? preData.order}
-                      onChange={e => {
-                        setInput(update(input, { order: { $set: Number(e) } }));
-                      }}
-                    />
-                  </Form.Item>
+                <Form.Item label="SPU 分类" tooltip="选择一个上级分类">
+                  <SelectSPUCate
+                    selectedSPUCateID={input.cateID ?? preData.cateID}
+                    onSelect={id => {
+                      setInput(update(input, { cateID: { $set: id } }));
+                    }}
+                  />
+                </Form.Item>
 
-                  <Form.Item
-                    label="品牌"
-                    tooltip={`如果缺少品牌, 请去品牌管理中进行添加`}
+                <Form.Item label="排序号" tooltip="从高到低显示">
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    value={input.order ?? preData.order}
+                    onChange={e => {
+                      setInput(update(input, { order: { $set: Number(e) } }));
+                    }}
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label="品牌"
+                  tooltip={`如果缺少品牌, 请去品牌管理中进行添加`}
+                >
+                  <Select
+                    value={input.brand ?? preData.brand}
+                    showSearch
+                    placeholder="选择品牌"
+                    optionFilterProp="children"
+                    onChange={v => {
+                      setInput(update(input, { brand: { $set: v } }));
+                    }}
                   >
-                    <Select
-                      value={input.brand ?? preData.brand}
-                      showSearch
-                      placeholder="选择品牌"
-                      optionFilterProp="children"
-                      onChange={v => {
-                        setInput(update(input, { brand: { $set: v } }));
-                      }}
-                    >
-                      {brandList.map(b => {
-                        return (
-                          <Select.Option key={b.name} value={b.name}>
-                            {b.name} {b.spell}
-                          </Select.Option>
+                    {brandList.map(b => {
+                      return (
+                        <Select.Option key={b.name} value={b.name}>
+                          {b.name} {b.spell}
+                        </Select.Option>
+                      );
+                    })}
+                  </Select>
+                </Form.Item>
+
+                <Form.Item label="系列" tooltip={`比如 "Mate", "iPhone Pro"`}>
+                  <Input
+                    value={input.series ?? preData.series}
+                    onChange={e => {
+                      setInput(
+                        update(input, { series: { $set: e.target.value } })
+                      );
+                    }}
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label="代际"
+                  tooltip={`可为空, 比如 iPhone 13 的代际为 "13"`}
+                >
+                  <Input
+                    value={input.generation ?? preData.generation}
+                    onChange={e => {
+                      setInput(
+                        update(input, { generation: { $set: e.target.value } })
+                      );
+                    }}
+                  />
+                </Form.Item>
+
+                <Form.Item label="描述" tooltip="本 SPU 的一句话描述">
+                  <Input
+                    value={input.desc ?? preData.desc}
+                    onChange={e => {
+                      setInput(
+                        update(input, { desc: { $set: e.target.value } })
+                      );
+                    }}
+                  />
+                </Form.Item>
+
+                <Form.Item label="备注" tooltip="自定义的文字 方便了解该分类">
+                  <TextArea
+                    value={input.remarks ?? preData.remarks}
+                    onChange={e => {
+                      setInput(
+                        update(input, { remarks: { $set: e.target.value } })
+                      );
+                    }}
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label="搜索关键词"
+                  tooltip="用于网站搜索商品时的关键词匹配"
+                >
+                  <div>
+                    <SearchKeywordsManager
+                      keywords={input.keywords ?? preData.keywords}
+                      onChange={keywords => {
+                        console.log('Keywords changed:', keywords);
+                        setInput(
+                          update(input, { keywords: { $set: keywords } })
                         );
-                      })}
-                    </Select>
-                  </Form.Item>
-
-                  <Form.Item label="系列" tooltip={`比如 "Mate", "iPhone Pro"`}>
-                    <Input
-                      value={input.series ?? preData.series}
-                      onChange={e => {
-                        setInput(update(input, { series: { $set: e.target.value } }));
                       }}
                     />
-                  </Form.Item>
+                  </div>
+                </Form.Item>
 
-                  <Form.Item
-                    label="代际"
-                    tooltip={`可为空, 比如 iPhone 13 的代际为 "13"`}
-                  >
-                    <Input
-                      value={input.generation ?? preData.generation}
-                      onChange={e => {
-                        setInput(update(input, { generation: { $set: e.target.value } }));
-                      }}
-                    />
-                  </Form.Item>
-
-                  <Form.Item label="描述" tooltip="本 SPU 的一句话描述">
-                    <Input
-                      value={input.desc ?? preData.desc}
-                      onChange={e => {
-                        setInput(update(input, { desc: { $set: e.target.value } }));
-                      }}
-                    />
-                  </Form.Item>
-
-                  <Form.Item label="备注" tooltip="自定义的文字 方便了解该分类">
-                    <TextArea
-                      value={input.remarks ?? preData.remarks}
-                      onChange={e => {
-                        setInput(update(input, { remarks: { $set: e.target.value } }));
-                      }}
-                    />
-                  </Form.Item>
-
-                  <Form.Item>
-                    <Space>
-                      {preData.state === 'invalid' ? (
-                        <Button
-                          danger
-                          onClick={postAwait(async () => {
-                            // Note: 启用功能需要后端 API 支持
-                            message.info('启用功能开发中，请联系管理员');
-                          })}
-                          disabled
-                        >
-                          启用
-                        </Button>
-                      ) : (
-                        <Button
-                          danger
-                          onClick={postAwait(
-                            async () => {
-                              // Note: 停用功能需要后端 API 支持
-                              message.info('停用功能开发中，请联系管理员');
-                            },
-                            { confirmText: `停用 SPU 前请确认 SPU 下没有任何在用的 SKU.` }
-                          )}
-                          disabled
-                        >
-                          停用
-                        </Button>
-                      )}
+                <Form.Item>
+                  <Space>
+                    {preData.state === 'invalid' ? (
                       <Button
-                        type="primary"
+                        danger
                         onClick={postAwait(async () => {
-                          if (!Object.keys(input).length) {
-                            throw new Error('无变动不需提交');
+                          // Note: 启用功能需要后端 API 支持
+                          message.info('启用功能开发中，请联系管理员');
+                        })}
+                        disabled
+                      >
+                        启用
+                      </Button>
+                    ) : (
+                      <Button
+                        danger
+                        onClick={postAwait(
+                          async () => {
+                            // Note: 停用功能需要后端 API 支持
+                            message.info('停用功能开发中，请联系管理员');
+                          },
+                          {
+                            confirmText: `停用 SPU 前请确认 SPU 下没有任何在用的 SKU.`,
                           }
-                          const params: Parameters<EditSPUInfo>[1] = {
-                            ...input,
-                            images: input.images
-                              ? ({
-                                  thumbnail: input.images.thumbnail !== undefined
-                                    ? (input.images.thumbnail?.url || '')
-                                    : (preData.images.thumbnail?.url || ''),
-                                  mainImages: input.images.mainImages !== undefined
+                        )}
+                        disabled
+                      >
+                        停用
+                      </Button>
+                    )}
+                    <Button
+                      type="primary"
+                      onClick={postAwait(async () => {
+                        if (!Object.keys(input).length) {
+                          throw new Error('无变动不需提交');
+                        }
+                        const params: Parameters<EditSPUInfo>[1] = {
+                          ...input,
+                          images: input.images
+                            ? ({
+                                thumbnail:
+                                  input.images.thumbnail !== undefined
+                                    ? input.images.thumbnail?.url || ''
+                                    : preData.images.thumbnail?.url || '',
+                                mainImages:
+                                  input.images.mainImages !== undefined
                                     ? (input.images.mainImages || [])
                                         .map(img => img.url || '')
                                         .filter(url => Boolean(url))
                                     : (preData.images.mainImages || [])
                                         .map(img => img.url || '')
                                         .filter(url => Boolean(url)),
-                                  detailsImages: input.images.detailsImages !== undefined
+                                detailsImages:
+                                  input.images.detailsImages !== undefined
                                     ? (input.images.detailsImages || [])
                                         .map(img => img.url || '')
                                         .filter(url => Boolean(url))
                                     : (preData.images.detailsImages || [])
                                         .map(img => img.url || '')
                                         .filter(url => Boolean(url)),
-                                } as Parameters<EditSPUInfo>[1]['images'])
-                              : undefined,
-                          };
-
-                          // 修改服务端数据
-                          await editSPUInfo(spuID, params, { auth: token });
-
-                          // 请求成功后 按需修改本组件数据
-                          // 需要深度合并 images 对象，避免覆盖未修改的字段
-                          const newData = {
-                            ...preData,
-                            ...input,
-                            ...(input.images ? {
-                              images: {
-                                ...preData.images,
-                                ...input.images,
-                              },
-                            } : {}),
-                          };
-                          setPreData(newData);
-
-                          // 请求成功后 初始化用户输入数据
-                          setInput({});
-
-                          // 请求成功后 按需修改 上下文 数据
-                          const i = spuList.findIndex(v => v.id === spuID);
-                          // 只更新 spuList 需要的字段
-                          const updatedSpu = {
-                            id: spuID,
-                            name: newData.name,
-                            brand: newData.brand,
-                            series: newData.series,
-                            generation: newData.generation,
-                            order: newData.order,
-                          };
-                          setSpuList(update(spuList, { [i]: { $set: updatedSpu as any } }) as any);
-                        })}
-                      >
-                        提交修改
-                      </Button>
-                      <Button
-                        danger
-                        onClick={postAwait(
-                          async () => {
-                            await invalidateSPUInfo(spuID, { auth: token });
-                            // Note: 移除后需要刷新页面以更新列表
-                            // 可以考虑添加自动刷新或返回列表页
-                          },
-                          { successText: '已经移除成功, 但前端可能需要刷新后才能生效.' }
-                        )}
-                      >
-                        移除
-                      </Button>
-                    </Space>
-                  </Form.Item>
-                </Form>
-              ),
-            },
-            {
-              key: 'mall',
-              label: hasMallInfo ? '商城信息' : <Badge dot color="red"><span style={{ paddingRight: 6 }}>商城信息</span></Badge>,
-              children: (
-                <Form layout="vertical" autoComplete="off">
-                  <Form.Item label="主图" tooltip="最多6张，建议尺寸 800 * 800px。支持批量上传，可一次选择多张图片">
-                    <Upload
-                      maxCount={6}
-                      multiple
-                      listType="picture-card"
-                      dir="z1p/"
-                      imgList={input.images?.mainImages ?? preData.images.mainImages}
-                      setImgList={e => {
-                        setInput({
-                          ...input,
-                          images: {
-                            ...input.images,
-                            mainImages: e,
-                          },
-                        });
-                      }}
-                    />
-                  </Form.Item>
-
-                  <Form.Item label="图文详情" tooltip="最多100张。支持批量上传，可一次选择多张图片">
-                    <Upload
-                      maxCount={100}
-                      multiple
-                      listType="picture-card"
-                      dir="z1p/"
-                      imgList={
-                        input.images?.detailsImages ?? preData.images.detailsImages
-                      }
-                      setImgList={e => {
-                        setInput({
-                          ...input,
-                          images: {
-                            ...input.images,
-                            detailsImages: e,
-                          },
-                        });
-                      }}
-                    />
-                  </Form.Item>
-
-                  <Form.Item>
-                    <Button
-                      type="primary"
-                      onClick={postAwait(async () => {
-                        if (!input.images || (!input.images.mainImages && !input.images.detailsImages)) {
-                          throw new Error('无变动不需提交');
-                        }
-                        const params: Parameters<EditSPUInfo>[1] = {
-                          images: {
-                            thumbnail: input.images.thumbnail !== undefined
-                              ? (input.images.thumbnail?.url || '')
-                              : (preData.images.thumbnail?.url || ''),
-                            mainImages: input.images.mainImages !== undefined
-                              ? (input.images.mainImages || [])
-                                  .map(img => img.url || '')
-                                  .filter(url => Boolean(url))
-                              : (preData.images.mainImages || [])
-                                  .map(img => img.url || '')
-                                  .filter(url => Boolean(url)),
-                            detailsImages: input.images.detailsImages !== undefined
-                              ? (input.images.detailsImages || [])
-                                  .map(img => img.url || '')
-                                  .filter(url => Boolean(url))
-                              : (preData.images.detailsImages || [])
-                                  .map(img => img.url || '')
-                                  .filter(url => Boolean(url)),
-                          },
+                              } as Parameters<EditSPUInfo>[1]['images'])
+                            : undefined,
                         };
 
                         // 修改服务端数据
@@ -478,10 +404,14 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                         const newData = {
                           ...preData,
                           ...input,
-                          images: {
-                            ...preData.images,
-                            ...input.images,
-                          },
+                          ...(input.images
+                            ? {
+                                images: {
+                                  ...preData.images,
+                                  ...input.images,
+                                },
+                              }
+                            : {}),
                         };
                         setPreData(newData);
 
@@ -499,108 +429,287 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                           generation: newData.generation,
                           order: newData.order,
                         };
-                        setSpuList(update(spuList, { [i]: { $set: updatedSpu as any } }) as any);
+                        setSpuList(
+                          update(spuList, {
+                            [i]: { $set: updatedSpu as any },
+                          }) as any
+                        );
                       })}
                     >
                       提交修改
                     </Button>
-                  </Form.Item>
-                </Form>
-              ),
-            },
-            {
-              key: 'sku',
-              label: 'SKU编辑',
-              children: (
-                <SKUManager 
-                  onWantEditSKU={async (skuID) => {
-                    setSelectedSkuID(skuID);
-                    setShowSkuEditDrawer(true);
-                    
-                    // 异步获取 SKU 名称 - 使用 API 直接获取，不使用缓存
-                    try {
-                      console.log('正在获取 SKU 名称, SKU ID:', skuID);
-                      const skuInfo = await getSKUsInfoAPI([skuID]);
-                      console.log('SKU 信息返回:', skuInfo);
-                      
-                      if (skuInfo && skuInfo.length > 0 && !('errInfo' in skuInfo[0])) {
-                        console.log('设置 SKU 名称:', skuInfo[0].name);
-                        setSelectedSkuName(skuInfo[0].name);
-                      } else {
-                        console.log('SKU 信息无效或包含错误');
-                      }
-                    } catch (error) {
-                      console.error('获取 SKU 名称失败:', error);
-                      // 如果获取失败，尝试从 preData 中获取
-                      if (preData?.skuIDs) {
-                        const sku = preData.skuIDs.find((s: any) => s.skuID === skuID);
-                        if (sku && 'name' in sku) {
-                          console.log('从 preData 获取 SKU 名称:', sku.name);
-                          setSelectedSkuName(sku.name as string);
+                    <Button
+                      danger
+                      onClick={postAwait(
+                        async () => {
+                          await invalidateSPUInfo(spuID, { auth: token });
+                          // Note: 移除后需要刷新页面以更新列表
+                          // 可以考虑添加自动刷新或返回列表页
+                        },
+                        {
+                          successText:
+                            '已经移除成功, 但前端可能需要刷新后才能生效.',
                         }
-                      }
+                      )}
+                    >
+                      移除
+                    </Button>
+                  </Space>
+                </Form.Item>
+              </Form>
+            ),
+          },
+          {
+            key: 'mall',
+            label: hasMallInfo ? (
+              '商城信息'
+            ) : (
+              <Badge dot color="red">
+                <span style={{ paddingRight: 6 }}>商城信息</span>
+              </Badge>
+            ),
+            children: (
+              <Form layout="vertical" autoComplete="off">
+                <Form.Item
+                  label="主图"
+                  tooltip="最多6张，建议尺寸 800 * 800px。支持批量上传，可一次选择多张图片"
+                >
+                  <Upload
+                    maxCount={6}
+                    multiple
+                    listType="picture-card"
+                    dir="z1p/"
+                    imgList={
+                      input.images?.mainImages ?? preData.images.mainImages
                     }
-                  }}
-                />
-              ),
-            },
-            {
-              key: 'params',
-              label: hasSetParams ? '参数' : <Badge dot color="red"><span style={{ paddingRight: 6 }}>参数</span></Badge>,
-              children: (
-                <SPUParamConfig spuID={spuID} />
-              ),
-            },
-            {
-              key: 'operations',
-              label: '操作记录',
-              children: (
-                <ChangeTable logFor={[`spu_${spuID}`]} />
-              ),
-            },
-          ]}
-        />
+                    setImgList={e => {
+                      setInput({
+                        ...input,
+                        images: {
+                          ...input.images,
+                          mainImages: e,
+                        },
+                      });
+                    }}
+                  />
+                </Form.Item>
 
-        {/* SKU 编辑 Drawer */}
-        {selectedSkuID && (
-          <Drawer
-            title={selectedSkuName ? `编辑 SKU - ${selectedSkuName}` : '编辑 SKU (加载中...)'}
-            placement="right"
-            onClose={() => {
-              setShowSkuEditDrawer(false);
-              setSelectedSkuID(undefined);
-              setSelectedSkuName('');
-            }}
-            open={showSkuEditDrawer}
-            width={typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : '33.33%'}
-            afterOpenChange={(open) => {
-              // 当抽屉打开时，刷新 SKU 名称 - 使用 API 直接获取，不使用缓存
-              if (open && selectedSkuID) {
-                const refreshSkuName = async () => {
+                <Form.Item
+                  label="图文详情"
+                  tooltip="最多100张。支持批量上传，可一次选择多张图片"
+                >
+                  <Upload
+                    maxCount={100}
+                    multiple
+                    listType="picture-card"
+                    dir="z1p/"
+                    imgList={
+                      input.images?.detailsImages ??
+                      preData.images.detailsImages
+                    }
+                    setImgList={e => {
+                      setInput({
+                        ...input,
+                        images: {
+                          ...input.images,
+                          detailsImages: e,
+                        },
+                      });
+                    }}
+                  />
+                </Form.Item>
+
+                <Form.Item>
+                  <Button
+                    type="primary"
+                    onClick={postAwait(async () => {
+                      if (
+                        !input.images ||
+                        (!input.images.mainImages &&
+                          !input.images.detailsImages)
+                      ) {
+                        throw new Error('无变动不需提交');
+                      }
+                      const params: Parameters<EditSPUInfo>[1] = {
+                        images: {
+                          thumbnail:
+                            input.images.thumbnail !== undefined
+                              ? input.images.thumbnail?.url || ''
+                              : preData.images.thumbnail?.url || '',
+                          mainImages:
+                            input.images.mainImages !== undefined
+                              ? (input.images.mainImages || [])
+                                  .map(img => img.url || '')
+                                  .filter(url => Boolean(url))
+                              : (preData.images.mainImages || [])
+                                  .map(img => img.url || '')
+                                  .filter(url => Boolean(url)),
+                          detailsImages:
+                            input.images.detailsImages !== undefined
+                              ? (input.images.detailsImages || [])
+                                  .map(img => img.url || '')
+                                  .filter(url => Boolean(url))
+                              : (preData.images.detailsImages || [])
+                                  .map(img => img.url || '')
+                                  .filter(url => Boolean(url)),
+                        },
+                      };
+
+                      // 修改服务端数据
+                      await editSPUInfo(spuID, params, { auth: token });
+
+                      // 请求成功后 按需修改本组件数据
+                      // 需要深度合并 images 对象，避免覆盖未修改的字段
+                      const newData = {
+                        ...preData,
+                        ...input,
+                        images: {
+                          ...preData.images,
+                          ...input.images,
+                        },
+                      };
+                      setPreData(newData);
+
+                      // 请求成功后 初始化用户输入数据
+                      setInput({});
+
+                      // 请求成功后 按需修改 上下文 数据
+                      const i = spuList.findIndex(v => v.id === spuID);
+                      // 只更新 spuList 需要的字段
+                      const updatedSpu = {
+                        id: spuID,
+                        name: newData.name,
+                        brand: newData.brand,
+                        series: newData.series,
+                        generation: newData.generation,
+                        order: newData.order,
+                      };
+                      setSpuList(
+                        update(spuList, {
+                          [i]: { $set: updatedSpu as any },
+                        }) as any
+                      );
+                    })}
+                  >
+                    提交修改
+                  </Button>
+                </Form.Item>
+              </Form>
+            ),
+          },
+          {
+            key: 'sku',
+            label: 'SKU编辑',
+            children: (
+              <SKUManager
+                onWantEditSKU={async skuID => {
+                  setSelectedSkuID(skuID);
+                  setShowSkuEditDrawer(true);
+
+                  // 异步获取 SKU 名称 - 使用 API 直接获取，不使用缓存
                   try {
-                    console.log('刷新 SKU 名称, SKU ID:', selectedSkuID);
-                    const skuInfo = await getSKUsInfoAPI([selectedSkuID]);
-                    console.log('刷新后的 SKU 信息:', skuInfo);
-                    if (skuInfo && skuInfo.length > 0 && !('errInfo' in skuInfo[0])) {
-                      console.log('更新 SKU 名称为:', skuInfo[0].name);
+                    console.log('正在获取 SKU 名称, SKU ID:', skuID);
+                    const skuInfo = await getSKUsInfoAPI([skuID]);
+                    console.log('SKU 信息返回:', skuInfo);
+
+                    if (
+                      skuInfo &&
+                      skuInfo.length > 0 &&
+                      !('errInfo' in skuInfo[0])
+                    ) {
+                      console.log('设置 SKU 名称:', skuInfo[0].name);
                       setSelectedSkuName(skuInfo[0].name);
+                    } else {
+                      console.log('SKU 信息无效或包含错误');
                     }
                   } catch (error) {
-                    console.error('刷新 SKU 名称失败:', error);
+                    console.error('获取 SKU 名称失败:', error);
+                    // 如果获取失败，尝试从 preData 中获取
+                    if (preData?.skuIDs) {
+                      const sku = preData.skuIDs.find(
+                        (s: any) => s.skuID === skuID
+                      );
+                      if (sku && 'name' in sku) {
+                        console.log('从 preData 获取 SKU 名称:', sku.name);
+                        setSelectedSkuName(sku.name as string);
+                      }
+                    }
                   }
-                };
-                refreshSkuName();
-              }
+                }}
+              />
+            ),
+          },
+          {
+            key: 'params',
+            label: hasSetParams ? (
+              '参数'
+            ) : (
+              <Badge dot color="red">
+                <span style={{ paddingRight: 6 }}>参数</span>
+              </Badge>
+            ),
+            children: <SPUParamConfig spuID={spuID} />,
+          },
+          {
+            key: 'operations',
+            label: '操作记录',
+            children: <ChangeTable logFor={[`spu_${spuID}`]} />,
+          },
+        ]}
+      />
+
+      {/* SKU 编辑 Drawer */}
+      {selectedSkuID && (
+        <Drawer
+          title={
+            selectedSkuName
+              ? `编辑 SKU - ${selectedSkuName}`
+              : '编辑 SKU (加载中...)'
+          }
+          placement="right"
+          onClose={() => {
+            setShowSkuEditDrawer(false);
+            setSelectedSkuID(undefined);
+            setSelectedSkuName('');
+          }}
+          open={showSkuEditDrawer}
+          width={
+            typeof window !== 'undefined' && window.innerWidth < 768
+              ? '100%'
+              : '33.33%'
+          }
+          afterOpenChange={open => {
+            // 当抽屉打开时，刷新 SKU 名称 - 使用 API 直接获取，不使用缓存
+            if (open && selectedSkuID) {
+              const refreshSkuName = async () => {
+                try {
+                  console.log('刷新 SKU 名称, SKU ID:', selectedSkuID);
+                  const skuInfo = await getSKUsInfoAPI([selectedSkuID]);
+                  console.log('刷新后的 SKU 信息:', skuInfo);
+                  if (
+                    skuInfo &&
+                    skuInfo.length > 0 &&
+                    !('errInfo' in skuInfo[0])
+                  ) {
+                    console.log('更新 SKU 名称为:', skuInfo[0].name);
+                    setSelectedSkuName(skuInfo[0].name);
+                  }
+                } catch (error) {
+                  console.error('刷新 SKU 名称失败:', error);
+                }
+              };
+              refreshSkuName();
+            }
+          }}
+        >
+          <SKUEdit
+            selectedSkuID={selectedSkuID}
+            onNameChange={name => {
+              setSelectedSkuName(name);
             }}
-          >
-            <SKUEdit 
-              selectedSkuID={selectedSkuID}
-              onNameChange={(name) => {
-                setSelectedSkuName(name);
-              }}
-            />
-          </Drawer>
-        )}
-      </div>
+          />
+        </Drawer>
+      )}
+    </div>
   );
 }

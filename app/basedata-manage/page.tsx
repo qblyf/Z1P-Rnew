@@ -15,6 +15,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Modal,
   Row,
   Space,
   Spin,
@@ -22,6 +23,7 @@ import {
   Tabs,
   TabsProps,
   Tag,
+  Tooltip,
   Typography,
   message,
   Pagination,
@@ -34,12 +36,28 @@ import {
   EyeOutlined,
   EyeInvisibleOutlined,
   SaveOutlined,
+  HolderOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import { Suspense, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import update from 'immutability-helper';
 import pinyin from 'tiny-pinyin';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 import { lessAwait, postAwait } from '../../error';
 import { BrandListProvider, useBrandListContext } from '../../datahooks/brand';
@@ -62,7 +80,6 @@ const { Title, Text } = Typography;
 // 拖拽类型
 const ItemTypes = {
   BRAND_CARD: 'brand_card',
-  SPEC_CARD: 'spec_card',
 };
 
 // 可拖拽的品牌卡片组件
@@ -895,105 +912,41 @@ function BrandAdd(props: { onSuccess?: () => void }) {
 
 // ============ 规格管理组件 ============
 
-// 可拖拽的规格卡片组件
-interface DraggableSpecCardProps {
+// 可拖拽排序的规格卡片组件（使用 @dnd-kit）
+interface SortableSpecCardProps {
   spec: SpuSpecAttribute;
-  index: number;
-  moveCard: (dragIndex: number, hoverIndex: number) => void;
   onEdit: (zid: string) => void;
+  onMove: (spec: SpuSpecAttribute, currentIndex: number) => void;
   usageCount?: number;
+  relativeIndex: number;
 }
 
-function DraggableSpecCard({ spec, index, moveCard, onEdit, usageCount }: DraggableSpecCardProps) {
-  const ref = useRef<HTMLDivElement>(null);
+function SortableSpecCard({ spec, onEdit, onMove, usageCount, relativeIndex }: SortableSpecCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: spec.zid });
 
-  const [{ handlerId }, drop] = useDrop<
-    { index: number },
-    void,
-    { handlerId: any }
-  >({
-    accept: ItemTypes.SPEC_CARD,
-    collect(monitor) {
-      return {
-        handlerId: monitor.getHandlerId(),
-      };
-    },
-    hover(item: { index: number }, monitor) {
-      if (!ref.current) {
-        return;
-      }
-      const dragIndex = item.index;
-      const hoverIndex = index;
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: 'relative' as const,
+  };
 
-      if (dragIndex === hoverIndex) {
-        return;
-      }
-
-      const hoverBoundingRect = ref.current?.getBoundingClientRect();
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
-      const clientOffset = monitor.getClientOffset();
-      const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
-
-      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
-        return;
-      }
-      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
-        return;
-      }
-
-      moveCard(dragIndex, hoverIndex);
-      item.index = hoverIndex;
-    },
-  });
-
-  const [{ isDragging }, drag] = useDrag({
-    type: ItemTypes.SPEC_CARD,
-    item: () => {
-      return { index };
-    },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-
-  drag(drop(ref));
+  // 排序权重显示：sortWeight / 1000
+  const sortWeightDisplay = (() => {
+    const val = spec.sortWeight / 1000;
+    return Number.isInteger(val) ? val.toString() : val.toString();
+  })();
 
   return (
-    <div
-      ref={ref}
-      data-handler-id={handlerId}
-      style={{
-        opacity: isDragging ? 0.5 : 1,
-        cursor: 'move',
-        position: 'relative',
-      }}
-    >
-      {/* 使用次数气泡 */}
-      {usageCount !== undefined && (
-        <div
-          style={{
-            position: 'absolute',
-            top: -6,
-            right: -6,
-            minWidth: 24,
-            height: 24,
-            padding: '0 6px',
-            backgroundColor: usageCount > 0 ? '#52c41a' : '#d9d9d9',
-            color: '#fff',
-            borderRadius: 4,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            fontWeight: 600,
-            zIndex: 1,
-            boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-            pointerEvents: 'none',
-          }}
-        >
-          {usageCount}
-        </div>
-      )}
+    <div ref={setNodeRef} style={style} {...attributes}>
       <Card
         className="spec-card"
         size="small"
@@ -1002,63 +955,77 @@ function DraggableSpecCard({ spec, index, moveCard, onEdit, usageCount }: Dragga
           borderRadius: 8,
           border: '1px solid #f0f0f0',
           boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+          cursor: 'pointer',
         }}
         bodyStyle={{
-          padding: 12,
+          padding: '8px 10px',
         }}
       >
+        {/* 顶部栏：左拖拽按钮 + 右序号 */}
         <div style={{
           display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 6,
         }}>
-          {/* 规格值 */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <Tag
-              color="blue"
-              style={{
-                margin: 0,
-                fontSize: 14,
-                fontWeight: 500,
-                maxWidth: '100%',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {spec.value}
-            </Tag>
+          <div
+            ref={setActivatorNodeRef}
+            {...listeners}
+            style={{ cursor: 'grab', color: '#999', fontSize: 14, lineHeight: 1 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <HolderOutlined />
           </div>
-
-          {/* 描述 */}
-          <Text
-            type="secondary"
-            style={{
-              fontSize: 12,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              textAlign: 'center',
-            }}
-          >
-            {spec.label.length > 0 ? spec.label.join(', ') : '-'}
+          <Text style={{ fontSize: 11, color: '#999' }}>
+            {relativeIndex}
           </Text>
+        </div>
 
-          {/* 排序权重 */}
-          <Text
-            type="secondary"
-            style={{
-              fontSize: 11,
-              color: '#999',
-              textAlign: 'center',
-            }}
-          >
-            排序 {spec.sortWeight}
+        {/* 规格值名称 - 单行省略 */}
+        <div style={{
+          fontSize: 14,
+          fontWeight: 500,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          marginBottom: 4,
+        }}>
+          {spec.value}
+        </div>
+
+        {/* 标签 - 顿号分割，单行省略 */}
+        <Text
+          type="secondary"
+          style={{
+            fontSize: 12,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            display: 'block',
+            marginBottom: 6,
+          }}
+        >
+          {spec.label.length > 0 ? spec.label.join('\u3001') : '-'}
+        </Text>
+
+        {/* 底部栏：左排序号 + 右移动按钮 */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <Text style={{ fontSize: 11, color: '#999' }}>
+            排序 {sortWeightDisplay}
           </Text>
+          <Tooltip title="移动到指定位置">
+            <SwapOutlined
+              style={{ fontSize: 13, color: '#999', cursor: 'pointer' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onMove(spec, relativeIndex);
+              }}
+            />
+          </Tooltip>
         </div>
       </Card>
     </div>
@@ -1079,12 +1046,12 @@ function SpecManage({ specName, title }: SpecManageProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isAddMode, setIsAddMode] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(60);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [originalSpecs, setOriginalSpecs] = useState<SpuSpecAttribute[]>([]);
   const [usageCounts, setUsageCounts] = useState<Map<string, number>>(new Map());
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [moveTarget, setMoveTarget] = useState<{ spec: SpuSpecAttribute; currentIndex: number } | null>(null);
+  const [movePosition, setMovePosition] = useState<number | null>(null);
 
   // 加载使用次数统计
   const loadUsageCounts = useCallback(async () => {
@@ -1146,8 +1113,6 @@ function SpecManage({ specName, title }: SpecManageProps) {
       typeSpecs.sort((a, b) => b.sortWeight - a.sortWeight);
       setSpecs(typeSpecs);
       setFilteredSpecs(typeSpecs);
-      setOriginalSpecs(JSON.parse(JSON.stringify(typeSpecs)));
-      setHasChanges(false);
       
       // 加载使用次数
       const counts = await loadUsageCounts();
@@ -1221,82 +1186,209 @@ function SpecManage({ specName, title }: SpecManageProps) {
     loadSpecs();
   };
 
-  // 拖拽移动卡片
-  const moveCard = useCallback((dragIndex: number, hoverIndex: number) => {
-    setFilteredSpecs((prevSpecs) => {
-      const newSpecs = [...prevSpecs];
-      const draggedItem = newSpecs[dragIndex];
-      newSpecs.splice(dragIndex, 1);
-      newSpecs.splice(hoverIndex, 0, draggedItem);
-      
-      // 重新计算sortWeight（降序，最大值在前）
-      const maxWeight = 999;
-      const step = maxWeight / newSpecs.length;
-      newSpecs.forEach((spec, index) => {
-        spec.sortWeight = Math.round(maxWeight - index * step);
-      });
-      
-      return newSpecs;
-    });
-    
-    setSpecs((prevSpecs) => {
-      const newSpecs = [...prevSpecs];
-      const draggedItem = newSpecs[dragIndex];
-      newSpecs.splice(dragIndex, 1);
-      newSpecs.splice(hoverIndex, 0, draggedItem);
-      
-      // 重新计算sortWeight
-      const maxWeight = 999;
-      const step = maxWeight / newSpecs.length;
-      newSpecs.forEach((spec, index) => {
-        spec.sortWeight = Math.round(maxWeight - index * step);
-      });
-      
-      return newSpecs;
-    });
-    
-    setHasChanges(true);
+  // 根据目标绝对位置计算新权重（插值算法）
+  // specs 是全量按 sortWeight 降序排列的数组
+  const calcNewWeight = useCallback((targetAbsIdx: number, allSpecs: SpuSpecAttribute[], excludeZid: string) => {
+    // 排除被移动项本身
+    const others = allSpecs.filter((s) => s.zid !== excludeZid);
+    if (others.length === 0) return 5000;
+
+    let weight: number;
+    if (targetAbsIdx <= 0) {
+      // 插入到第一位
+      weight = (10000000 + others[0].sortWeight) / 2;
+    } else if (targetAbsIdx >= others.length) {
+      // 插入到最后一位
+      weight = (0.000 + others[others.length - 1].sortWeight) / 2;
+    } else {
+      // 插入到中间位置
+      const prev = others[targetAbsIdx - 1];
+      const next = others[targetAbsIdx];
+      weight = (prev.sortWeight + next.sortWeight) / 2;
+    }
+
+    // 四舍五入保留3位小数
+    return Math.round(weight);
   }, []);
 
-  // 保存排序
-  const handleSaveOrder = useCallback(async () => {
+  // 保存单个规格值的排序权重到后端
+  const saveSpecWeight = useCallback(async (zid: string, sortWeight: number) => {
     if (!token) return;
     try {
-      setSaving(true);
-      
-      // 找出有变更的项
-      const changedSpecs = specs.filter((spec) => {
-        const original = originalSpecs.find((o) => o.zid === spec.zid);
-        return original && original.sortWeight !== spec.sortWeight;
-      });
-
-      if (changedSpecs.length === 0) {
-        message.info('没有需要保存的更改');
-        return;
-      }
-
-      // 批量保存
-      const promises = changedSpecs.map((spec) =>
-        editSpuSpecAttribute(
-          {
-            zid: spec.zid,
-            sortWeight: spec.sortWeight,
-          },
-          { auth: token }
-        )
+      await editSpuSpecAttribute(
+        { zid, sortWeight },
+        { auth: token }
       );
-
-      await Promise.all(promises);
-      message.success(`保存成功，共更新 ${changedSpecs.length} 项`);
-      setHasChanges(false);
-      await loadSpecs();
     } catch (error) {
-      message.error('保存失败');
+      message.error('保存排序失败');
       console.error(error);
-    } finally {
-      setSaving(false);
     }
-  }, [token, specs, originalSpecs, loadSpecs]);
+  }, [token]);
+
+  // @dnd-kit 传感器配置
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    })
+  );
+
+  // @dnd-kit 拖拽结束回调
+  const handleSortEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const activeZid = active.id as string;
+    const overZid = over.id as string;
+
+    // 在当前分页数据中找到拖拽项和目标项的索引
+    const oldIndex = paginatedSpecs.findIndex((s) => s.zid === activeZid);
+    const newIndex = paginatedSpecs.findIndex((s) => s.zid === overZid);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // 换算为 filteredSpecs 中的索引
+    const pageOffset = (currentPage - 1) * pageSize;
+    const dragFilteredIdx = pageOffset + oldIndex;
+    const hoverFilteredIdx = pageOffset + newIndex;
+
+    const draggedSpec = filteredSpecs[dragFilteredIdx];
+    if (!draggedSpec) return;
+
+    // 相对位置换算绝对位置后插值
+    const isSearching = search.length > 0;
+    let targetAbsIdx: number;
+
+    if (isSearching) {
+      const targetSpec = filteredSpecs[hoverFilteredIdx];
+      if (targetSpec) {
+        const absIdx = specs.findIndex((s) => s.zid === targetSpec.zid);
+        if (hoverFilteredIdx > dragFilteredIdx) {
+          targetAbsIdx = absIdx + 1;
+        } else {
+          targetAbsIdx = absIdx;
+        }
+      } else {
+        targetAbsIdx = specs.length;
+      }
+    } else {
+      targetAbsIdx = hoverFilteredIdx;
+    }
+
+    const newWeight = calcNewWeight(targetAbsIdx, specs, draggedSpec.zid);
+
+    // 更新全量 specs
+    const newSpecs = specs.map((s) =>
+      s.zid === draggedSpec.zid ? { ...s, sortWeight: newWeight } : s
+    );
+    newSpecs.sort((a, b) => b.sortWeight - a.sortWeight);
+    setSpecs(newSpecs);
+
+    // 更新 filteredSpecs
+    if (search) {
+      const s = search.toLowerCase();
+      const filtered = newSpecs.filter((spec) =>
+        spec.value.toLowerCase().includes(s) ||
+        spec.label.some((l) => l.toLowerCase().includes(s))
+      );
+      setFilteredSpecs(filtered);
+    } else {
+      setFilteredSpecs(newSpecs);
+    }
+
+    // 保存到后端
+    saveSpecWeight(draggedSpec.zid, newWeight);
+  }, [filteredSpecs, paginatedSpecs, specs, search, currentPage, pageSize, calcNewWeight, saveSpecWeight]);
+
+  // 打开移动弹框（传入相对位置）
+  const handleOpenMoveModal = useCallback((spec: SpuSpecAttribute, currentRelativeIndex: number) => {
+    setMoveTarget({ spec, currentIndex: currentRelativeIndex });
+    setMovePosition(null);
+    setMoveModalOpen(true);
+  }, []);
+
+  // 执行移动（用户输入相对位置 → 换算绝对位置 → 插值计算权重）
+  const handleMoveConfirm = useCallback(() => {
+    if (!moveTarget || movePosition === null || movePosition < 1) {
+      message.warning('请输入有效的目标位置');
+      return;
+    }
+
+    const targetRelIdx = movePosition - 1; // 转为 0-based 相对位置
+    const clampedRelIdx = Math.max(0, Math.min(targetRelIdx, filteredSpecs.length - 1));
+    const movedSpec = moveTarget.spec;
+
+    // 当前相对位置
+    const currentRelIdx = filteredSpecs.findIndex((s) => s.zid === movedSpec.zid);
+    if (currentRelIdx === -1) {
+      message.error('未找到该规格值');
+      return;
+    }
+    if (currentRelIdx === clampedRelIdx) {
+      message.info('已在目标位置');
+      setMoveModalOpen(false);
+      return;
+    }
+
+    // 相对位置换算绝对位置
+    const isSearching = search.length > 0;
+    let targetAbsIdx: number;
+
+    if (isSearching) {
+      // 搜索模式：找到相对位置目标项在全量 specs 中的位置
+      if (clampedRelIdx === 0) {
+        // 目标是搜索结果第一项 → 在全量中插到该项之前
+        const firstFilteredSpec = filteredSpecs.find((s) => s.zid !== movedSpec.zid);
+        if (firstFilteredSpec) {
+          const absIdx = specs.findIndex((s) => s.zid === firstFilteredSpec.zid);
+          targetAbsIdx = absIdx;
+        } else {
+          targetAbsIdx = 0;
+        }
+      } else {
+        // 找到目标位置的前一项（在排除自身之后的 filteredSpecs 中）
+        const otherFiltered = filteredSpecs.filter((s) => s.zid !== movedSpec.zid);
+        const actualIdx = Math.min(clampedRelIdx, otherFiltered.length);
+        if (actualIdx >= otherFiltered.length) {
+          // 插到最后
+          const lastSpec = otherFiltered[otherFiltered.length - 1];
+          const absIdx = specs.findIndex((s) => s.zid === lastSpec.zid);
+          targetAbsIdx = absIdx + 1;
+        } else {
+          const targetFilteredSpec = otherFiltered[actualIdx];
+          const absIdx = specs.findIndex((s) => s.zid === targetFilteredSpec.zid);
+          targetAbsIdx = absIdx;
+        }
+      }
+    } else {
+      // 非搜索模式：相对位置 = 绝对位置
+      targetAbsIdx = clampedRelIdx;
+    }
+
+    // 插值计算新权重
+    const newWeight = calcNewWeight(targetAbsIdx, specs, movedSpec.zid);
+
+    // 更新全量 specs
+    const newSpecs = specs.map((s) =>
+      s.zid === movedSpec.zid ? { ...s, sortWeight: newWeight } : s
+    );
+    newSpecs.sort((a, b) => b.sortWeight - a.sortWeight);
+    setSpecs(newSpecs);
+
+    // 更新 filteredSpecs
+    if (search) {
+      const s = search.toLowerCase();
+      const filtered = newSpecs.filter((spec) =>
+        spec.value.toLowerCase().includes(s) ||
+        spec.label.some((l) => l.toLowerCase().includes(s))
+      );
+      setFilteredSpecs(filtered);
+    } else {
+      setFilteredSpecs(newSpecs);
+    }
+
+    setMoveModalOpen(false);
+    saveSpecWeight(movedSpec.zid, newWeight);
+    message.success(`已将「${movedSpec.value}」移动到第 ${movePosition} 位`);
+  }, [moveTarget, movePosition, filteredSpecs, specs, search, calcNewWeight, saveSpecWeight]);
 
   if (!token) {
     return null;
@@ -1475,27 +1567,14 @@ function SpecManage({ specName, title }: SpecManageProps) {
               />
             </Col>
             <Col>
-              <Space>
-                {hasChanges && (
-                  <Button
-                    type="primary"
-                    icon={<SaveOutlined />}
-                    onClick={handleSaveOrder}
-                    loading={saving}
-                    style={{ borderRadius: 8 }}
-                  >
-                    保存排序
-                  </Button>
-                )}
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={handleAdd}
-                  style={{ borderRadius: 8 }}
-                >
-                  新增{title}
-                </Button>
-              </Space>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleAdd}
+                style={{ borderRadius: 8 }}
+              >
+                新增{title}
+              </Button>
             </Col>
           </Row>
 
@@ -1507,29 +1586,36 @@ function SpecManage({ specName, title }: SpecManageProps) {
             </div>
           ) : filteredSpecs.length > 0 ? (
             <>
-              <Row gutter={[12, 12]}>
-                {paginatedSpecs.map((spec, index) => {
-                  return (
-                    <Col
-                      key={spec.zid}
-                      xs={12}
-                      sm={8}
-                      md={6}
-                      lg={4}
-                      xl={3}
-                      xxl={2}
-                    >
-                      <DraggableSpecCard
-                        spec={spec}
-                        index={index}
-                        moveCard={moveCard}
-                        onEdit={handleEdit}
-                        usageCount={usageCounts.get(spec.value)}
-                      />
-                    </Col>
-                  );
-                })}
-              </Row>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleSortEnd}
+              >
+                <SortableContext
+                  items={paginatedSpecs.map((s) => s.zid)}
+                  strategy={rectSortingStrategy}
+                >
+                  <Row gutter={[12, 12]}>
+                    {paginatedSpecs.map((spec, index) => {
+                      const relativeIndex = (currentPage - 1) * pageSize + index + 1;
+                      return (
+                        <Col
+                          key={spec.zid}
+                          span={3}
+                        >
+                          <SortableSpecCard
+                            spec={spec}
+                            onEdit={handleEdit}
+                            onMove={handleOpenMoveModal}
+                            usageCount={usageCounts.get(spec.value)}
+                            relativeIndex={relativeIndex}
+                          />
+                        </Col>
+                      );
+                    })}
+                  </Row>
+                </SortableContext>
+              </DndContext>
 
               {/* 分页 */}
               <div style={{
@@ -1580,22 +1666,53 @@ function SpecManage({ specName, title }: SpecManageProps) {
           }}
         >
           {isAddMode ? (
-            <SpecAdd specName={specName} title={title} onSuccess={handleSuccess} />
+            <SpecAdd specName={specName} title={title} onSuccess={handleSuccess} specs={specs} />
           ) : selected ? (
-            <SpecEdit zid={selected} title={title} onSuccess={handleSuccess} specName={specName} />
+            <SpecEdit zid={selected} title={title} onSuccess={handleSuccess} specName={specName} specs={specs} />
           ) : null}
         </Drawer>
+
+        {/* 移动规格值弹框 */}
+        <Modal
+          title="移动规格值"
+          open={moveModalOpen}
+          onOk={handleMoveConfirm}
+          onCancel={() => setMoveModalOpen(false)}
+          okText="移动"
+          cancelText="取消"
+        >
+          {moveTarget && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <Text>
+                将「{moveTarget.spec.value}」移动到指定位置
+              </Text>
+              <div>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 8, fontSize: 12 }}>
+                  目标位置
+                </Text>
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={1}
+                  max={filteredSpecs.length}
+                  value={movePosition}
+                  onChange={(val) => setMovePosition(val)}
+                  placeholder="输入目标位置序号，移动后会自动调整权重，确保该规格值位于指定位置"
+                />
+              </div>
+            </div>
+          )}
+        </Modal>
       </div>
     </>
   );
 }
 
-function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; specName: SpecName }) {
-  const { zid, title, onSuccess, specName } = props;
+function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; specName: SpecName; specs: SpuSpecAttribute[] }) {
+  const { zid, title, onSuccess, specName, specs } = props;
   const [input, setInput] = useState<{
     value?: string;
     label?: string[];
-    sortWeight?: number;
+    insertPosition?: number;
   }>({});
   const [preData, setPreData] = useState<SpuSpecAttribute>();
   const [loading, setLoading] = useState(false);
@@ -1701,6 +1818,7 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; s
           >
             <Input
               value={input.value ?? preData.value}
+              disabled
               onChange={e => {
                 setInput(update(input, { value: { $set: e.target.value } }));
               }}
@@ -1731,16 +1849,11 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; s
             )}
           </Form.Item>
 
-          <Form.Item label="排序权重" tooltip="数值越大越靠前显示 (0-999)">
+          <Form.Item label="排序权重">
             <InputNumber
-              value={input.sortWeight ?? preData.sortWeight}
-              onChange={v => {
-                setInput(update(input, { sortWeight: { $set: v ?? undefined } }));
-              }}
-              placeholder="输入排序权重"
+              value={preData.sortWeight / 1000}
+              disabled
               style={{ width: '100%', borderRadius: 8 }}
-              min={0}
-              max={999}
             />
           </Form.Item>
 
@@ -1759,12 +1872,28 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; s
                 }
                 setLoading(true);
                 try {
+                  // 根据插入位置计算新权重
+                  let newSortWeight: number | undefined;
+                  if (input.insertPosition !== undefined) {
+                    const targetIdx = input.insertPosition - 1;
+                    const others = specs.filter((s) => s.zid !== preData.zid);
+                    if (others.length === 0) {
+                      newSortWeight = 5000;
+                    } else if (targetIdx <= 0) {
+                      newSortWeight = (10000 + others[0].sortWeight) / 2;
+                    } else if (targetIdx >= others.length) {
+                      newSortWeight = (0 + others[others.length - 1].sortWeight) / 2;
+                    } else {
+                      newSortWeight = (others[targetIdx - 1].sortWeight + others[targetIdx].sortWeight) / 2;
+                    }
+                  }
+
                   await editSpuSpecAttribute(
                     {
                       zid: preData.zid,
                       value: input.value,
                       label: input.label,
-                      sortWeight: input.sortWeight,
+                      sortWeight: newSortWeight,
                     },
                     { auth: token }
                   );
@@ -1866,12 +1995,12 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; s
   );
 }
 
-function SpecAdd(props: { specName: SpecName; title: string; onSuccess?: () => void }) {
-  const { specName, title, onSuccess } = props;
+function SpecAdd(props: { specName: SpecName; title: string; onSuccess?: () => void; specs: SpuSpecAttribute[] }) {
+  const { specName, title, onSuccess, specs } = props;
   const [input, setInput] = useState({
     value: '',
     label: [] as string[],
-    sortWeight: 0,
+    insertPosition: specs.length + 1,
   });
   const [labelInput, setLabelInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -1918,16 +2047,16 @@ function SpecAdd(props: { specName: SpecName; title: string; onSuccess?: () => v
         )}
       </Form.Item>
 
-      <Form.Item label="排序权重" tooltip="数值越大越靠前显示 (0-999)">
+      <Form.Item label="插入位置" tooltip={`输入目标位置序号（1 ~ ${specs.length + 1}），默认插入到最后`}>
         <InputNumber
-          value={input.sortWeight}
+          value={input.insertPosition}
           onChange={v => {
-            setInput(update(input, { sortWeight: { $set: v ?? 0 } }));
+            setInput(update(input, { insertPosition: { $set: v ?? specs.length + 1 } }));
           }}
-          placeholder="输入排序权重"
+          placeholder="输入插入位置"
           style={{ width: '100%', borderRadius: 8 }}
-          min={0}
-          max={999}
+          min={1}
+          max={specs.length + 1}
         />
       </Form.Item>
 
@@ -1946,12 +2075,25 @@ function SpecAdd(props: { specName: SpecName; title: string; onSuccess?: () => v
             }
             setLoading(true);
             try {
+              // 根据插入位置计算权重
+              const targetIdx = input.insertPosition - 1;
+              let sortWeight: number;
+              if (specs.length === 0) {
+                sortWeight = 5000;
+              } else if (targetIdx <= 0) {
+                sortWeight = Math.abs((10000 + specs[0].sortWeight) / 2);
+              } else if (targetIdx >= specs.length) {
+                sortWeight = Math.abs((0 + specs[specs.length - 1].sortWeight) / 2);
+              } else {
+                sortWeight = Math.abs((specs[targetIdx - 1].sortWeight + specs[targetIdx].sortWeight) / 2);
+              }
+
               await addSpuSpecAttribute(
                 {
                   name: specName,
                   value: input.value,
                   label: input.label,
-                  sortWeight: input.sortWeight,
+                  sortWeight,
                 },
                 { auth: token }
               );

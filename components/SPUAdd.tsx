@@ -18,6 +18,7 @@ import { postAwait } from '../error';
 import { useBrandListContext } from '../datahooks/brand';
 import Upload from './Upload';
 import { useTokenContext } from '../datahooks/auth';
+import SearchKeywordsManager from './SearchKeywordsManager';
 
 /**
  * [组件] 新增 SPU
@@ -149,11 +150,7 @@ export default function SPUAdd() {
           <DatePicker
             style={{ width: '100%' }}
             allowClear
-            value={
-              input.marketTime
-                ? dayjs(input.marketTime)
-                : undefined
-            }
+            value={input.marketTime ? dayjs(input.marketTime) : undefined}
             onChange={v => {
               const vStr: string | undefined = v
                 ? v.format('YYYY-MM-DD')
@@ -182,6 +179,15 @@ export default function SPUAdd() {
             value={input.spell}
             onChange={e => {
               setInput(update(input, { spell: { $set: e.target.value } }));
+            }}
+          />
+        </Form.Item>
+
+        <Form.Item label="型号代码" tooltip="商品的型号代码, 方便进行查找">
+          <Input
+            value={input.modelCode ?? ''}
+            onChange={e => {
+              setInput(update(input, { modelCode: { $set: e.target.value } }));
             }}
           />
         </Form.Item>
@@ -295,6 +301,15 @@ export default function SPUAdd() {
           />
         </Form.Item>
 
+        <Form.Item label="搜索关键词" tooltip="用于网站搜索商品时的关键词匹配">
+          <SearchKeywordsManager
+            keywords={input.keywords}
+            onChange={keywords => {
+              setInput(update(input, { keywords: { $set: keywords } }));
+            }}
+          />
+        </Form.Item>
+
         <Form.Item>
           <Button
             type="primary"
@@ -320,17 +335,15 @@ export default function SPUAdd() {
               );
               init();
               // update spu list - 只添加 spuList 需要的字段
-              const newSpu = { 
-                id, 
+              const newSpu = {
+                id,
                 name: input.name,
                 brand: input.brand,
                 series: input.series,
                 generation: input.generation,
-                order: Number(order)
+                order: Number(order),
               };
-              setSpuList(
-                update(spuList, { $push: [newSpu as any] }) as any
-              );
+              setSpuList(update(spuList, { $push: [newSpu as any] }) as any);
             })}
           >
             提交修改

@@ -1,17 +1,18 @@
-"use client"
+"use client";
 
-import 'dingtalk-jsapi/entry/union';
-import requestAuthCode from 'dingtalk-jsapi/api/runtime/permission/requestAuthCode';
-import { getENV } from 'dingtalk-jsapi/lib/env';
 import { useEffect, useMemo, useState } from 'react';
-import { dingtalkLogin } from '@zsqk/z1-sdk/es/z1p/auth';
-import { message } from 'antd';
 import constate from 'constate';
-import { DINGDING_CORPID } from '../constants';
-import {
-  isZ1PUserJWTPayload,
-  Z1PUserJWTPayload,
-} from '@zsqk/z1-sdk/es/z1p/auth-types';
+
+// 类型定义
+interface Z1PUserJWTPayload {
+  exp: number;
+  name: string;
+  [key: string]: any;
+}
+
+function isZ1PUserJWTPayload(payload: any): payload is Z1PUserJWTPayload {
+  return payload && typeof payload.exp === 'number' && typeof payload.name === 'string';
+}
 
 /**
  * 获取 user JWT payload
@@ -21,6 +22,11 @@ import {
 export function getPayload(
   p: string
 ): [Z1PUserJWTPayload, null] | [null, Error] {
+  // 服务端检查
+  if (typeof window === 'undefined') {
+    return [null, new Error('服务端环境下无法解析token')];
+  }
+  
   if (!p || typeof p !== 'string') {
     return [null, new Error('无效的 JWT 字符串')];
   }
@@ -55,6 +61,11 @@ export function getPayload(
 }
 
 function getCacheToken(): [string, null] | [null, Error] {
+  // 服务端检查
+  if (typeof window === 'undefined') {
+    return [null, new Error('服务端环境下无法访问localStorage')];
+  }
+  
   const cacheToken = window.localStorage.getItem('token');
   if (cacheToken === null) {
     return [null, new Error('没有从缓存中拿到数据')];
@@ -70,6 +81,12 @@ function getCacheToken(): [string, null] | [null, Error] {
  * Note: Token 有效性检查在 getPayload() 中进行
  */
 export function setCacheToken(v: string | null): void {
+  // 服务端检查
+  if (typeof window === 'undefined') {
+    console.warn('服务端环境下无法访问localStorage');
+    return;
+  }
+  
   if (typeof v === 'string') {
     window.localStorage.setItem('token', v);
   } else {
@@ -79,15 +96,16 @@ export function setCacheToken(v: string | null): void {
 
 /**
  * [Hooks] 自动登录
- *
- * 1. 如果在钉钉中, 则调用钉钉登录.
- * 2. 如果在企业微信中, 则调用企业微信登录.
- * 3. 如果在飞书中, 则调用飞书登录.
  */
 function useToken() {
   const [token, setToken] = useState<string | null>(undefined as any);
   const [errMsg, setErrMsg] = useState<string>();
   const [isTokenExpired, setIsTokenExpired] = useState(false);
+
+  // 服务端检查
+  if (typeof window === 'undefined') {
+    return { token: null, errMsg: null, payload: null, isTokenExpired: false };
+  }
 
   // 监听 localStorage 变化（来自其他标签页或同一页面的更新）
   useEffect(() => {
@@ -143,29 +161,46 @@ function useToken() {
       }
     }
 
-    (async () => {
-      const env = getENV();
-      if (env.platform !== 'notInDingTalk') {
-        // 尝试钉钉自动登录
-        const { code } = await requestAuthCode({ corpId: DINGDING_CORPID });
+    // 动态导入钉钉相关模块
+    import('dingtalk-jsapi/entry/union').then(() => {
+      import('dingtalk-jsapi/api/runtime/permission/requestAuthCode').then(({ default: requestAuthCode }) => {
+        import('dingtalk-jsapi/lib/env').then(({ getENV }) => {
+          import('@zsqk/z1-sdk/es/z1p/auth').then(({ dingtalkLogin }) => {
+            import('../constants').then(({ DINGDING_CORPID }) => {
+              import('antd').then(({ message }) => {
+                (async () => {
+                  const env = getENV();
+                  if (env.platform !== 'notInDingTalk') {
+                    // 尝试钉钉自动登录
+                    const { code } = await requestAuthCode({ corpId: DINGDING_CORPID });
 
-        const token = await dingtalkLogin(code);
-        setToken(token);
-        setIsTokenExpired(false);
+                    const token = await dingtalkLogin(code);
+                    setToken(token);
+                    setIsTokenExpired(false);
 
-        const [payload] = getPayload(token);
-        if (payload) {
-          message.success(`欢迎你 ${payload.name}!`);
-        }
-      } else {
-        // 非钉钉环境，设置为null表示没有token，让页面跳转到登录页面
-        console.log('Not in DingTalk environment');
-        setErrMsg('环境限制, 无法进行自动登录');
-        setToken(null);
-      }
-    })().catch(err => {
-      console.error('Auto login error:', err);
-      setErrMsg(`${err}`);
+                    const [payload] = getPayload(token);
+                    if (payload) {
+                      message.success(`欢迎你 ${payload.name}!`);
+                    }
+                  } else {
+                    // 非钉钉环境，设置为null表示没有token，让页面跳转到登录页面
+                    console.log('Not in DingTalk environment');
+                    setErrMsg('环境限制, 无法进行自动登录');
+                    setToken(null);
+                  }
+                })().catch(err => {
+                  console.error('Auto login error:', err);
+                  setErrMsg(`${err}`);
+                  setToken(null);
+                });
+              });
+            });
+          });
+        });
+      });
+    }).catch(err => {
+      console.error('Failed to load DingTalk SDK:', err);
+      setErrMsg('无法加载钉钉SDK');
       setToken(null);
     });
   }, []);
