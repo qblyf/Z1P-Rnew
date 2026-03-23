@@ -1,6 +1,6 @@
 import { SpuKeyword, SpuKeyWordID } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { Button, Input, InputNumber, Select, Space, Table, Tag, Tooltip, message } from 'antd';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 interface SearchKeywordsManagerProps {
   keywords: SpuKeyword[];
@@ -49,9 +49,10 @@ export default function SearchKeywordsManager({ keywords, onChange }: SearchKeyw
   } | null>(null);
 
   // 将原始keywords转换为带externalId的扩展格式
-  const extendedKeywords: ExtendedKeyword[] = (keywords || []).map((kw) => ({
+  // 使用数组索引作为稳定的externalId
+  const extendedKeywords: ExtendedKeyword[] = (keywords || []).map((kw, index) => ({
     ...kw,
-    externalId: generateRandomId() // 为现有数据生成随机ID
+    externalId: index + 1  // 使用1-based索引作为externalId
   }));
 
   // 构建表格数据
