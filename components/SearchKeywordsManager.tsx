@@ -214,7 +214,28 @@ export default function SearchKeywordsManager({
         keywords: item.keywords,
         weight: item.weight,
       }));
-      onChange(formatted);
+      // 按 id 分组合并已有关键词
+      const existingById = new Map<SpuKeyWordID, SpuKeyword>();
+      keywords.forEach(kw => {
+        existingById.set(kw.id, kw);
+      });
+      // 合并相同 id 的 keywords 并去重
+      formatted.forEach(item => {
+        const existing = existingById.get(item.id);
+        if (existing) {
+          // 合并 keywords 并去重
+          const mergedKeywords = [...new Set([...existing.keywords, ...item.keywords])];
+          existingById.set(item.id, {
+            id: item.id,
+            keywords: mergedKeywords,
+            weight: item.weight,
+          });
+        } else {
+          existingById.set(item.id, item);
+        }
+      });
+      const mergedKeywords = Array.from(existingById.values());
+      onChange(mergedKeywords);
       message.success('关键词获取成功');
     } catch {
       message.error('搜索关键词获取失败，请稍后重试');
