@@ -1,7 +1,7 @@
 'use client';
 
 import { SKU } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
+import { getSKUInfo, getSPUInfo, getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
 import { Button, Card, Col, Form, Input, Row, Select, Table, Tag, Space, Divider } from 'antd';
 import Head from 'next/head';
 import { Suspense, useState } from 'react';
@@ -318,12 +318,27 @@ function ClientPage() {
                 console.log('=============================');
 
                 // 从服务器获取数据 - 只请求 API 支持的字段
-                const res = await getSKUListJoinSPU(
-                  queryParams,
-                  { sku: ['id', 'name', 'gtins', 'state'], spu: ['brand'] }
-                );
-                
-                console.log('✓ 成功获取 SKU 列表，数量:', res.length);
+                let res: any[];
+                if (skuId) {
+                  // 精确查找单个 SKU，使用 getSKUInfo
+                  console.log('使用 SKU ID 精确查找:', skuId);
+                  const skuInfo = await getSKUInfo(skuId);
+                  if (skuInfo) {
+                    // 获取关联的 SPU 信息以获取 brand
+                    const spuInfo = await getSPUInfo(skuInfo.spuID);
+                    res = [{ ...skuInfo, brand: spuInfo?.brand }];
+                  } else {
+                    res = [];
+                  }
+                  console.log('✓ 成功获取 SKU 信息:', res.length);
+                } else {
+                  // 使用 getSKUListJoinSPU 进行列表查询
+                  res = await getSKUListJoinSPU(
+                    queryParams,
+                    { sku: ['id', 'name', 'gtins', 'state'], spu: ['brand'] }
+                  );
+                  console.log('✓ 成功获取 SKU 列表，数量:', res.length);
+                }
                 
                 // 前端过滤：根据 spec、color、combo 关键词过滤
                 // 注意：这些字段需要从 SKU 名称中提取或者不支持筛选
