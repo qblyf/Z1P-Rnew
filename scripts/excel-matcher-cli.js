@@ -556,6 +556,36 @@ function fuzzyMatch(input, spu) {
       }
     }
 
+    // 如果精确匹配失败（modelScore = 0），检查是否是明显的型号不匹配
+    // 这些情况不应该进入模糊匹配，应该直接拒绝
+    // 例如：输入 "500" 但 SPU 是 "Magic3"，这是产品类型不匹配
+    if (!inputModel || !spuModel || inputModelLower !== spuModelLower) {
+      // 检查是否有明显的产品系列冲突
+      // 500 系列 vs 其他系列（如 Magic3、V9 等）
+      const has500Input = /(^|[\s\-])500[\s\-]?/i.test(inputModelLower) || /(^|[\s\-])500pro/i.test(inputModelLower);
+      const has500Spu = /(^|[\s\-])500[\s\-]?/i.test(spuModelLower) || /(^|[\s\-])500pro/i.test(spuModelLower);
+
+      // 如果一个有 500，另一个没有 500（且不是平板或配件），可能是不匹配的
+      if (has500Input && !has500Spu) {
+        // 检查 SPU 是否是其他手机系列（Magic、V、X 等）
+        const otherPhonePatterns = [/magicv/i, /magic\s*[3-9]/i, /v\d+/i, /x\d+/i, /mate/i, /nova/i, /p\d+/i];
+        const isOtherPhone = otherPhonePatterns.some(p => p.test(spuModelLower));
+        if (isOtherPhone) {
+          return { matched: false, score: 0, reason: '500系列 vs 其他手机系列' };
+        }
+      }
+
+      // 类似地检查 Magic3 vs 500 的情况
+      const hasMagic3Input = /magic\s*3/i.test(inputModelLower);
+      const hasMagic3Spu = /magic\s*3/i.test(spuModelLower);
+      if (hasMagic3Input && !hasMagic3Spu) {
+        const has500SpuOther = /500/i.test(spuModelLower);
+        if (has500SpuOther) {
+          return { matched: false, score: 0, reason: 'Magic3 vs 500系列' };
+        }
+      }
+    }
+
     // 尝试缩短 MAGICV 系列型号，去除可能的容量数字
     // 例如：MAGICV616 -> MAGICV6 (去掉"16"可能是容量)
     if (/^magicv\d{3,}$/i.test(inputModelLower) && inputModelLower !== spuModelLower) {
