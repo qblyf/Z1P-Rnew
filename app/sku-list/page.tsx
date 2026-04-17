@@ -15,6 +15,7 @@ import PageWrap from '../../components/PageWrap';
 
 function QueryForm(props: {
   onQuery: (q: {
+    skuId?: number;
     gtinKeyword?: string;
     nameKeyword?: string;
     brands?: string[];
@@ -27,6 +28,7 @@ function QueryForm(props: {
 }) {
   const { onQuery, loading } = props;
 
+  const [skuId, setSkuId] = useState<number | undefined>();
   const [gtinKeyword, setGTINKeyword] = useState('');
   const [nameKeyword, setNameKeyword] = useState('');
   const [selectedBrands, setSelectedBrands] = useState<string[]>();
@@ -36,6 +38,11 @@ function QueryForm(props: {
   const [comboKeyword, setComboKeyword] = useState('');
 
   const handleSearch = () => {
+    let k0: number | undefined = skuId;
+    if (!k0) {
+      k0 = undefined;
+    }
+
     let k1: string | undefined = gtinKeyword.trim();
     if (!k1) {
       k1 = undefined;
@@ -67,6 +74,7 @@ function QueryForm(props: {
     }
 
     onQuery({
+      skuId: k0,
       gtinKeyword: k1,
       nameKeyword: k2,
       brands: k3,
@@ -84,6 +92,22 @@ function QueryForm(props: {
     >
       <Form {...formColProps}>
         <Row gutter={16}>
+          <Col {...formItemCol}>
+            <Form.Item
+              label="SKU ID"
+              tooltip="输入 SKU ID，精确筛选"
+            >
+              <Input
+                placeholder="请输入 SKU ID"
+                type="number"
+                value={skuId}
+                onChange={e => setSkuId(e.target.value ? parseInt(e.target.value) : undefined)}
+                onPressEnter={handleSearch}
+                size="large"
+                prefix={<Search size={16} style={{ color: '#999' }} />}
+              />
+            </Form.Item>
+          </Col>
           <Col {...formItemCol}>
             <Form.Item
               label="GTIN 关键词"
@@ -189,6 +213,7 @@ function QueryForm(props: {
           <Space>
             <Button
               onClick={() => {
+                setSkuId(undefined);
                 setGTINKeyword('');
                 setNameKeyword('');
                 setSelectedBrands(undefined);
@@ -267,21 +292,22 @@ function ClientPage() {
             const fn = getAwait(async () => {
               setLoading(true);
               try {
-                const { brands, gtinKeyword, nameKeyword, skuState, specKeyword, colorKeyword, comboKeyword } = v;
-                
+                const { skuId, brands, gtinKeyword, nameKeyword, skuState, specKeyword, colorKeyword, comboKeyword } = v;
+
                 // 构建查询参数，确保所有参数都是有效的
                 const queryParams: any = {
                   limit: 1000,
                   offset: 0,
                   orderBy: [{ key: 'p.id', sort: 'DESC' }],
                 };
-                
+
                 // 只添加非空的查询参数
+                if (skuId) queryParams.id = skuId;
                 if (gtinKeyword) queryParams.gtinKeyword = gtinKeyword;
                 if (nameKeyword) queryParams.nameKeyword = nameKeyword;
                 if (brands && brands.length > 0) queryParams.brands = brands;
                 if (skuState) queryParams.states = [skuState];
-                
+
                 // 打印请求参数用于调试
                 console.log('=== SKU 列表页面请求参数 ===');
                 console.log('queryParams:', JSON.stringify(queryParams, null, 2));
@@ -290,7 +316,7 @@ function ClientPage() {
                   spu: ['brand']
                 }, null, 2));
                 console.log('=============================');
-                
+
                 // 从服务器获取数据 - 只请求 API 支持的字段
                 const res = await getSKUListJoinSPU(
                   queryParams,
