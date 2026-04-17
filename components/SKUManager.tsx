@@ -115,6 +115,7 @@ export default function SKUManager(props: {
   const [filterCombo, setFilterCombo] = useState<string | null>(null);
   const [filterSpec, setFilterSpec] = useState<string | null>(null);
   const [filterColor, setFilterColor] = useState<string | null>(null);
+  const [filterSkuID, setFilterSkuID] = useState<number | null>(null);
   
   const [isAddingCombo, setIsAddingCombo] = useState(false);
   const [newComboValue, setNewComboValue] = useState('');
@@ -717,6 +718,19 @@ export default function SKUManager(props: {
                 )}
               </div>
             </Form.Item>
+            <Form.Item label="SKU ID" tooltip="通过SKU ID精确筛选" style={{ marginBottom: '12px' }}>
+              <Input
+                placeholder="输入SKU ID"
+                type="number"
+                value={filterSkuID || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFilterSkuID(val ? parseInt(val, 10) : null);
+                }}
+                style={{ width: '150px', height: '32px' }}
+                allowClear
+              />
+            </Form.Item>
               </>
             </div>
 
@@ -738,6 +752,7 @@ export default function SKUManager(props: {
                   filterCombo={filterCombo}
                   filterSpec={filterSpec}
                   filterColor={filterColor}
+                  filterSkuID={filterSkuID}
                 canSetCombo={canSetCombo}
                 canSetSpec={canSetSpec}
                 canSetColor={canSetColor}
@@ -839,11 +854,12 @@ function EditRelationshipSPUwithSKUs(props: {
   filterCombo?: string | null;
   filterSpec?: string | null;
   filterColor?: string | null;
+  filterSkuID?: number | null;
   canSetCombo?: boolean;
   canSetSpec?: boolean;
   canSetColor?: boolean;
 }) {
-  const { allSKUs, onChange, colors = [], specs = [], combos = [], selectedColors = [], selectedSpecs = [], selectedCombos = [], onUsedValuesChange, spu, onWantAddSKU, filterCombo, filterSpec, filterColor, canSetCombo = true, canSetSpec = true, canSetColor = true } = props;
+  const { allSKUs, onChange, colors = [], specs = [], combos = [], selectedColors = [], selectedSpecs = [], selectedCombos = [], onUsedValuesChange, spu, onWantAddSKU, filterCombo, filterSpec, filterColor, filterSkuID, canSetCombo = true, canSetSpec = true, canSetColor = true } = props;
   const [inputSKUs, setInputSKUs] = useState(allSKUs);
   const [newRowData, setNewRowData] = useState<{ combo?: string; spec?: string; color?: string } | null>(null);
 
@@ -879,9 +895,12 @@ function EditRelationshipSPUwithSKUs(props: {
       if (filterColor && sku.color !== filterColor) {
         return false;
       }
+      if (filterSkuID && sku.skuID !== filterSkuID) {
+        return false;
+      }
       return true;
     });
-  }, [inputSKUs, filterCombo, filterSpec, filterColor]);
+  }, [inputSKUs, filterCombo, filterSpec, filterColor, filterSkuID]);
 
   // 每次上层数据发生变动, 都要重新修改 input 数据.
   useEffect(() => {
