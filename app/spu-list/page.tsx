@@ -499,6 +499,9 @@ export default function () {
     lonely?: boolean;
   }>();
 
+  // 获取权限 - 必须放在所有hook之后，任何条件返回之前
+  const { permission, errMsg: permissionErrMsg } = usePermission('product-manage');
+
   // 加载 SPU 分类数据
   useEffect(() => {
     const loadCates = async () => {
@@ -507,16 +510,6 @@ export default function () {
     };
     loadCates();
   }, []);
-
-  // 获取权限
-  const { permission, errMsg: permissionErrMsg } = usePermission('product-manage');
-
-  if (permission === undefined) {
-    return <>正在加载权限</>;
-  }
-  if (permission === null) {
-    return <>没有获取到权限, {permissionErrMsg}</>;
-  }
 
   // 加载数据
   const loadData = async (page: number, size: number, params?: typeof queryParams) => {
@@ -573,6 +566,14 @@ export default function () {
   useEffect(() => {
     loadData(1, pageSize);
   }, []);
+
+  // 权限检查 - 必须在所有hook调用之后
+  if (permission === undefined) {
+    return <>正在加载权限</>;
+  }
+  if (permission === null) {
+    return <>没有获取到权限, {permissionErrMsg}</>;
+  }
 
   // 处理查询
   const handleQuery = (params: typeof queryParams) => {
