@@ -1,6 +1,6 @@
 'use client';
 import { SPU, SPUCateID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { getSPUListNew, getSPUCateBaseList, editSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
+import { getSPUListNew, getSPUCateBaseList, getSPUInfo, editSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { Button, Card, Col, Form, Input, Row, Select, Table, Cascader, Tag, Space, Divider, Modal, message, Drawer } from 'antd';
 import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
@@ -235,6 +235,7 @@ function BatchEditModal(props: {
  */
 function QueryForm(props: {
   onQuery: (q: {
+    spuId?: number;
     spuCateIDs?: SPUCateID[];
     nameKeyword?: string;
     brands?: string[];
@@ -246,6 +247,7 @@ function QueryForm(props: {
 }) {
   const { onQuery, loading, cates } = props;
 
+  const [spuId, setSpuId] = useState<number | undefined>();
   const [spuCateIDs, setSpuCateIDs] = useState<SPUCateID[]>();
   const [nameKeyword, setNameKeyword] = useState('');
   const [selectedBrands, setSelectedBrands] = useState<string[]>();
@@ -266,6 +268,11 @@ function QueryForm(props: {
   }, [cates]);
 
   const handleSearch = () => {
+    let k0: number | undefined = spuId;
+    if (!k0) {
+      k0 = undefined;
+    }
+
     let k2: string | undefined = nameKeyword.trim();
     if (!k2) {
       k2 = undefined;
@@ -285,6 +292,7 @@ function QueryForm(props: {
     }
 
     onQuery({
+      spuId: k0,
       spuCateIDs,
       nameKeyword: k2,
       brands: k3,
@@ -300,6 +308,23 @@ function QueryForm(props: {
     >
       <Form {...formColProps}>
         <Row gutter={16}>
+          <Col {...formItemCol}>
+            <Form.Item
+              label="SPU ID"
+              tooltip="输入 SPU ID，精确筛选"
+            >
+              <Input
+                placeholder="请输入 SPU ID"
+                type="number"
+                value={spuId}
+                onChange={e => setSpuId(e.target.value ? parseInt(e.target.value) : undefined)}
+                onPressEnter={handleSearch}
+                size="large"
+                prefix={<Search size={16} style={{ color: '#999' }} />}
+              />
+            </Form.Item>
+          </Col>
+
           <Col {...formItemCol}>
             <Form.Item
               label="名称关键词"
@@ -403,6 +428,7 @@ function QueryForm(props: {
           <Space>
             <Button
               onClick={() => {
+                setSpuId(undefined);
                 setNameKeyword('');
                 setSpuCateIDs(undefined);
                 setSelectedCatePath(undefined);
@@ -465,6 +491,7 @@ export default function () {
 
   // 查询参数
   const [queryParams, setQueryParams] = useState<{
+    spuId?: number;
     spuCateIDs?: SPUCateID[];
     nameKeyword?: string;
     brands?: string[];
@@ -496,12 +523,27 @@ export default function () {
     setLoading(true);
     try {
       const {
+        spuId,
         spuCateIDs: cateIDs,
         nameKeyword,
         brands: brandFilter,
         spuState,
         lonely,
       } = params || {};
+
+      // 如果有 spuId，直接用 getSPUInfo 获取
+      if (spuId) {
+        try {
+          const spuInfo = await getSPUInfo(spuId);
+          setList(spuInfo ? [spuInfo] : []);
+          setTotal(spuInfo ? 1 : 0);
+        } catch {
+          setList([]);
+          setTotal(0);
+        }
+        setLoading(false);
+        return;
+      }
 
       const res = await getSPUListNew(
         {
