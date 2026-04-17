@@ -499,6 +499,11 @@ export default function () {
     lonely?: boolean;
   }>();
 
+  // 加载数据的默认参数
+  const defaultLoadParams: typeof queryParams = {
+    spuState: SPUState.在用,
+  };
+
   // 获取权限 - 必须放在所有hook之后，任何条件返回之前
   const { permission, errMsg: permissionErrMsg } = usePermission('product-manage');
 
@@ -515,6 +520,7 @@ export default function () {
   const loadData = async (page: number, size: number, params?: typeof queryParams) => {
     setLoading(true);
     try {
+      const actualParams = params || defaultLoadParams;
       const {
         spuId,
         spuCateIDs: cateIDs,
@@ -522,7 +528,7 @@ export default function () {
         brands: brandFilter,
         spuState,
         lonely,
-      } = params || {};
+      } = actualParams;
 
       // 如果有 spuId，直接用 getSPUInfo 获取
       if (spuId) {
@@ -543,7 +549,7 @@ export default function () {
           cateIDs,
           nameKeyword,
           brands: brandFilter,
-          states: spuState ? [spuState] : undefined,
+          states: spuState ? [spuState] : [SPUState.在用],
           lonely,
           orderBy: [
             { key: 'p."order"', sort: 'DESC' },
@@ -586,7 +592,12 @@ export default function () {
   const handleTableChange = (page: number, size: number) => {
     setCurrentPage(page);
     setPageSize(size);
-    loadData(page, size, queryParams);
+    // 确保queryParams有默认状态值
+    const paramsWithDefault = {
+      ...queryParams,
+      spuState: queryParams?.spuState || SPUState.在用,
+    };
+    loadData(page, size, paramsWithDefault);
   };
 
   // 行选择配置
@@ -617,7 +628,11 @@ export default function () {
 
   // 刷新数据
   const refreshData = () => {
-    loadData(currentPage, pageSize, queryParams);
+    const paramsWithDefault = {
+      ...queryParams,
+      spuState: queryParams?.spuState || SPUState.在用,
+    };
+    loadData(currentPage, pageSize, paramsWithDefault);
     setSelectedRowKeys([]);
   };
 
