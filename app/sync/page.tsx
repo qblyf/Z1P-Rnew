@@ -1,7 +1,7 @@
 'use client';
 
-import { Button, Descriptions, Table, Progress, Space, Card, Row, Col, Tag, Steps, List, Avatar, Alert, Checkbox } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, SyncOutlined, DatabaseOutlined } from '@ant-design/icons';
+import { Button, Descriptions, Progress, Space, Card, Row, Col, Tag, Steps, List, Alert, Checkbox } from 'antd';
+import { SyncOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { PageHeader } from '@ant-design/pro-components';
 import { Suspense, useMemo, useState, useEffect } from 'react';
 import { Content } from '../../components/style/Content';
@@ -41,32 +41,15 @@ function ClientPage() {
   const [currentStep, setCurrentStep] = useState('');
   const [progress, setProgress] = useState(0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [tenantSyncStatus, setTenantSyncStatus] = useState<Record<string, {
-    status: 'waiting' | 'syncing' | 'success' | 'error';
-    message?: string;
-    startTime?: number;
-    endTime?: number;
-  }>>({});
-  const [productSyncInfo, setProductSyncInfo] = useState<
-    Array<{
-      name: string;
-      errMsg?: string;
-      resCode: string;
-      status: string;
-    }>
-  >();
   const [disabled, setDisabled] = useState(false);
-  const [showDebugInfo, setShowDebugInfo] = useState(false);
-  
-  // 账套列表和名称映射
-  const [tenantList, setTenantList] = useState<Array<{ 
-    id: string; 
+
+  // 账套列表
+  const [tenantList, setTenantList] = useState<Array<{
+    id: string;
     tenantID: string;
     clientName: string;
-    remarks?: string;
   }>>([]);
-  const [tenantIDMap, setTenantIDMap] = useState<Record<string, string>>({});
-  
+
   // 选中的账套列表
   const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(true);
@@ -120,14 +103,7 @@ function ClientPage() {
         
         console.log(`✅ 成功加载 ${tenants.length} 个账套:`, tenants);
         setTenantList(tenants);
-        
-        // 创建 tenantID 映射（用于显示）
-        const idMap: Record<string, string> = {};
-        tenants.forEach((t: any) => {
-          idMap[t.tenantID] = t.clientName;
-        });
-        setTenantIDMap(idMap);
-        
+
         // 默认全选
         setSelectedTenants(tenants.map((t: any) => t.tenantID));
       })
@@ -190,14 +166,14 @@ function ClientPage() {
     return json.data;
   };
 
-  const syncProductSingle = async (authToken: string, params: { tenantID: string; syncDataID: number; data: any; logID?: number }) => {
+  const syncProductSingle = async (authToken: string, params: { syncDataID: number; data: any; logID?: number }) => {
     const res = await fetch(`/api/product/sync/single`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
       body: JSON.stringify(params)
     });
     const json = await res.json();
-    if (!json.success) throw new Error(json.message || '同步账套失败');
+    if (!json.success) throw new Error(json.message || '同步失败');
     return json.data;
   };
 
@@ -209,16 +185,9 @@ function ClientPage() {
         return;
       }
 
-      if (selectedTenants.length === 0) {
-        setMsg('请至少选择一个账套进行同步');
-        return;
-      }
-
       setDisabled(true);
-      setProductSyncInfo(undefined);
       setProgress(0);
       setCurrentStepIndex(0);
-      setTenantSyncStatus({});
 
       // 设置超时处理
       const timeoutId = setTimeout(() => {
@@ -249,135 +218,24 @@ function ClientPage() {
         setProgress(40);
         const logID = await addSyncLogWithData(token, syncDataID, data);
 
-        // 步骤4: 使用选中的账套列表
-        const tenantIDs = selectedTenants;
-        console.log(`准备同步 ${tenantIDs.length} 个账套:`, tenantIDs);
-        console.log('账套列表详情:', tenantList.filter(t => tenantIDs.includes(t.tenantID)));
-
-        // 验证 tenantID 是否有效
-        if (tenantIDs.length === 0) {
-          throw new Error('没有选中任何账套');
-        }
-
-        // 检查每个 tenantID 是否为有效字符串
-        const invalidTenants = tenantIDs.filter(id => !id || typeof id !== 'string');
-        if (invalidTenants.length > 0) {
-          console.error('❌ 发现无效的 tenantID:', invalidTenants);
-          throw new Error(`发现 ${invalidTenants.length} 个无效的账套ID`);
-        }
-
-        console.log('✅ 所有 tenantID 验证通过');
-
-        // 初始化账套状态
-        const initialStatus: Record<string, any> = {};
-        tenantIDs.forEach(id => {
-          initialStatus[id] = { status: 'waiting' };
-        });
-        setTenantSyncStatus(initialStatus);
-
-        setCurrentStep('正在向各账套同步数据...');
+        // 步骤4: 执行同步（不需要tenantID）
+        setCurrentStep('正在同步数据...');
         setCurrentStepIndex(3);
-        const totalSets = tenantIDs.length;
-        const syncResults: Array<{
-          name: string;
-          errMsg?: string;
-          resCode: string;
-          status: string;
-        }> = [];
+        setProgress(60);
 
-        // 步骤5: 循环调用 syncProductSingle 向各账套写数据
-        for (let i = 0; i < totalSets; i++) {
-          const tenantID = tenantIDs[i];
+        const result = await syncProductSingle(token, {
+          syncDataID,
+          data,
+          logID
+        });
 
-          // 添加详细的调试日志
-          console.log(`\n🔄 开始同步账套 [${i + 1}/${totalSets}]`);
-          console.log('  - tenantID:', tenantID);
-          console.log('  - tenantID 类型:', typeof tenantID);
-          console.log('  - tenantID 长度:', tenantID?.length);
-          console.log('  - syncDataID:', syncDataID);
-          console.log('  - logID:', logID);
+        console.log('✅ 同步成功:', result);
 
-          const currentProgress = 40 + Math.floor((i / totalSets) * 50);
-          setProgress(currentProgress);
-          setCurrentStep(`正在同步账套 ${tenantID} (${i + 1}/${totalSets})...`);
-
-          // 更新当前账套状态为同步中
-          setTenantSyncStatus(prev => ({
-            ...prev,
-            [tenantID]: {
-              status: 'syncing',
-              startTime: Date.now()
-            }
-          }));
-
-          try {
-            console.log(`  ⏳ 调用 syncProductSingle，参数:`, {
-              tenantID,
-              syncDataID,
-              hasData: !!data,
-              logID
-            });
-
-            const result = await syncProductSingle(token, {
-              tenantID,
-              syncDataID,
-              data,
-              logID
-            });
-
-            console.log(`  ✅ 账套 ${tenantID} 同步成功:`, result);
-
-            // 更新账套状态为成功
-            setTenantSyncStatus(prev => ({
-              ...prev,
-              [tenantID]: {
-                status: 'success',
-                startTime: prev[tenantID]?.startTime,
-                endTime: Date.now(),
-                message: result.errMsg || '同步成功'
-              }
-            }));
-
-            syncResults.push({
-              name: tenantIDMap[tenantID] ? `${tenantID} (${tenantIDMap[tenantID]})` : tenantID,
-              resCode: result.resCode === 'complete' ? '已成功' : '失败',
-              status: '已完成',
-              errMsg: result.errMsg || '',
-            });
-          } catch (error) {
-            // 更新账套状态为失败
-            const errorMsg = error instanceof Error ? error.message : '未知错误';
-            console.error(`  ❌ 账套 ${tenantID} 同步失败:`, error);
-            console.error('  错误详情:', {
-              message: errorMsg,
-              error: error
-            });
-
-            setTenantSyncStatus(prev => ({
-              ...prev,
-              [tenantID]: {
-                status: 'error',
-                startTime: prev[tenantID]?.startTime,
-                endTime: Date.now(),
-                message: errorMsg
-              }
-            }));
-
-            syncResults.push({
-              name: tenantIDMap[tenantID] ? `${tenantID} (${tenantIDMap[tenantID]})` : tenantID,
-              resCode: '失败',
-              status: '已完成',
-              errMsg: errorMsg,
-            });
-          }
-        }
-        
-        setProductSyncInfo(syncResults);
         setProgress(100);
         setCurrentStepIndex(4);
         setCurrentStep('');
-        setMsg('已完成同步请求');
-        
+        setMsg('同步完成');
+
         // 清除超时定时器
         clearTimeout(timeoutId);
       } catch (error) {
@@ -390,7 +248,7 @@ function ClientPage() {
         setDisabled(false);
       }
     };
-  }, [selectedTenants, tenantIDMap, token]);
+  }, [token]);
 
   // 同步步骤配置
   const syncSteps = [
@@ -407,30 +265,19 @@ function ClientPage() {
     {
       title: '写入日志',
       description: '记录同步操作日志',
-      icon: <CheckCircleOutlined />
+      icon: <SyncOutlined />
     },
     {
-      title: '同步账套',
-      description: '向各账套写入数据',
-      icon: <ClockCircleOutlined />
+      title: '执行同步',
+      description: '向账套同步数据',
+      icon: <SyncOutlined />
     },
     {
       title: '完成',
       description: '同步操作完成',
-      icon: <CheckCircleOutlined />
+      icon: <SyncOutlined />
     }
   ];
-
-  // 获取账套状态统计
-  const getStatusStats = () => {
-    const stats = { waiting: 0, syncing: 0, success: 0, error: 0 };
-    Object.values(tenantSyncStatus).forEach(status => {
-      stats[status.status]++;
-    });
-    return stats;
-  };
-
-  const statusStats = getStatusStats();
 
   return (
     <PageWrap ppKey="product-manage">
@@ -451,60 +298,6 @@ function ClientPage() {
                 </Descriptions.Item>
                 <Descriptions.Item label="账套数量">
                   <strong>{tenantList.length}</strong> 个账套
-                  {showDebugInfo && (
-                    <>
-                      <Button 
-                        type="link" 
-                        size="small"
-                        onClick={() => {
-                          fetch(`/api/tenants?token=${encodeURIComponent(token!)}&raw=true`)
-                            .then(res => res.json())
-                            .then(data => {
-                              console.log('原始 SDK 数据:', data);
-                              alert('原始数据已输出到控制台，请按 F12 查看');
-                            });
-                        }}
-                      >
-                        查看原始数据
-                      </Button>
-                      <Button 
-                        type="link" 
-                        size="small"
-                        onClick={() => {
-                          fetch(`/api/tenants?token=${encodeURIComponent(token!)}&test=true`)
-                            .then(res => res.json())
-                            .then(data => {
-                              console.log('测试结果:', data);
-                              alert(`测试结果:\nendpoint: ${data.data?.endpoint}\nhasToken: ${data.data?.hasToken}`);
-                            })
-                            .catch(err => {
-                              console.error('测试失败:', err);
-                              alert('测试失败: ' + err.message);
-                            });
-                        }}
-                      >
-                        测试 API
-                      </Button>
-                      <Button 
-                        type="link" 
-                        size="small"
-                        onClick={() => {
-                          fetch(`/api/tenants-test?token=${encodeURIComponent(token!)}`)
-                            .then(res => res.json())
-                            .then(data => {
-                              console.log('简化测试结果:', data);
-                              alert(`简化测试:\nendpoint: ${data.data?.endpoint}`);
-                            })
-                            .catch(err => {
-                              console.error('简化测试失败:', err);
-                              alert('简化测试失败: ' + err.message);
-                            });
-                        }}
-                      >
-                        简化测试
-                      </Button>
-                    </>
-                  )}
                 </Descriptions.Item>
                 <Descriptions.Item label="已选账套">
                   <strong style={{ color: selectedTenants.length === 0 ? '#ff4d4f' : '#1890ff' }}>
@@ -513,14 +306,6 @@ function ClientPage() {
                 </Descriptions.Item>
                 <Descriptions.Item label="注意事项">
                   <span style={{ color: '#fa8c16' }}>⚠️</span> 同步时会锁表，请在数据修改完成后进行
-                  <Button 
-                    type="link" 
-                    size="small"
-                    onClick={() => setShowDebugInfo(!showDebugInfo)}
-                    style={{ marginLeft: 8 }}
-                  >
-                    {showDebugInfo ? '隐藏' : '显示'}调试信息
-                  </Button>
                 </Descriptions.Item>
               </Descriptions>
               
@@ -609,16 +394,6 @@ function ClientPage() {
                 </Space>
               }
               size="small"
-              extra={
-                Object.keys(tenantSyncStatus).length > 0 && (
-                  <Space size="small">
-                    {statusStats.waiting > 0 && <Tag color="default">等待 {statusStats.waiting}</Tag>}
-                    {statusStats.syncing > 0 && <Tag color="processing">同步中 {statusStats.syncing}</Tag>}
-                    {statusStats.success > 0 && <Tag color="success">成功 {statusStats.success}</Tag>}
-                    {statusStats.error > 0 && <Tag color="error">失败 {statusStats.error}</Tag>}
-                  </Space>
-                )
-              }
             >
               <div style={{ marginBottom: 12 }}>
                 <Checkbox
@@ -630,133 +405,45 @@ function ClientPage() {
                 >
                   全选 ({selectedTenants.length}/{tenantList.length})
                 </Checkbox>
-                
-                {/* 调试按钮 */}
-                <Button 
-                  type="link" 
-                  size="small"
-                  onClick={() => {
-                    console.log('📋 当前 tenantList:', tenantList);
-                    console.log('📋 当前 selectedTenants:', selectedTenants);
-                    console.log('📋 当前 tenantIDMap:', tenantIDMap);
-                    alert(`已输出调试信息到控制台\n账套数量: ${tenantList.length}\n已选数量: ${selectedTenants.length}`);
-                  }}
-                  style={{ marginLeft: 8 }}
-                >
-                  🐛 查看数据
-                </Button>
               </div>
-              
+
               <div style={{ maxHeight: '500px', overflow: 'auto' }}>
                 <List
                   size="small"
                   dataSource={tenantList}
                   renderItem={(tenant) => {
                     const isSelected = selectedTenants.includes(tenant.tenantID);
-                    const status = tenantSyncStatus[tenant.tenantID];
-                    const duration = status?.startTime && status?.endTime 
-                      ? `${((status.endTime - status.startTime) / 1000).toFixed(1)}s`
-                      : status?.startTime 
-                      ? `${((Date.now() - status.startTime) / 1000).toFixed(1)}s`
-                      : '';
 
                     return (
-                      <List.Item 
-                        style={{ 
-                          padding: '10px 12px',
+                      <List.Item
+                        style={{
+                          padding: '8px 12px',
                           borderBottom: '1px solid #f0f0f0',
                           background: isSelected ? '#f6ffed' : 'transparent',
-                          transition: 'all 0.3s',
-                          borderLeft: isSelected ? '3px solid #52c41a' : '3px solid transparent'
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '12px' }}>
-                          {/* 选择框 */}
                           <Checkbox
                             checked={isSelected}
                             onChange={(e) => handleTenantSelect(tenant.tenantID, e.target.checked)}
                             disabled={disabled}
                           />
-                          
-                          {/* 状态图标 */}
-                          {status ? (
-                            <Avatar 
-                              size="small"
-                              style={{
-                                backgroundColor: 
-                                  status.status === 'success' ? '#52c41a' :
-                                  status.status === 'error' ? '#ff4d4f' :
-                                  status.status === 'syncing' ? '#1890ff' : '#d9d9d9',
-                                flexShrink: 0
-                              }}
-                              icon={
-                                status.status === 'success' ? <CheckCircleOutlined /> :
-                                status.status === 'error' ? <ExclamationCircleOutlined /> :
-                                status.status === 'syncing' ? <SyncOutlined spin /> :
-                                <ClockCircleOutlined />
-                              }
-                            />
-                          ) : (
-                            <div style={{ width: 24, flexShrink: 0 }} />
-                          )}
-                          
-                          {/* 账套信息 */}
+
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ 
-                              fontWeight: 500, 
+                            <div style={{
+                              fontWeight: 500,
                               fontSize: '13px',
-                              marginBottom: '2px',
                               color: '#1890ff'
                             }}>
-                              {tenant.tenantID || <span style={{ color: '#ff4d4f' }}>(未设置)</span>}
+                              {tenant.tenantID}
                             </div>
                             <div style={{
                               color: '#666',
                               fontSize: '11px',
-                              marginBottom: status ? '4px' : 0
                             }}>
                               {tenant.clientName}
                             </div>
-                            {showDebugInfo && tenant.remarks && (
-                              <div style={{
-                                color: '#666',
-                                fontSize: '10px',
-                                fontStyle: 'italic',
-                                marginBottom: status ? '4px' : 0
-                              }}>
-                                备注: {tenant.remarks}
-                              </div>
-                            )}
-                            {status && (
-                              <div style={{
-                                color: status.status === 'error' ? '#ff4d4f' : '#666',
-                                fontSize: '12px',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                              }}>
-                                {status.message || 
-                                  (status.status === 'waiting' ? '等待同步' :
-                                   status.status === 'syncing' ? '正在同步数据...' :
-                                   status.status === 'success' ? '同步成功' : '同步失败')
-                                }
-                              </div>
-                            )}
                           </div>
-                          
-                          {/* 耗时标签 */}
-                          {duration && (
-                            <span style={{ 
-                              fontSize: '11px', 
-                              color: '#1890ff', 
-                              background: '#e6f7ff',
-                              padding: '2px 8px',
-                              borderRadius: '10px',
-                              flexShrink: 0
-                            }}>
-                              {duration}
-                            </span>
-                          )}
                         </div>
                       </List.Item>
                     );
@@ -767,54 +454,13 @@ function ClientPage() {
           </Col>
         </Row>
 
-        {/* 详细结果表格 */}
-        {productSyncInfo && (
-          <Card title="同步结果详情" style={{ marginTop: 16 }} size="small">
-            <Table
-              dataSource={productSyncInfo}
-              size="small"
-              pagination={false}
-              scroll={{ y: 300 }}
-              columns={[
-                {
-                  title: '账套 (tenantID)',
-                  dataIndex: 'name',
-                  width: 250,
-                  fixed: 'left',
-                },
-                {
-                  title: '同步状态',
-                  dataIndex: 'status',
-                  width: 100,
-                  render: (status: string) => (
-                    <Tag color={status === '已完成' ? 'success' : 'processing'}>
-                      {status}
-                    </Tag>
-                  ),
-                },
-                {
-                  title: '同步结果',
-                  dataIndex: 'resCode',
-                  width: 100,
-                  render: (resCode: string) => (
-                    <Tag color={resCode === '已成功' ? 'success' : 'error'}>
-                      {resCode}
-                    </Tag>
-                  ),
-                },
-                {
-                  title: '详细信息',
-                  dataIndex: 'errMsg',
-                  render: (errMsg: string) => (
-                    <span style={{ 
-                      color: errMsg ? '#ff4d4f' : '#52c41a',
-                      fontSize: '12px'
-                    }}>
-                      {errMsg || '同步成功'}
-                    </span>
-                  ),
-                },
-              ]}
+        {/* 同步结果提示 */}
+        {msg && (
+          <Card style={{ marginTop: 16 }}>
+            <Alert
+              message={msg}
+              type={msg.includes('失败') ? 'error' : msg.includes('完成') ? 'success' : 'info'}
+              showIcon
             />
           </Card>
         )}

@@ -8,7 +8,8 @@ const API_ENDPOINT = process.env.NEXT_PUBLIC_Z1P_ENDPOINT || 'https://p-api.z1.p
 
 /**
  * POST /api/product/sync/single
- * 同步商品数据到单个账套
+ * 同步商品数据
+ * 注意：不需要 tenantID 参数，API会根据认证信息自动同步到对应账套
  */
 export async function POST(request: Request) {
   try {
@@ -22,13 +23,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // 移除 tenantID（如果存在），API 不需要此参数
+    const { tenantID, ...syncParams } = body;
+
     const res = await fetch(`${API_ENDPOINT}/product/sync/single`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(syncParams)
     });
 
     const data = await res.json();
@@ -42,11 +46,11 @@ export async function POST(request: Request) {
       data: data.res || data
     });
   } catch (error) {
-    console.error('❌ 同步账套数据失败:', error);
+    console.error('❌ 同步数据失败:', error);
     return NextResponse.json(
       {
         success: false,
-        error: '同步账套数据失败',
+        error: '同步数据失败',
         message: error instanceof Error ? error.message : '未知错误'
       },
       { status: 500 }
