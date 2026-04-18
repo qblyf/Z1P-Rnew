@@ -138,12 +138,15 @@ export default function SmartMatch() {
     try {
       // 使用 MatchingOrchestrator 进行批量匹配
       let lastUpdateTime = 0;
-      const updateInterval = 100; // 每100ms更新一次UI
+      const updateInterval = 500; // 每500ms更新一次UI
+      const totalCount = inputs.length;
+      const logInterval = Math.max(10, Math.floor(totalCount / 20)); // 大数据集只显示关键进度
 
       const batchResult = await orchestrator.batchMatch(inputs, (index, total, input, result) => {
         const now = Date.now();
-        // 节流：每100ms更新一次UI
-        if (now - lastUpdateTime > updateInterval || index === total) {
+        // 节流：每500ms更新一次UI，且大数据集按间隔显示日志
+        const shouldLog = index === 1 || index === total || index % logInterval === 0;
+        if ((now - lastUpdateTime > updateInterval || index === total) && shouldLog) {
           lastUpdateTime = now;
           setMatchProgress(prev => prev ? {
             ...prev,
@@ -299,12 +302,15 @@ export default function SmartMatch() {
     try {
       // 使用 MatchingOrchestrator 进行批量匹配
       let lastUpdateTime = 0;
-      const updateInterval = 100; // 每100ms更新一次UI
+      const updateInterval = 500; // 每500ms更新一次UI
+      const totalCount = lines.length;
+      const logInterval = Math.max(10, Math.floor(totalCount / 20)); // 大数据集只显示关键进度
 
       const batchResult = await orchestrator.batchMatch(lines, (index, total, input, result) => {
         const now = Date.now();
-        // 节流：每100ms更新一次UI
-        if (now - lastUpdateTime > updateInterval || index === total) {
+        // 节流：每500ms更新一次UI，且大数据集按间隔显示日志
+        const shouldLog = index === 1 || index === total || index % logInterval === 0;
+        if ((now - lastUpdateTime > updateInterval || index === total) && shouldLog) {
           lastUpdateTime = now;
           setMatchProgress(prev => prev ? {
             ...prev,
@@ -335,7 +341,10 @@ export default function SmartMatch() {
       message.success(`匹配完成，共处理 ${lines.length} 条记录，成功匹配 ${batchResult.summary.matched} 条`);
     } catch (error) {
       console.error('匹配失败:', error);
-      message.error(`匹配失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      console.error('error type:', typeof error);
+      console.error('error.constructor:', error?.constructor?.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      message.error(`匹配失败: ${errorMessage}`);
       setMatchProgress(null);
     } finally {
       setLoading(false);
