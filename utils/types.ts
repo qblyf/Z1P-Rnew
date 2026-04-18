@@ -115,11 +115,46 @@ export interface EnhancedSPUData extends SPUData {
 }
 
 /**
+ * SKU with Brand Information
+ *
+ * Enhanced SKU data that includes brand information derived from the parent SPU.
+ * Used for direct SKU matching without needing to look up SPU first.
+ *
+ * @interface SKUWithBrand
+ * @property {number} id - SKU ID
+ * @property {string} name - SKU name
+ * @property {string} brand - Brand name (from parent SPU)
+ * @property {number} spuId - Parent SPU ID
+ * @property {string} spuName - Parent SPU name
+ */
+export interface SKUWithBrand {
+  id: number;
+  name: string;
+  brand: string;
+  spuId: number;
+  spuName: string;
+}
+
+/**
+ * SKU Index Structure
+ *
+ * Pre-built index for fast SKU lookup by brand and normalized name.
+ *
+ * @interface SKUIndex
+ * @property {Map<string, SKUWithBrand[]>} byBrand - SKUs grouped by brand (lowercase key)
+ * @property {SKUWithBrand[]} all - All valid SKUs
+ */
+export interface SKUIndex {
+  byBrand: Map<string, SKUWithBrand[]>;
+  all: SKUWithBrand[];
+}
+
+/**
  * SKU (Stock Keeping Unit) Data
- * 
+ *
  * Represents a specific product variant with exact specifications.
  * For example, "华为 Mate 60 Pro 雅川青 12GB+512GB" is a specific SKU.
- * 
+ *
  * @interface SKUData
  * @property {number} id - Unique identifier for the SKU
  * @property {string} name - Full name of the SKU including all specifications
