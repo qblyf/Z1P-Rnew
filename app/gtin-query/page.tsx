@@ -86,7 +86,7 @@ export default function GTINQueryPage() {
             },
             {
               sku: ['id', 'name', 'gtins', 'state'],
-              spu: ['id', 'name', 'brand'],
+              spu: ['spuName', 'brand'],
             }
           );
 
@@ -105,9 +105,9 @@ export default function GTINQueryPage() {
               result.spuId = (exactMatch as any).spuID;
             }
             if ('spu' in exactMatch && exactMatch.spu) {
-              result.spuId = exactMatch.spu.id;
-              result.spuName = exactMatch.spu.name;
-              result.brand = exactMatch.spu.brand;
+              const spu = exactMatch.spu as { spuName?: string; brand?: string };
+              result.spuName = spu.spuName;
+              result.brand = spu.brand;
             }
           }
         } catch (err) {
