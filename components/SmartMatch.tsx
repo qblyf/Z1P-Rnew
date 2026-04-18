@@ -504,7 +504,7 @@ export default function SmartMatch() {
         open={showColumnSelector}
         onOk={handleColumnConfirm}
         onCancel={handleColumnCancel}
-        okText="确认并匹配"
+        okText="确认"
         cancelText="取消"
         width={600}
       >
