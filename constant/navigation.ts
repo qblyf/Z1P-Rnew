@@ -52,7 +52,7 @@ export const MENU_CONFIG: MenuItem[] = [
   },
   {
     id: 'data-match',
-    label: '商品智能匹配',
+    label: '商品服务',
     icon: 'Search',
     children: [
       {
