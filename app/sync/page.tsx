@@ -180,7 +180,7 @@ function ClientPage() {
         setDisabled(false);
       }
     };
-  }, [token]);
+  }, [token, selectedTenants]);
 
   // 同步步骤配置
   const syncSteps = [
