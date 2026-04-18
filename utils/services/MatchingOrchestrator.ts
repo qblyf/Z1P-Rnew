@@ -563,29 +563,34 @@ export class MatchingOrchestrator {
   
   /**
    * 批量匹配
-   * 
+   *
    * @param inputs 输入字符串数组
+   * @param onProgress 进度回调函数 (currentIndex, totalCount, currentInput, result) => void
    * @returns 批量匹配结果
    */
-  async batchMatch(inputs: string[]): Promise<BatchMatchResult> {
+  async batchMatch(
+    inputs: string[],
+    onProgress?: (currentIndex: number, totalCount: number, currentInput: string, result: MatchResult | null) => void
+  ): Promise<BatchMatchResult> {
     if (!this.isInitialized) {
       throw new Error('MatchingOrchestrator 未初始化，请先调用 initialize()');
     }
-    
+
     const startTime = Date.now();
-    
+
     console.log(`\n[批量匹配] 开始处理 ${inputs.length} 条记录...`);
-    
+
     const results: MatchResult[] = [];
     let matched = 0;
     let spuMatched = 0;
     let unmatched = 0;
-    
+
     for (let i = 0; i < inputs.length; i++) {
+      let result: MatchResult | null = null;
       try {
-        const result = await this.match(inputs[i]);
+        result = await this.match(inputs[i]);
         results.push(result);
-        
+
         if (result.status === 'matched') {
           matched++;
         } else if (result.status === 'spu-matched') {
@@ -593,7 +598,7 @@ export class MatchingOrchestrator {
         } else {
           unmatched++;
         }
-        
+
         // 每处理10条记录输出一次进度
         if ((i + 1) % 10 === 0) {
           console.log(`[进度] 已处理 ${i + 1}/${inputs.length} 条记录`);
@@ -601,6 +606,11 @@ export class MatchingOrchestrator {
       } catch (error) {
         console.error(`[错误] 处理第 ${i + 1} 条记录失败: ${error}`);
         // 继续处理下一条
+      }
+
+      // 调用进度回调
+      if (onProgress) {
+        onProgress(i + 1, inputs.length, inputs[i], result);
       }
     }
     

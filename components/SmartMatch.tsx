@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { message, Spin, Upload, Button, Select, Modal } from 'antd';
+import { message, Spin, Upload, Button, Select, Modal, Progress, Tag, Space } from 'antd';
 import { UploadOutlined, FileExcelOutlined, ClearOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, SyncOutlined } from '@ant-design/icons';
 import { getBrandBaseList } from '@zsqk/z1-sdk/es/z1p/brand';
-import { MatchingOrchestrator } from '../utils/services/MatchingOrchestrator';
+import { MatchingOrchestrator, MatchResult } from '../utils/services/MatchingOrchestrator';
 import { parseExcelWithColumnSelection, createInputToRowMapGeneric, previewExcel, type ExcelRowData } from '../utils/excelParser';
 import type { BrandData } from '../utils/types';
 import { InputPanel } from './SmartMatch/InputPanel';
@@ -34,17 +35,25 @@ export default function SmartMatch() {
   const [pageSize, setPageSize] = useState(20);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
     'inputName',
-    'matchedSPU',
-    'specs',
     'matchedSKU',
     'matchedBrand',
+    'specs',
     'matchedGtins',
-    'statusAndSimilarity',
+    'similarity',
+    'status',
   ]);
   const [orchestrator] = useState(() => new MatchingOrchestrator());
   const [matcherInitialized, setMatcherInitialized] = useState(false);
 
   const [results, setResults] = useState<UIMatchResult[]>([]);
+
+  // 匹配进度状态
+  const [matchProgress, setMatchProgress] = useState<{
+    current: number;
+    total: number;
+    currentItem: string;
+    results: UIMatchResult[];
+  } | null>(null);
 
   // Excel 导入相关状态
   const [excelData, setExcelData] = useState<ExcelRowData[]>([]);
@@ -108,6 +117,12 @@ export default function SmartMatch() {
     setLoading(true);
     setResults([]);
     setCurrentPage(1);
+    setMatchProgress({
+      current: 0,
+      total: rows.length,
+      currentItem: '',
+      results: []
+    });
 
     try {
       // 创建输入到原始数据的映射
@@ -118,28 +133,47 @@ export default function SmartMatch() {
 
       console.log(`[Excel匹配] 开始匹配 ${inputs.length} 条数据`);
 
-      // 使用 MatchingOrchestrator 进行批量匹配
-      const batchResult = await orchestrator.batchMatch(inputs);
+      // 用于存储实时结果
+      const realTimeResults: UIMatchResult[] = [];
 
-      // 转换结果格式，关联 GTIN
-      const uiResults: UIMatchResult[] = batchResult.results.map(result => {
-        const originalRow = inputToRowMap.get(result.inputName);
-        return {
-          inputName: result.inputName,
-          originalSkuName: originalRow?.productName,
-          matchedSKU: result.matchedInfo.sku || null,
-          matchedSPU: result.matchedInfo.spu || null,
-          matchedBrand: result.extractedInfo.brand || null,
-          matchedVersion: result.extractedInfo.version || null,
-          matchedMemory: result.extractedInfo.memory || null,
-          matchedColor: result.extractedInfo.color || null,
-          matchedGtins: originalRow?.gtin ? [originalRow.gtin] : result.matchedInfo.gtins || [],
-          similarity: result.similarity,
-          status: result.status as 'matched' | 'unmatched' | 'spu-matched',
-        };
+      // 使用 MatchingOrchestrator 进行批量匹配（带进度回调）
+      const batchResult = await orchestrator.batchMatch(inputs, (currentIndex, totalCount, currentInput, result) => {
+        // 转换当前结果
+        if (result) {
+          const originalRow = inputToRowMap.get(currentInput);
+          const uiResult: UIMatchResult = {
+            inputName: result.inputName,
+            originalSkuName: originalRow?.productName,
+            matchedSKU: result.matchedInfo.sku || null,
+            matchedSPU: result.matchedInfo.spu || null,
+            matchedBrand: result.extractedInfo.brand || null,
+            matchedVersion: result.extractedInfo.version || null,
+            matchedMemory: result.extractedInfo.memory || null,
+            matchedColor: result.extractedInfo.color || null,
+            matchedGtins: originalRow?.gtin ? [originalRow.gtin] : result.matchedInfo.gtins || [],
+            similarity: result.similarity,
+            status: result.status as 'matched' | 'unmatched' | 'spu-matched',
+          };
+          realTimeResults.push(uiResult);
+
+          // 更新进度状态
+          setMatchProgress({
+            current: currentIndex,
+            total: totalCount,
+            currentItem: currentInput.length > 30 ? currentInput.substring(0, 30) + '...' : currentInput,
+            results: [...realTimeResults]
+          });
+
+          // 每5条更新一次结果显示
+          if (currentIndex % 5 === 0 || currentIndex === totalCount) {
+            setResults([...realTimeResults]);
+          }
+        }
       });
 
-      setResults(uiResults);
+      // 最终结果
+      setResults(realTimeResults);
+      setMatchProgress(null);
 
       // 统计匹配结果
       const matchedCount = batchResult.summary.matched;
@@ -153,6 +187,7 @@ export default function SmartMatch() {
     } catch (error) {
       message.error('匹配失败，请重试');
       console.error(error);
+      setMatchProgress(null);
     } finally {
       setLoading(false);
     }
@@ -244,33 +279,57 @@ export default function SmartMatch() {
     setResults([]);
     setCurrentPage(1);
 
+    const lines = inputText.split('\n').filter(line => line.trim());
+
+    setMatchProgress({
+      current: 0,
+      total: lines.length,
+      currentItem: '',
+      results: []
+    });
+
     try {
-      // 将输入按行分割
-      const lines = inputText.split('\n').filter(line => line.trim());
+      // 用于存储实时结果
+      const realTimeResults: UIMatchResult[] = [];
 
-      // 使用 MatchingOrchestrator 进行批量匹配
-      const batchResult = await orchestrator.batchMatch(lines);
+      // 使用 MatchingOrchestrator 进行批量匹配（带进度回调）
+      const batchResult = await orchestrator.batchMatch(lines, (currentIndex, totalCount, currentInput, result) => {
+        if (result) {
+          const uiResult: UIMatchResult = {
+            inputName: result.inputName,
+            matchedSKU: result.matchedInfo.sku || null,
+            matchedSPU: result.matchedInfo.spu || null,
+            matchedBrand: result.extractedInfo.brand || null,
+            matchedVersion: result.extractedInfo.version || null,
+            matchedMemory: result.extractedInfo.memory || null,
+            matchedColor: result.extractedInfo.color || null,
+            matchedGtins: result.matchedInfo.gtins || [],
+            similarity: result.similarity,
+            status: result.status as 'matched' | 'unmatched' | 'spu-matched',
+          };
+          realTimeResults.push(uiResult);
 
-      // 转换结果格式以适配UI（保持与旧格式兼容）
-      const uiResults: UIMatchResult[] = batchResult.results.map(result => ({
-        inputName: result.inputName,
-        matchedSKU: result.matchedInfo.sku || null,
-        matchedSPU: result.matchedInfo.spu || null,
-        matchedBrand: result.extractedInfo.brand || null,
-        matchedVersion: result.extractedInfo.version || null,
-        matchedMemory: result.extractedInfo.memory || null,
-        matchedColor: result.extractedInfo.color || null,
-        matchedGtins: result.matchedInfo.gtins || [],
-        similarity: result.similarity,
-        status: result.status as 'matched' | 'unmatched' | 'spu-matched',
-      }));
+          setMatchProgress({
+            current: currentIndex,
+            total: totalCount,
+            currentItem: currentInput.length > 30 ? currentInput.substring(0, 30) + '...' : currentInput,
+            results: [...realTimeResults]
+          });
 
-      setResults(uiResults);
+          if (currentIndex % 5 === 0 || currentIndex === totalCount) {
+            setResults([...realTimeResults]);
+          }
+        }
+      });
+
+      setResults(realTimeResults);
+      setMatchProgress(null);
 
       message.success(`匹配完成，共处理 ${lines.length} 条记录，成功匹配 ${batchResult.summary.matched} 条`);
     } catch (error) {
       message.error('匹配失败，请重试');
       console.error(error);
+      setMatchProgress(null);
     } finally {
       setLoading(false);
     }
@@ -414,6 +473,7 @@ export default function SmartMatch() {
           currentPage={currentPage}
           pageSize={pageSize}
           onPageChange={handlePageChange}
+          matchProgress={matchProgress}
         />
       </div>
 

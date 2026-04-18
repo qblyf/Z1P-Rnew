@@ -39,26 +39,58 @@ export function ResultTable({
   pageSize,
   onPageChange,
 }: ResultTableProps) {
-  // 定义所有可用的列
+  // 定义所有可用的列 - 针对SKU直接匹配优化
   const allColumns = [
     {
-      title: '输入商品名称',
+      title: '输入商品',
       dataIndex: 'inputName',
       key: 'inputName',
-      width: 250,
-      fixed: 'left' as const,
-    },
-    {
-      title: '匹配的SPU',
-      dataIndex: 'matchedSPU',
-      key: 'matchedSPU',
       width: 200,
-      render: (text: string | null) => text || '-',
+      fixed: 'left' as const,
+      render: (text: string) => (
+        <span className="text-sm" title={text}>
+          {text.length > 25 ? text.substring(0, 25) + '...' : text}
+        </span>
+      ),
     },
     {
-      title: '规格标签',
+      title: '匹配SKU',
+      dataIndex: 'matchedSKU',
+      key: 'matchedSKU',
+      width: 300,
+      render: (text: string | null, record: UIMatchResult) => {
+        if (record.status === 'spu-matched') {
+          return <span className="text-gray-400">正在匹配...</span>;
+        }
+        if (!text) return '-';
+        return (
+          <span className="text-sm font-medium text-green-700" title={text}>
+            {text.length > 35 ? text.substring(0, 35) + '...' : text}
+          </span>
+        );
+      },
+    },
+    {
+      title: '品牌',
+      dataIndex: 'matchedBrand',
+      key: 'matchedBrand',
+      width: 100,
+      render: (text: string | null) => {
+        if (!text) return '-';
+        const brand = brandList.find(b => b.name === text);
+        return brand ? (
+          <Tag color={brand.color} className="font-medium">
+            {brand.name}
+          </Tag>
+        ) : (
+          <Tag color="orange">{text}</Tag>
+        );
+      },
+    },
+    {
+      title: '规格',
       key: 'specs',
-      width: 250,
+      width: 220,
       render: (_: unknown, record: UIMatchResult) => {
         if (record.status === 'spu-matched') {
           return <span className="text-gray-400">正在匹配...</span>;
@@ -67,74 +99,61 @@ export function ResultTable({
         if (record.matchedVersion) specs.push(<Tag key="version" color="blue">{record.matchedVersion}</Tag>);
         if (record.matchedMemory) specs.push(<Tag key="memory" color="green">{record.matchedMemory}</Tag>);
         if (record.matchedColor) specs.push(<Tag key="color" color="purple">{record.matchedColor}</Tag>);
-        return specs.length > 0 ? <Space size={4}>{specs}</Space> : '-';
-      },
-    },
-    {
-      title: '匹配的SKU',
-      dataIndex: 'matchedSKU',
-      key: 'matchedSKU',
-      width: 250,
-      render: (text: string | null, record: UIMatchResult) => {
-        if (record.status === 'spu-matched') {
-          return <span className="text-gray-400">正在匹配SKU...</span>;
-        }
-        return text || '-';
-      },
-    },
-    {
-      title: '品牌',
-      dataIndex: 'matchedBrand',
-      key: 'matchedBrand',
-      width: 120,
-      render: (text: string | null) => {
-        if (!text) return '-';
-        const brand = brandList.find(b => b.name === text);
-        return brand ? <Tag color={brand.color}>{brand.name}</Tag> : <Tag color="orange">{text}</Tag>;
+        return specs.length > 0 ? <Space size={4} wrap>{specs}</Space> : '-';
       },
     },
     {
       title: '69码',
       dataIndex: 'matchedGtins',
       key: 'matchedGtins',
-      width: 200,
+      width: 150,
       render: (gtins: string[]) => {
         if (!gtins || gtins.length === 0) return '-';
         return (
-          <div className="flex flex-col gap-1">
-            {gtins.map((gtin, idx) => (
-              <span key={idx} className="text-xs font-mono">{gtin}</span>
+          <div className="flex flex-col gap-0.5">
+            {gtins.slice(0, 2).map((gtin, idx) => (
+              <span key={idx} className="text-xs font-mono text-slate-600">{gtin}</span>
             ))}
+            {gtins.length > 2 && (
+              <span className="text-xs text-slate-400">+{gtins.length - 2} 更多</span>
+            )}
           </div>
         );
       },
     },
     {
-      title: '状态/相似度',
-      key: 'statusAndSimilarity',
-      width: 140,
+      title: '相似度',
+      dataIndex: 'similarity',
+      key: 'similarity',
+      width: 90,
+      render: (similarity: number, record: UIMatchResult) => {
+        if (record.status !== 'matched') return '-';
+        const percent = (similarity * 100).toFixed(0);
+        const color = similarity >= 0.8 ? 'success' : similarity >= 0.6 ? 'warning' : 'error';
+        return <Tag color={color}>{percent}%</Tag>;
+      },
+    },
+    {
+      title: '状态',
+      key: 'status',
+      width: 100,
       fixed: 'right' as const,
       render: (_: unknown, record: UIMatchResult) => {
         if (record.status === 'matched') {
           return (
-            <Space direction="vertical" size={4}>
-              <Tag icon={<CheckCircle size={14} />} color="success">
-                已匹配
-              </Tag>
-              <Tag color={record.similarity >= 0.8 ? 'green' : record.similarity >= 0.6 ? 'orange' : 'red'}>
-                {(record.similarity * 100).toFixed(0)}%
-              </Tag>
-            </Space>
+            <Tag icon={<CheckCircle size={12} />} color="success" className="font-medium">
+              已匹配
+            </Tag>
           );
         } else if (record.status === 'spu-matched') {
           return (
-            <Tag icon={<Loader2 size={14} className="animate-spin" />} color="processing">
-              匹配中...
+            <Tag icon={<Loader2 size={12} className="animate-spin" />} color="processing">
+              SPU匹配
             </Tag>
           );
         } else {
           return (
-            <Tag icon={<XCircle size={14} />} color="error">
+            <Tag icon={<XCircle size={12} />} color="error" className="font-medium">
               未匹配
             </Tag>
           );
