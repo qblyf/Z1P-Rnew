@@ -1,12 +1,5 @@
 'use client';
 
-import { 
-  pullAllData,
-  addSyncData,
-  syncProductSingle
-} from '@zsqk/z1-sdk/es/z1p/sync-data';
-import { addSyncLogWithData } from '@zsqk/z1-sdk/es/z1p/sync-log';
-
 import { Button, Descriptions, Table, Progress, Space, Card, Row, Col, Tag, Steps, List, Avatar, Alert, Checkbox } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, SyncOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { PageHeader } from '@ant-design/pro-components';
@@ -167,9 +160,55 @@ function ClientPage() {
     }
   };
 
+  // API 调用辅助函数（使用认证令牌）
+  const pullAllData = async (authToken: string) => {
+    const res = await fetch(`/api/sync-data/all?token=${encodeURIComponent(authToken)}`);
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || '拉取数据失败');
+    return json.data;
+  };
+
+  const addSyncData = async (authToken: string, data: any) => {
+    const res = await fetch(`/api/sync-data/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+      body: JSON.stringify({ data })
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || '整理数据失败');
+    return json.data;
+  };
+
+  const addSyncLogWithData = async (authToken: string, syncDataID: number, data: any) => {
+    const res = await fetch(`/api/sync-log/add-with-data`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+      body: JSON.stringify({ syncDataID, data })
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || '生成同步日志失败');
+    return json.data;
+  };
+
+  const syncProductSingle = async (authToken: string, params: { tenantID: string; syncDataID: number; data: any; logID?: number }) => {
+    const res = await fetch(`/api/product/sync/single`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+      body: JSON.stringify(params)
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || '同步账套失败');
+    return json.data;
+  };
+
   const fn = useMemo(() => {
     console.log('SyncButton init');
     return async () => {
+      if (!token) {
+        setMsg('请先登录系统');
+        return;
+      }
+
       if (selectedTenants.length === 0) {
         setMsg('请至少选择一个账套进行同步');
         return;
@@ -180,7 +219,7 @@ function ClientPage() {
       setProgress(0);
       setCurrentStepIndex(0);
       setTenantSyncStatus({});
-      
+
       // 设置超时处理
       const timeoutId = setTimeout(() => {
         setMsg('同步超时，请检查网络连接后重试');
@@ -189,53 +228,53 @@ function ClientPage() {
         setCurrentStepIndex(-1);
         setDisabled(false);
       }, 180000); // 3分钟超时
-      
+
       try {
         // 步骤1: 拉取数据
         setCurrentStep('正在从公库拉取数据...');
         setCurrentStepIndex(0);
         setProgress(10);
-        const data = await pullAllData();
-        
-        // 步骤2: 生成同步数据相关信息  
+        const data = await pullAllData(token);
+
+        // 步骤2: 生成同步数据相关信息
         setCurrentStep('正在整理同步数据...');
         setCurrentStepIndex(1);
         setProgress(30);
-        const syncDataResult = await addSyncData({ data });
+        const syncDataResult = await addSyncData(token, data);
         const syncDataID = syncDataResult.syncDataID;
-        
+
         // 步骤3: 生成同步日志
         setCurrentStep('正在生成同步日志...');
         setCurrentStepIndex(2);
         setProgress(40);
-        const logID = await addSyncLogWithData({ syncDataID, data });
-        
+        const logID = await addSyncLogWithData(token, syncDataID, data);
+
         // 步骤4: 使用选中的账套列表
         const tenantIDs = selectedTenants;
         console.log(`准备同步 ${tenantIDs.length} 个账套:`, tenantIDs);
         console.log('账套列表详情:', tenantList.filter(t => tenantIDs.includes(t.tenantID)));
-        
+
         // 验证 tenantID 是否有效
         if (tenantIDs.length === 0) {
           throw new Error('没有选中任何账套');
         }
-        
+
         // 检查每个 tenantID 是否为有效字符串
         const invalidTenants = tenantIDs.filter(id => !id || typeof id !== 'string');
         if (invalidTenants.length > 0) {
           console.error('❌ 发现无效的 tenantID:', invalidTenants);
           throw new Error(`发现 ${invalidTenants.length} 个无效的账套ID`);
         }
-        
+
         console.log('✅ 所有 tenantID 验证通过');
-        
+
         // 初始化账套状态
         const initialStatus: Record<string, any> = {};
         tenantIDs.forEach(id => {
           initialStatus[id] = { status: 'waiting' };
         });
         setTenantSyncStatus(initialStatus);
-        
+
         setCurrentStep('正在向各账套同步数据...');
         setCurrentStepIndex(3);
         const totalSets = tenantIDs.length;
@@ -245,11 +284,11 @@ function ClientPage() {
           resCode: string;
           status: string;
         }> = [];
-        
+
         // 步骤5: 循环调用 syncProductSingle 向各账套写数据
         for (let i = 0; i < totalSets; i++) {
           const tenantID = tenantIDs[i];
-          
+
           // 添加详细的调试日志
           console.log(`\n🔄 开始同步账套 [${i + 1}/${totalSets}]`);
           console.log('  - tenantID:', tenantID);
@@ -257,20 +296,20 @@ function ClientPage() {
           console.log('  - tenantID 长度:', tenantID?.length);
           console.log('  - syncDataID:', syncDataID);
           console.log('  - logID:', logID);
-          
+
           const currentProgress = 40 + Math.floor((i / totalSets) * 50);
           setProgress(currentProgress);
           setCurrentStep(`正在同步账套 ${tenantID} (${i + 1}/${totalSets})...`);
-          
+
           // 更新当前账套状态为同步中
           setTenantSyncStatus(prev => ({
             ...prev,
-            [tenantID]: { 
-              status: 'syncing', 
-              startTime: Date.now() 
+            [tenantID]: {
+              status: 'syncing',
+              startTime: Date.now()
             }
           }));
-          
+
           try {
             console.log(`  ⏳ 调用 syncProductSingle，参数:`, {
               tenantID,
@@ -278,27 +317,27 @@ function ClientPage() {
               hasData: !!data,
               logID
             });
-            
-            const result = await syncProductSingle({ 
-              tenantID, 
-              syncDataID, 
+
+            const result = await syncProductSingle(token, {
+              tenantID,
+              syncDataID,
               data,
-              logID 
+              logID
             });
-            
+
             console.log(`  ✅ 账套 ${tenantID} 同步成功:`, result);
-            
+
             // 更新账套状态为成功
             setTenantSyncStatus(prev => ({
               ...prev,
-              [tenantID]: { 
-                status: 'success', 
+              [tenantID]: {
+                status: 'success',
                 startTime: prev[tenantID]?.startTime,
                 endTime: Date.now(),
                 message: result.errMsg || '同步成功'
               }
             }));
-            
+
             syncResults.push({
               name: tenantIDMap[tenantID] ? `${tenantID} (${tenantIDMap[tenantID]})` : tenantID,
               resCode: result.resCode === 'complete' ? '已成功' : '失败',
@@ -313,17 +352,17 @@ function ClientPage() {
               message: errorMsg,
               error: error
             });
-            
+
             setTenantSyncStatus(prev => ({
               ...prev,
-              [tenantID]: { 
-                status: 'error', 
+              [tenantID]: {
+                status: 'error',
                 startTime: prev[tenantID]?.startTime,
                 endTime: Date.now(),
                 message: errorMsg
               }
             }));
-            
+
             syncResults.push({
               name: tenantIDMap[tenantID] ? `${tenantID} (${tenantIDMap[tenantID]})` : tenantID,
               resCode: '失败',
@@ -351,7 +390,7 @@ function ClientPage() {
         setDisabled(false);
       }
     };
-  }, [selectedTenants, tenantIDMap]);
+  }, [selectedTenants, tenantIDMap, token]);
 
   // 同步步骤配置
   const syncSteps = [

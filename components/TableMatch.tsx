@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Table, Tag, message, Spin, Select, Empty, Progress } from 'antd';
-import { Upload, Play, Download, AlertCircle } from 'lucide-react';
-import { getSPUListNew, getSPUInfo, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
+import { Card, Button, Table, Tag, message, Select, Empty, Progress } from 'antd';
+import { Upload, Play, Download } from 'lucide-react';
 import { getBrandBaseList } from '@zsqk/z1-sdk/es/z1p/brand';
-import { SKUState, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import * as XLSX from 'xlsx';
 import { MatchingOrchestrator } from '../utils/services/MatchingOrchestrator';
-import type { SPUData, SKUData, BrandData } from '../utils/types';
+import type { BrandData } from '../utils/types';
 
 /**
  * 表格数据接口
@@ -55,76 +53,27 @@ export function TableMatchComponent() {
   // 创建 orchestrator 实例（使用 useState 确保只创建一次）
   const [orchestrator] = useState(() => new MatchingOrchestrator());
   const [matcherInitialized, setMatcherInitialized] = useState(false);
-  const [spuList, setSpuList] = useState<SPUData[]>([]);
   const [brandList, setBrandList] = useState<BrandData[]>([]);
 
   // 初始化 orchestrator（加载配置）
   useEffect(() => {
     const initOrchestrator = async () => {
       try {
-        console.log('=== 开始加载品牌和SPU数据 ===');
+        console.log('=== 开始加载品牌数据 ===');
         const startTime = Date.now();
-        
+
         // 加载品牌列表
         const brands = await getBrandBaseList();
         setBrandList(brands);
         console.log(`已加载品牌数据: ${brands.length} 个品牌`);
-        
-        // 分批加载所有SPU数据
-        const allSpuList = [];
-        const batchSize = 10000;
-        let offset = 0;
-        let hasMore = true;
-        let totalLoaded = 0;
-        let filteredCount = 0;
-        
-        while (hasMore) {
-          const spuList = await getSPUListNew(
-            {
-              states: [SPUState.在用],
-              limit: batchSize,
-              offset,
-              orderBy: [{ key: 'p."id"', sort: 'ASC' }],
-            },
-            ['id', 'name', 'brand', 'skuIDs']
-          );
-          
-          totalLoaded += spuList.length;
-          
-          // 过滤掉没有品牌的SPU
-          const validSpuList = spuList.filter(spu => {
-            if (!spu.brand || spu.brand.trim() === '') {
-              filteredCount++;
-              return false;
-            }
-            return true;
-          });
-          
-          allSpuList.push(...validSpuList);
-          console.log(`已加载 ${spuList.length} 个SPU，过滤 ${spuList.length - validSpuList.length} 个无品牌SPU，有效: ${validSpuList.length}，总计: ${allSpuList.length}`);
-          
-          if (spuList.length < batchSize) {
-            hasMore = false;
-          } else {
-            offset += batchSize;
-          }
-        }
-        
-        setSpuList(allSpuList);
-        
-        const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-        
-        console.log('=== SPU数据加载完成 ===');
-        console.log(`总加载: ${totalLoaded} 个SPU`);
-        console.log(`过滤无品牌: ${filteredCount} 个SPU`);
-        console.log(`有效SPU: ${allSpuList.length} 个`);
-        console.log(`总耗时: ${totalTime}秒`);
-        
-        // 初始化 orchestrator
-        await orchestrator.initialize(brands, allSpuList);
+
+        // 初始化 orchestrator（SKU数据由MatchingOrchestrator内部加载）
+        await orchestrator.initialize(brands, []);
         setMatcherInitialized(true);
+
+        const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
         console.log('✓ TableMatch Orchestrator initialized');
-        message.success(`已加载 ${allSpuList.length} 个有效SPU（过滤${filteredCount}个无品牌，耗时${totalTime}秒）`);
+        message.success(`匹配器初始化完成（耗时${totalTime}秒）`);
       } catch (error) {
         console.error('Failed to initialize orchestrator:', error);
         message.error('匹配器初始化失败');
