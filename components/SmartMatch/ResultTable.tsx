@@ -45,29 +45,44 @@ export function ResultTable({
       title: '输入商品',
       dataIndex: 'inputName',
       key: 'inputName',
-      width: 200,
+      width: 280,
       fixed: 'left' as const,
       render: (text: string) => (
         <span className="text-sm" title={text}>
-          {text.length > 25 ? text.substring(0, 25) + '...' : text}
+          {text}
         </span>
       ),
     },
     {
-      title: '匹配SKU',
-      dataIndex: 'matchedSKU',
-      key: 'matchedSKU',
-      width: 300,
-      render: (text: string | null, record: UIMatchResult) => {
+      title: '匹配结果',
+      key: 'matchedResult',
+      width: 350,
+      render: (_: unknown, record: UIMatchResult) => {
         if (record.status === 'spu-matched') {
           return <span className="text-gray-400">正在匹配...</span>;
         }
-        if (!text) return '-';
-        return (
-          <span className="text-sm font-medium text-green-700" title={text}>
-            {text.length > 35 ? text.substring(0, 35) + '...' : text}
-          </span>
-        );
+
+        const parts = [];
+
+        // 匹配SKU
+        if (record.matchedSKU) {
+          parts.push(
+            <span key="sku" className="text-sm font-medium text-green-700" title={record.matchedSKU}>
+              {record.matchedSKU}
+            </span>
+          );
+        }
+
+        // 规格标签
+        const specs = [];
+        if (record.matchedVersion) specs.push(<Tag key="version" color="blue">{record.matchedVersion}</Tag>);
+        if (record.matchedMemory) specs.push(<Tag key="memory" color="green">{record.matchedMemory}</Tag>);
+        if (record.matchedColor) specs.push(<Tag key="color" color="purple">{record.matchedColor}</Tag>);
+        if (specs.length > 0) {
+          parts.push(<Space size={4} key="specs">{specs}</Space>);
+        }
+
+        return parts.length > 0 ? <Space direction="vertical" size={4}>{parts}</Space> : '-';
       },
     },
     {
@@ -85,21 +100,6 @@ export function ResultTable({
         ) : (
           <Tag color="orange">{text}</Tag>
         );
-      },
-    },
-    {
-      title: '规格',
-      key: 'specs',
-      width: 220,
-      render: (_: unknown, record: UIMatchResult) => {
-        if (record.status === 'spu-matched') {
-          return <span className="text-gray-400">正在匹配...</span>;
-        }
-        const specs = [];
-        if (record.matchedVersion) specs.push(<Tag key="version" color="blue">{record.matchedVersion}</Tag>);
-        if (record.matchedMemory) specs.push(<Tag key="memory" color="green">{record.matchedMemory}</Tag>);
-        if (record.matchedColor) specs.push(<Tag key="color" color="purple">{record.matchedColor}</Tag>);
-        return specs.length > 0 ? <Space size={4} wrap>{specs}</Space> : '-';
       },
     },
     {
@@ -122,28 +122,21 @@ export function ResultTable({
       },
     },
     {
-      title: '相似度',
-      dataIndex: 'similarity',
-      key: 'similarity',
-      width: 90,
-      render: (similarity: number, record: UIMatchResult) => {
-        if (record.status !== 'matched') return '-';
-        const percent = (similarity * 100).toFixed(0);
-        const color = similarity >= 0.8 ? 'success' : similarity >= 0.6 ? 'warning' : 'error';
-        return <Tag color={color}>{percent}%</Tag>;
-      },
-    },
-    {
       title: '状态',
       key: 'status',
-      width: 100,
+      width: 150,
       fixed: 'right' as const,
       render: (_: unknown, record: UIMatchResult) => {
         if (record.status === 'matched') {
+          const percent = (record.similarity * 100).toFixed(0);
+          const color = record.similarity >= 0.8 ? 'success' : record.similarity >= 0.6 ? 'warning' : 'error';
           return (
-            <Tag icon={<CheckCircle size={12} />} color="success" className="font-medium">
-              已匹配
-            </Tag>
+            <Space direction="vertical" size={2}>
+              <Tag icon={<CheckCircle size={12} />} color="success" className="font-medium">
+                已匹配
+              </Tag>
+              <Tag color={color}>相似度 {percent}%</Tag>
+            </Space>
           );
         } else if (record.status === 'spu-matched') {
           return (
