@@ -48,14 +48,36 @@ const THIRD_PARTY_PREFIXES = [
   '极选 JOESKY', '乔威', '乐坞', '联创', 'WHIZKID', 'REEPRO', 'IOTAPK', '万魔', '极选',
   '荣耀亲选',  // 荣耀亲选是第三方品牌，不是荣耀官方
   '思派力',     // 荣耀思派力是第三方品牌，不是荣耀官方
+  '亲选',       // "亲选"是"荣耀亲选"的简称，如"亲选荣耀400..."
+];
+
+// 第三方品牌前缀（按优先级排序，用于 removeThirdPartyPrefix）
+const THIRD_PARTY_PREFIXES_SORTED = [
+  '荣耀亲选',
+  '极选 JOESKY',
+  'WHIZKID',
+  'REEPRO',
+  'JOWAY',
+  'DOINGTOP',
+  'POWER-',
+  'O项目',
+  '乔威',
+  '乐坞',
+  '联创',
+  'IOTAPK',
+  '万魔',
+  '极选',
+  '思派力',
+  '亲选',       // "亲选"是"荣耀亲选"的简称，必须放在后面处理
 ];
 
 function extractBrand(skuName) {
   // 先检查是否是第三方品牌（包含荣耀但不是荣耀官方）
   // 使用精确匹配：检查字符串是否以第三方前缀开头
-  for (const prefix of THIRD_PARTY_PREFIXES) {
+  for (const prefix of THIRD_PARTY_PREFIXES_SORTED) {
     // 检查是否以该前缀开头（如 "荣耀亲选荣耀MAGIC8PRO" 以 "荣耀亲选" 开头）
-    if (skuName.startsWith(prefix)) {
+    // 也要检查"亲选荣耀"这种情况（"亲选"是"荣耀亲选"的简称）
+    if (skuName.startsWith(prefix) || skuName.startsWith('亲选' + prefix.slice(2))) {
       return null; // 第三方品牌，不提取荣耀
     }
   }
@@ -68,16 +90,30 @@ function extractBrand(skuName) {
 }
 
 /**
- * 去除第三方品牌前缀
- * 例如："荣耀亲选荣耀MAGIC8PRO磁吸保护壳专供" -> "荣耀MAGIC8PRO磁吸保护壳专供"
+ * 去除第三方品牌前缀（多次迭代直到没有变化）
+ * 例如："荣耀亲选荣耀MAGIC8PRO磁吸保护壳专供" -> "MAGIC8PRO磁吸保护壳专供"
+ * 例如："亲选荣耀400素皮保护壳素皮专供" -> "荣耀400素皮保护壳专供"
  */
 function removeThirdPartyPrefix(skuName) {
-  for (const prefix of THIRD_PARTY_PREFIXES) {
-    if (skuName.includes(prefix)) {
-      return skuName.replace(new RegExp(prefix, 'g'), '').trim();
+  let result = skuName;
+  let previous = '';
+  // 多次迭代，直到没有变化
+  let iterations = 0;
+  const maxIterations = 10;
+
+  while (previous !== result && iterations < maxIterations) {
+    previous = result;
+    for (const prefix of THIRD_PARTY_PREFIXES_SORTED) {
+      // 使用更精确的匹配：检查开头或者前面是空格/特殊字符的位置
+      const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // 匹配前缀在开头、前面是空格、或是"荣耀"（用于"亲选荣耀"->"荣耀亲选"的情况）
+      const pattern = new RegExp(`^${escapedPrefix}|\\s${escapedPrefix}|荣耀${escapedPrefix}`, 'g');
+      result = result.replace(pattern, '').trim();
     }
+    iterations++;
   }
-  return skuName;
+
+  return result;
 }
 
 /**
@@ -561,7 +597,9 @@ function fuzzyMatch(input, spu, rawInput) {
     return { matched: false, score: 0, reason: 'SPU名称为空' };
   }
 
-  const spuLower = spuName.toLowerCase();
+  // 使用预计算的缓存数据（从 buildSpuBrandIndex 来）
+  const cache = spu._cache || {};
+  const spuLower = cache.spuLower !== undefined ? cache.spuLower : spuName.toLowerCase();
 
   // 过滤配件类商品（如果输入不是配件，但SPU是配件，降低优先级）
   const accessoryKeywords = [
@@ -757,7 +795,8 @@ function fuzzyMatch(input, spu, rawInput) {
 
   // 去除所有空格以便模式匹配（如 "magicv6" vs "magic v6"）
   const inputPartNoSpace = inputPart.replace(/\s+/g, '');
-  const spuPartNoSpace = spuPart.replace(/\s+/g, '');
+  // 使用预计算的缓存（SPU 数据）
+  const spuPartNoSpace = cache.spuPartNoSpace !== undefined ? cache.spuPartNoSpace : spuPart.replace(/\s+/g, '');
 
   // MagicBook 系列标准化 - 提取 MagicBookPro/Art + 尺寸数字
   // 输入格式：magicbookpro16202516吋... -> MagicBookPro16
@@ -778,7 +817,7 @@ function fuzzyMatch(input, spu, rawInput) {
       .replace(/magicbook/gi, 'MagicBook');
   };
   const normalizedInput = normalizeModelName(inputPartNoSpace);
-  const normalizedSpu = normalizeModelName(spuPartNoSpace);
+  const normalizedSpu = cache.normalizedSpu !== undefined ? cache.normalizedSpu : normalizeModelName(spuPartNoSpace);
 
   // 按优先级排序的模式（更具体的在前）
   // 注意：MagicBook 必须放在 MAGIC 系列模式之前，因为 MAGIC 模式会匹配 "magic" 前缀
@@ -1230,16 +1269,89 @@ function fuzzyMatch(input, spu, rawInput) {
 }
 
 /**
- * 在 SPU 列表中搜索匹配项
+ * 预计算并缓存 SPU 的标准化数据
  */
-function findBestMatch(inputName, spuList) {
+function preprocessSpu(spu) {
+  const spuName = spu.name || '';
+  const spuBrand = spu.brand || '';
+  const spuLower = spuName.toLowerCase();
+
+  // 去除品牌后的部分
+  let spuPart = spuLower;
+  if (spuBrand) {
+    spuPart = spuLower.replace(spuBrand.toLowerCase(), '').trim();
+  }
+
+  // 去除所有空格
+  const spuPartNoSpace = spuPart.replace(/\s+/g, '');
+
+  // MagicBook 系列标准化
+  const normalizeModelName = (str) => {
+    return str
+      .replace(/magicbookpro(\d{2})\d{4}.*?(?=吋|英寸|款)/gi, 'MagicBookPro$1')
+      .replace(/magicbookart(\d{2})\d{4}.*?(?=吋|英寸|款)/gi, 'MagicBookArt$1')
+      .replace(/英寸/gi, '')
+      .replace(/吋/gi, '')
+      .replace(/magicbookpro/gi, 'MagicBookPro')
+      .replace(/magicbookart/gi, 'MagicBookArt')
+      .replace(/magicbook/gi, 'MagicBook');
+  };
+  const normalizedSpu = normalizeModelName(spuPartNoSpace);
+
+  return { spuLower, spuBrand, spuPart, spuPartNoSpace, normalizedSpu };
+}
+
+/**
+ * 建立 SPU 品牌索引，按品牌分组以加速匹配
+ * @param {Array} spuList - SPU 列表
+ * @returns {object} - { byBrand: Map, noBrand: [], all: [] }
+ */
+function buildSpuBrandIndex(spuList) {
+  const byBrand = new Map();
+  const noBrand = [];
+
+  for (const spu of spuList) {
+    // 预计算并附加缓存数据
+    spu._cache = preprocessSpu(spu);
+
+    const brand = spu.brand || '';
+    if (brand.trim() === '') {
+      noBrand.push(spu);
+    } else {
+      const key = brand.toLowerCase();
+      if (!byBrand.has(key)) {
+        byBrand.set(key, []);
+      }
+      byBrand.get(key).push(spu);
+    }
+  }
+
+  return { byBrand, noBrand, all: spuList };
+}
+
+/**
+ * 在 SPU 列表中搜索匹配项（带品牌索引优化）
+ */
+function findBestMatch(inputName, spuBrandIndex) {
   let bestMatch = null;
   let bestScore = 0;
   let bestReason = '';
 
   const convertedInput = convertToSystemFormat(inputName);
+  const inputBrand = extractBrand(convertedInput);
 
-  for (const spu of spuList) {
+  // 根据品牌筛选候选 SPU 列表
+  let candidateSpus;
+  if (inputBrand) {
+    const brandKey = inputBrand.toLowerCase();
+    const brandList = spuBrandIndex.byBrand.get(brandKey) || [];
+    const noBrandList = spuBrandIndex.noBrand; // 无品牌 SPU 也纳入（子品牌情况）
+    candidateSpus = [...brandList, ...noBrandList];
+  } else {
+    candidateSpus = spuBrandIndex.all;
+  }
+
+  for (const spu of candidateSpus) {
     const result = fuzzyMatch(convertedInput, spu, inputName);
 
     if (result.matched && result.score > bestScore) {
@@ -1453,32 +1565,36 @@ Excel SKU 匹配 CLI 工具
 
   console.log(`SPU 数据加载完成: ${allSpuList.length} 个有效 SPU\n`);
 
-  // 调试：搜索荣耀 X70 相关的 SPU
-  const x70Spus = allSpuList.filter(spu => spu.name && (
-    spu.name.includes('X70') || spu.name.includes('x70')
-  ));
-  console.log(`调试: 找到 ${x70Spus.length} 个 X70 相关的 SPU`);
-  if (x70Spus.length > 0) {
-    console.log('X70 SPU 列表:');
-    x70Spus.slice(0, 10).forEach((spu, i) => {
-      console.log(`  ${i + 1}. ID=${spu.id}, name="${spu.name}", brand="${spu.brand}"`);
-    });
-  }
-  console.log('');
+  // 建立品牌索引以加速匹配
+  const spuBrandIndex = buildSpuBrandIndex(allSpuList);
+  console.log(`品牌索引建立完成: ${spuBrandIndex.byBrand.size} 个品牌分组\n`);
 
-  // 调试：搜索荣耀 Magic V 相关的 SPU
-  const magicVSpus = allSpuList.filter(spu => spu.name && (
-    (spu.name.includes('Magic V') || spu.name.includes('MAGIC V') || spu.name.includes('magic v')) &&
-    !spu.name.includes('Book')
-  ));
-  console.log(`调试: 找到 ${magicVSpus.length} 个 Magic V 相关的 SPU (排除Book)`);
-  if (magicVSpus.length > 0) {
-    console.log('Magic V SPU 列表:');
-    magicVSpus.slice(0, 20).forEach((spu, i) => {
-      console.log(`  ${i + 1}. ID=${spu.id}, name="${spu.name}", brand="${spu.brand}"`);
-    });
+  // 调试信息（仅在 --debug 模式下显示）
+  if (options.debug) {
+    const x70Spus = allSpuList.filter(spu => spu.name && (
+      spu.name.includes('X70') || spu.name.includes('x70')
+    ));
+    console.log(`调试: 找到 ${x70Spus.length} 个 X70 相关的 SPU`);
+    if (x70Spus.length > 0) {
+      console.log('X70 SPU 列表:');
+      x70Spus.slice(0, 10).forEach((spu, i) => {
+        console.log(`  ${i + 1}. ID=${spu.id}, name="${spu.name}", brand="${spu.brand}"`);
+      });
+    }
+
+    const magicVSpus = allSpuList.filter(spu => spu.name && (
+      (spu.name.includes('Magic V') || spu.name.includes('MAGIC V') || spu.name.includes('magic v')) &&
+      !spu.name.includes('Book')
+    ));
+    console.log(`调试: 找到 ${magicVSpus.length} 个 Magic V 相关的 SPU (排除Book)`);
+    if (magicVSpus.length > 0) {
+      console.log('Magic V SPU 列表:');
+      magicVSpus.slice(0, 20).forEach((spu, i) => {
+        console.log(`  ${i + 1}. ID=${spu.id}, name="${spu.name}", brand="${spu.brand}"`);
+      });
+    }
+    console.log('');
   }
-  console.log('');
 
   // 4. 加载品牌数据
   console.log('正在加载品牌数据...');
@@ -1501,14 +1617,26 @@ Excel SKU 匹配 CLI 工具
 
   const results = [];
 
+  // GTIN 并行查询（分批并行，每批10个并发）
+  const GTIN_CONCURRENCY = 10;
+  let gtinCache = {};
+
+  if (options.verifyGtin) {
+    console.log('正在预查询 GTIN 数据...');
+    const gtinsToQuery = dataToProcess.filter(r => r.gtin).map(r => r.gtin);
+    for (let i = 0; i < gtinsToQuery.length; i += GTIN_CONCURRENCY) {
+      const batch = gtinsToQuery.slice(i, i + GTIN_CONCURRENCY);
+      await Promise.all(batch.map(gtin => findSpuByGtin(gtin, skuCache).then(r => { if (r) gtinCache[gtin] = r; })));
+      process.stdout.write(`\r  GTIN 进度: ${Math.min(i + GTIN_CONCURRENCY, gtinsToQuery.length)}/${gtinsToQuery.length}`);
+    }
+    console.log('\n  GTIN 预查询完成\n');
+  }
+
   for (let i = 0; i < dataToProcess.length; i++) {
     const row = dataToProcess[i];
-    const matchResult = findBestMatch(row.skuName, allSpuList);
+    const matchResult = findBestMatch(row.skuName, spuBrandIndex);
 
-    let gtinResult = null;
-    if (options.verifyGtin && row.gtin) {
-      gtinResult = await findSpuByGtin(row.gtin, skuCache);
-    }
+    const gtinResult = options.verifyGtin ? (gtinCache[row.gtin] || null) : null;
 
     const status = matchResult.match ? 'matched' : 'unmatched';
     if (status === 'matched') matched++;

@@ -20,6 +20,7 @@ import {
 import { SearchOutlined, ClearOutlined, CopyOutlined, DownloadOutlined } from '@ant-design/icons';
 import { getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
 import { SKU } from '@zsqk/z1-sdk/es/z1p/alltypes';
+import * as XLSX from 'xlsx';
 import PageWrap from '../../components/PageWrap';
 import { getAwait } from '../../error';
 
@@ -154,6 +155,25 @@ export default function GTINQueryPage() {
     const notFoundGtins = results.filter(r => !r.found).map(r => r.gtin).join('\n');
     navigator.clipboard.writeText(notFoundGtins);
     message.success('已复制未找到的69码');
+  };
+
+  const handleDownload = () => {
+    const exportData = results.map(r => ({
+      '69码': r.gtin,
+      '状态': r.found ? '已找到' : '未找到',
+      'SKU ID': r.skuId || '',
+      'SKU 名称': r.skuName || '',
+      'SPU ID': r.spuId || '',
+      'SPU 名称': r.spuName || '',
+      '品牌': r.brand || '',
+      'SKU状态': r.state || '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '69码查询结果');
+    XLSX.writeFile(wb, `69码查询结果_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
+    message.success('下载成功');
   };
 
   const columns = [
@@ -307,6 +327,15 @@ export default function GTINQueryPage() {
                     onClick={handleCopyNotFound}
                   >
                     复制未找到
+                  </Button>
+                )}
+                {results.length > 0 && (
+                  <Button
+                    size="small"
+                    icon={<DownloadOutlined />}
+                    onClick={handleDownload}
+                  >
+                    下载结果
                   </Button>
                 )}
               </Space>
