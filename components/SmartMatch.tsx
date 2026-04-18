@@ -137,14 +137,21 @@ export default function SmartMatch() {
 
     try {
       // 使用 MatchingOrchestrator 进行批量匹配
+      let lastUpdateTime = 0;
+      const updateInterval = 100; // 每100ms更新一次UI
+
       const batchResult = await orchestrator.batchMatch(inputs, (index, total, input, result) => {
-        // 更新进度
-        setMatchProgress(prev => prev ? {
-          ...prev,
-          current: index,
-          currentItem: input.substring(0, 30) + (input.length > 30 ? '...' : ''),
-          logs: [...prev.logs.slice(-19), `[${index}/${total}] ${result ? '✓ ' + result.matchedInfo.sku : '匹配中...'}`]
-        } : null);
+        const now = Date.now();
+        // 节流：每100ms更新一次UI
+        if (now - lastUpdateTime > updateInterval || index === total) {
+          lastUpdateTime = now;
+          setMatchProgress(prev => prev ? {
+            ...prev,
+            current: index,
+            currentItem: input.substring(0, 30) + (input.length > 30 ? '...' : ''),
+            logs: [...prev.logs.slice(-19), `[${index}/${total}] ${result ? '✓ ' + result.matchedInfo.sku : '匹配中...'}`]
+          } : null);
+        }
       });
 
       // 转换结果格式，关联 GTIN
@@ -291,14 +298,21 @@ export default function SmartMatch() {
 
     try {
       // 使用 MatchingOrchestrator 进行批量匹配
+      let lastUpdateTime = 0;
+      const updateInterval = 100; // 每100ms更新一次UI
+
       const batchResult = await orchestrator.batchMatch(lines, (index, total, input, result) => {
-        // 更新进度
-        setMatchProgress(prev => prev ? {
-          ...prev,
-          current: index,
-          currentItem: input.substring(0, 30) + (input.length > 30 ? '...' : ''),
-          logs: [...prev.logs.slice(-19), `[${index}/${total}] ${result ? '✓ ' + result.matchedInfo.sku : '匹配中...'}`]
-        } : null);
+        const now = Date.now();
+        // 节流：每100ms更新一次UI
+        if (now - lastUpdateTime > updateInterval || index === total) {
+          lastUpdateTime = now;
+          setMatchProgress(prev => prev ? {
+            ...prev,
+            current: index,
+            currentItem: input.substring(0, 30) + (input.length > 30 ? '...' : ''),
+            logs: [...prev.logs.slice(-19), `[${index}/${total}] ${result ? '✓ ' + result.matchedInfo.sku : '匹配中...'}`]
+          } : null);
+        }
       });
 
       // 匹配完成，一次性设置结果
@@ -320,8 +334,8 @@ export default function SmartMatch() {
 
       message.success(`匹配完成，共处理 ${lines.length} 条记录，成功匹配 ${batchResult.summary.matched} 条`);
     } catch (error) {
-      message.error('匹配失败，请重试');
-      console.error(error);
+      console.error('匹配失败:', error);
+      message.error(`匹配失败: ${error instanceof Error ? error.message : '未知错误'}`);
       setMatchProgress(null);
     } finally {
       setLoading(false);
