@@ -309,6 +309,7 @@ export default function SPUAdd() {
         <Form.Item label="搜索关键词" tooltip="用于网站搜索商品时的关键词匹配">
           <SearchKeywordsManager
             keywords={input.keywords}
+            spuName={input.name}
             onChange={keywords => {
               setInput(update(input, { keywords: { $set: keywords } }));
             }}

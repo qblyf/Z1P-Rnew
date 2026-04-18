@@ -322,6 +322,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                   <div>
                     <SearchKeywordsManager
                       keywords={input.keywords ?? preData.keywords}
+                      spuName={input.name ?? preData.name}
                       onChange={keywords => {
                         console.log('Keywords changed:', keywords);
                         setInput(
