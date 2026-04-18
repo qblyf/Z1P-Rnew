@@ -109,47 +109,14 @@ export async function GET(request: Request) {
       console.log('📋 账套详情:', JSON.stringify(sysSettings, null, 2));
     }
     
-    /**
-     * 从 remarks 中提取 tenantID
-     * 支持多种格式：
-     * - "tenantID: newgy"
-     * - "tenantID:newgy"
-     * - "账套ID: newgy"
-     * - "ID: newgy"
-     */
-    function extractTenantID(remarks: string, clientName: string): string {
-      if (!remarks) {
-        // 如果没有 remarks，使用 clientName 生成
-        return clientName.toLowerCase()
-          .replace(/\s+/g, '-')
-          .replace(/[^a-z0-9-]/g, '');
-      }
-      
-      // 尝试多种模式匹配
-      const patterns = [
-        /tenantID[:\s]+([a-z0-9-]+)/i,
-        /账套ID[:\s]+([a-z0-9-]+)/i,
-        /ID[:\s]+([a-z0-9-]+)/i,
-        /^([a-z0-9-]+)$/i, // 如果整个 remarks 就是 tenantID
-      ];
-      
-      for (const pattern of patterns) {
-        const match = remarks.match(pattern);
-        if (match && match[1]) {
-          return match[1].toLowerCase();
-        }
-      }
-      
-      // 如果都匹配不到，使用 clientName 生成
-      console.warn(`⚠️ 无法从 remarks 提取 tenantID: "${remarks}"，使用 clientName 生成`);
-      return clientName.toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9-]/g, '');
+    // 直接使用 clientName 作为 tenantID
+    function extractTenantID(clientName: string): string {
+      return clientName;
     }
     
     // 将 SDK 返回的数据转换为统一格式
     const tenants = sysSettings.map((setting) => {
-      const tenantID = extractTenantID(setting.remarks, setting.clientName);
+      const tenantID = extractTenantID(setting.clientName);
       
       if (debug) {
         console.log(`  - ${setting.clientName} -> ${tenantID} (remarks: ${setting.remarks})`);
