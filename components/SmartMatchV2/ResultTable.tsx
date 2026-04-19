@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Table, Tag, Card, Space, Select, Typography } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { Table, Tag, Card, Space, Select, Typography, Button, message } from 'antd';
+import { CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined, ExclamationCircleOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useMatch, MatchResult } from './MatchContext';
 
@@ -11,6 +11,53 @@ const { Text } = Typography;
 export function ResultTable() {
   const { state } = useMatch();
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  // 导出 Excel
+  const handleExport = async () => {
+    if (state.results.length === 0) {
+      message.warning('没有可导出的数据');
+      return;
+    }
+
+    const xlsx = await import('xlsx');
+
+    // 准备导出数据
+    const exportData = filteredResults.map((item, index) => ({
+      '序号': index + 1,
+      '原始名称': item.inputName,
+      '匹配SKU': item.matchedSKU || '-',
+      '品牌': item.matchedBrand || '-',
+      '版本': item.matchedVersion || '-',
+      '内存': item.matchedMemory || '-',
+      '颜色': item.matchedColor || '-',
+      '相似度': item.similarity ? `${(item.similarity * 100).toFixed(0)}%` : '-',
+      '状态': item.status === 'matched' ? '已匹配' : item.status === 'spu-matched' ? 'SPU匹配' : item.status === 'unmatched' ? '未匹配' : '匹配中',
+    }));
+
+    // 创建工作簿
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(exportData);
+
+    // 设置列宽
+    ws['!cols'] = [
+      { wch: 6 },   // 序号
+      { wch: 30 },  // 原始名称
+      { wch: 30 },  // 匹配SKU
+      { wch: 10 },  // 品牌
+      { wch: 10 },  // 版本
+      { wch: 10 },  // 内存
+      { wch: 10 },  // 颜色
+      { wch: 10 },  // 相似度
+      { wch: 10 },  // 状态
+    ];
+
+    xlsx.utils.book_append_sheet(wb, ws, '匹配结果');
+
+    // 下载文件
+    const fileName = `匹配结果_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`;
+    xlsx.writeFile(wb, fileName);
+    message.success(`已导出 ${exportData.length} 条数据`);
+  };
 
   // 根据状态筛选
   const filteredResults = statusFilter
@@ -116,21 +163,30 @@ export function ResultTable() {
 
   return (
     <Card title="匹配结果">
-      <Space className="mb-4">
-        <Text>筛选：</Text>
-        <Select
-          allowClear
-          placeholder="全部"
-          style={{ width: 120 }}
-          onChange={(value) => setStatusFilter(value)}
-          options={[
-            { label: '已匹配', value: 'matched' },
-            { label: '未匹配', value: 'unmatched' },
-          ]}
-        />
-        <Text type="secondary">
-          共 {filteredResults.length} 条（总计 {state.results.length} 条）
-        </Text>
+      <Space className="mb-4" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+        <Space>
+          <Text>筛选：</Text>
+          <Select
+            allowClear
+            placeholder="全部"
+            style={{ width: 120 }}
+            onChange={(value) => setStatusFilter(value)}
+            options={[
+              { label: '已匹配', value: 'matched' },
+              { label: '未匹配', value: 'unmatched' },
+            ]}
+          />
+          <Text type="secondary">
+            共 {filteredResults.length} 条（总计 {state.results.length} 条）
+          </Text>
+        </Space>
+        <Button
+          icon={<DownloadOutlined />}
+          onClick={handleExport}
+          disabled={state.results.length === 0}
+        >
+          导出 Excel
+        </Button>
       </Space>
 
       <Table
