@@ -160,8 +160,10 @@ export default function SmartMatch() {
       });
 
       // 转换结果格式，关联 GTIN
-      const uiResults: UIMatchResult[] = batchResult.results.map(result => {
-        const originalRow = inputToRowMap.get(result.inputName);
+      const uiResults: UIMatchResult[] = batchResult.results
+        .filter((result): result is NonNullable<typeof result> => result !== null)
+        .map(result => {
+          const originalRow = inputToRowMap.get(result.inputName);
         return {
           inputName: result.inputName,
           originalSkuName: originalRow?.productName,
