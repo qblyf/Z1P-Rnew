@@ -8,7 +8,7 @@ import {
   Table,
   Tag,
   Tooltip,
-  message,
+  notification,
 } from 'antd';
 import { useState } from 'react';
 import { spuSegment } from '@zsqk/z1-sdk/es/z1p/product';
@@ -110,7 +110,7 @@ export default function SearchKeywordsManager({
 
     const keywordArray = tempKeywords.split('，').filter(k => k.trim());
     if (!keywordArray.length || !editingData.weight || !editingData.id) {
-      message.warning('请输入完整的关键词信息');
+      notification.warning({ message: '请输入完整的关键词信息' });
       return;
     }
 
@@ -149,7 +149,7 @@ export default function SearchKeywordsManager({
 
     const keywordArray = tempKeywords.split('，').filter(k => k.trim());
     if (!keywordArray.length || !editingData.weight) {
-      message.warning('请输入完整的关键词信息');
+      notification.warning({ message: '请输入完整的关键词信息' });
       return;
     }
 
@@ -192,11 +192,11 @@ export default function SearchKeywordsManager({
 
   const handleSmartSetKeywords = async () => {
     if (!spuName) {
-      message.warning('请先填写SPU名称');
+      notification.warning({ message: '请先填写SPU名称' });
       return;
     }
     if (!token) {
-      message.error('未获取到登录信息');
+      notification.error({ message: '未获取到登录信息' });
       return;
     }
 
@@ -242,9 +242,9 @@ export default function SearchKeywordsManager({
       
       const mergedKeywords = Array.from(existingById.values());
       onChange(mergedKeywords);
-      message.success('关键词获取成功');
+      notification.success({ message: '关键词获取成功' });
     } catch {
-      message.error('搜索关键词获取失败，请稍后重试');
+      notification.error({ message: '搜索关键词获取失败，请稍后重试' });
     } finally {
       setSmartSettingLoading(false);
     }

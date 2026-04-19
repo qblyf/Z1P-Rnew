@@ -16,7 +16,7 @@ import {
   Select,
   Table,
   Tooltip,
-  message,
+  notification,
 } from 'antd';
 import { EditOutlined, BarcodeOutlined, PlusOutlined } from '@ant-design/icons';
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
@@ -408,7 +408,7 @@ export default function SKUManager(props: {
                           setNewComboValue('');
                           setIsAddingCombo(false);
                         } else if (value && selectedCombos.includes(value)) {
-                          message.warning('该版本已存在');
+                          notification.warning({ message: '该版本已存在' });
                         }
                       }}
                     />
@@ -422,7 +422,7 @@ export default function SKUManager(props: {
                           setNewComboValue('');
                           setIsAddingCombo(false);
                         } else if (value && selectedCombos.includes(value)) {
-                          message.warning('该版本已存在');
+                          notification.warning({ message: '该版本已存在' });
                         }
                       }}
                     >
@@ -540,7 +540,7 @@ export default function SKUManager(props: {
                           setNewSpecValue('');
                           setIsAddingSpec(false);
                         } else if (value && selectedSpecs.includes(value)) {
-                          message.warning('该配置已存在');
+                          notification.warning({ message: '该配置已存在' });
                         }
                       }}
                     />
@@ -554,7 +554,7 @@ export default function SKUManager(props: {
                           setNewSpecValue('');
                           setIsAddingSpec(false);
                         } else if (value && selectedSpecs.includes(value)) {
-                          message.warning('该配置已存在');
+                          notification.warning({ message: '该配置已存在' });
                         }
                       }}
                     >
@@ -672,7 +672,7 @@ export default function SKUManager(props: {
                           setNewColorValue('');
                           setIsAddingColor(false);
                         } else if (value && selectedColors.includes(value)) {
-                          message.warning('该颜色已存在');
+                          notification.warning({ message: '该颜色已存在' });
                         }
                       }}
                     />
@@ -686,7 +686,7 @@ export default function SKUManager(props: {
                           setNewColorValue('');
                           setIsAddingColor(false);
                         } else if (value && selectedColors.includes(value)) {
-                          message.warning('该颜色已存在');
+                          notification.warning({ message: '该颜色已存在' });
                         }
                       }}
                     >

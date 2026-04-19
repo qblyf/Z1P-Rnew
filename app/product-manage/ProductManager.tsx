@@ -1,6 +1,6 @@
 'use client';
 import { Drawer } from 'antd';
-import { message } from 'antd';
+import { notification } from 'antd';
 import Head from 'next/head';
 import { useEffect, useMemo, useState } from 'react';
 import { orderSPUCate, getSPUInfo, getSKUsInfo as getSKUsInfoAPI } from '@zsqk/z1-sdk/es/z1p/product';
@@ -224,7 +224,7 @@ export function ProductManager() {
             }}
             onAddClick={() => {
               if (!spuID) {
-                message.warning('请在SPU管理中选择要新增SKU的载体');
+                notification.warning({ message: '请在SPU管理中选择要新增SKU的载体' });
                 return;
               }
               // 打开SPU编辑抽屉并切换到SKU编辑标签

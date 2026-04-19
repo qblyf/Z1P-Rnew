@@ -16,7 +16,7 @@ import { UploadFile, UploadFileStatus } from 'antd/lib/upload/interface';
 import * as _ from 'lodash';
 import { DndProvider, DropTargetMonitor, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { message } from 'antd';
+import { notification } from 'antd';
 
 import {
   byte2str,
@@ -46,14 +46,14 @@ export const upload = async (
     const msg = `超出最大体积限制, 仅允许 ${byte2str(
       limitUploadImgSize
     )} 大小以内的文件`;
-    message.error(msg);
+    notification.error({ message: msg });
     throw new Error(msg);
   }
 
   const stored = sessionStorage.getItem('ossCredentials');
   if (!stored) {
     const msg = '无OSS验证信息，刷新页面试试？';
-    message.error(msg);
+    notification.error({ message: msg });
     throw new Error(msg);
   }
   const ossCredentials: OSSTempCredentials = JSON.parse(stored);
@@ -170,7 +170,7 @@ function FileUpload(props: Props): JSX.Element {
       if (imgList && setImgList) {
         const dragRow = imgList[dragIndex];
         if (!dragRow) {
-          message.warning('不合法的排序方式!');
+          notification.warning({ message: '不合法的排序方式!' });
           return;
         }
         const newImg = imgList.filter(item => item.uid !== dragRow.uid);
@@ -198,7 +198,7 @@ function FileUpload(props: Props): JSX.Element {
           );
         })
       ).then(resList => {
-        message.success('操作成功.');
+        notification.success({ message: '操作成功.' });
         setLoading(false);
         setPendingImgToUpload([]);
         if (

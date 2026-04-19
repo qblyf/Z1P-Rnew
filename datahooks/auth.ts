@@ -164,7 +164,7 @@ function useToken() {
         import('dingtalk-jsapi/lib/env').then(({ getENV }) => {
           import('@zsqk/z1-sdk/es/z1p/auth').then(({ dingtalkLogin }) => {
             import('../constants').then(({ DINGDING_CORPID }) => {
-              import('antd').then(({ message }) => {
+              import('antd').then(({ notification }) => {
                 (async () => {
                   const env = getENV();
                   if (env.platform !== 'notInDingTalk') {
@@ -177,7 +177,7 @@ function useToken() {
 
                     const [payload] = getPayload(token);
                     if (payload) {
-                      message.success(`欢迎你 ${payload.name}!`);
+                      notification.success({ message: `欢迎你 ${payload.name}!` });
                     }
                   } else {
                     // 非钉钉环境，设置为null表示没有token，让页面跳转到登录页面

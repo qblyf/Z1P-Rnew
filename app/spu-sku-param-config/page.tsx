@@ -23,7 +23,7 @@ import {
   Table,
   Tag,
   Tooltip,
-  message,
+  notification,
 } from 'antd';
 import { useEffect, useCallback, useMemo, useState, Suspense } from 'react';
 
@@ -111,7 +111,7 @@ function Page() {
         const msg = `获取商品参数定义失败：${
           err instanceof Error ? err.message : ''
         }`;
-        message.error(msg);
+        notification.error({ message: msg });
         console.error(msg);
       }
     };
@@ -129,7 +129,7 @@ function Page() {
         const msg = `获取商品参数值失败：${
           err instanceof Error ? err.message : ''
         }`;
-        message.error(msg);
+        notification.error({ message: msg });
         console.error(msg);
       }
     };
@@ -618,18 +618,18 @@ function Page() {
               return true;
             }) as Value[];
             if (newValues.length && updatedValues.length) {
-              message.warning('没有内容需要保存');
+              notification.warning({ message: '没有内容需要保存' });
             }
 
             if (newValues.length) {
               try {
                 await batchAddParamsValue({ list: newValues }, { token });
-                message.success('批量新增商品参数值成功');
+                notification.success({ message: '批量新增商品参数值成功' });
               } catch (err) {
                 const msg = `批量新增商品参数值失败：${
                   err instanceof Error ? err.message : ''
                 }`;
-                message.error(msg);
+                notification.error({ message: msg });
                 console.error(msg);
               }
             }
@@ -647,17 +647,17 @@ function Page() {
                   },
                   { token }
                 );
-                message.success('批量修改商品参数值成功');
+                notification.success({ message: '批量修改商品参数值成功' });
               } catch (err) {
                 const msg = `批量修改商品参数值失败：${
                   err instanceof Error ? err.message : ''
                 }`;
-                message.error(msg);
+                notification.error({ message: msg });
                 console.error(msg);
               }
             }
             await getPValueList();
-            message.success('获取商品参数值成功');
+            notification.success({ message: '获取商品参数值成功' });
           }}
           type="primary"
           style={{ marginLeft: '30px' }}

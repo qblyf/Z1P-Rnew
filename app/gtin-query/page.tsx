@@ -12,7 +12,7 @@ import {
   Space,
   Typography,
   Divider,
-  message,
+  notification,
   Spin,
   Row,
   Col,
@@ -58,12 +58,12 @@ export default function GTINQueryPage() {
     const BATCH_SIZE = 100;
 
     if (gtinList.length === 0) {
-      message.warning('请输入至少一个69码');
+      notification.warning({ message: '请输入至少一个69码' });
       return;
     }
 
     if (gtinList.length > MAX_LIMIT) {
-      message.warning(`最多只能一次查询 ${MAX_LIMIT} 个69码`);
+      notification.warning({ message: `最多只能一次查询 ${MAX_LIMIT} 个69码` });
       return;
     }
 
@@ -131,10 +131,10 @@ export default function GTINQueryPage() {
       setResults(queryResults);
 
       const foundCount = queryResults.filter(r => r.found).length;
-      message.success(`查询完成：找到 ${foundCount}/${queryResults.length} 个69码`);
+      notification.success({ message: `查询完成：找到 ${foundCount}/${queryResults.length} 个69码` });
     } catch (err) {
       console.error('查询失败:', err);
-      message.error('查询失败');
+      notification.error({ message: '查询失败' });
     } finally {
       setLoading(false);
     }
@@ -149,13 +149,13 @@ export default function GTINQueryPage() {
   const handleCopyFound = () => {
     const foundGtins = results.filter(r => r.found).map(r => r.gtin).join('\n');
     navigator.clipboard.writeText(foundGtins);
-    message.success('已复制找到的69码');
+    notification.success({ message: '已复制找到的69码' });
   };
 
   const handleCopyNotFound = () => {
     const notFoundGtins = results.filter(r => !r.found).map(r => r.gtin).join('\n');
     navigator.clipboard.writeText(notFoundGtins);
-    message.success('已复制未找到的69码');
+    notification.success({ message: '已复制未找到的69码' });
   };
 
   const handleDownload = () => {
@@ -174,7 +174,7 @@ export default function GTINQueryPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '69码查询结果');
     XLSX.writeFile(wb, `69码查询结果_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
-    message.success('下载成功');
+    notification.success({ message: '下载成功' });
   };
 
   const columns = [

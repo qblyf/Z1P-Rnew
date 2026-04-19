@@ -2,7 +2,7 @@
 import { SPU, SPUCateID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { getSPUListNew, getSPUCateBaseList, getSPUInfo, editSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { Button, Card, Col, Form, Input, Row, Select, Table, Cascader, Tag, Space, Divider, Modal, Drawer } from 'antd';
-import { message } from 'antd';
+import { notification } from 'antd';
 import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import { Search, Edit } from 'lucide-react';
@@ -86,14 +86,14 @@ function BatchEditModal(props: {
       const values = await form.validateFields();
       
       if (!token) {
-        message.error('未获取到认证信息');
+        notification.error({ message: '未获取到认证信息' });
         return;
       }
 
       // 检查是否至少选择了一个要修改的字段
       const hasChanges = values.brand || values.cateID || values.description || values.remark;
       if (!hasChanges) {
-        message.warning('请至少选择一个要修改的字段');
+        notification.warning({ message: '请至少选择一个要修改的字段' });
         return;
       }
 
@@ -129,9 +129,9 @@ function BatchEditModal(props: {
             setLoading(false);
             
             if (failCount === 0) {
-              message.success(`批量编辑完成！成功修改 ${successCount} 个 SPU`);
+              notification.success({ message: `批量编辑完成！成功修改 ${successCount} 个 SPU` });
             } else {
-              message.warning(`批量编辑完成！成功 ${successCount} 个，失败 ${failCount} 个`);
+              notification.warning({ message: `批量编辑完成！成功 ${successCount} 个，失败 ${failCount} 个` });
             }
 
             form.resetFields();
@@ -139,7 +139,7 @@ function BatchEditModal(props: {
             onClose();
           } catch (error) {
             setLoading(false);
-            message.error('批量编辑失败，请重试');
+            notification.error({ message: '批量编辑失败，请重试' });
             console.error(error);
           }
         },

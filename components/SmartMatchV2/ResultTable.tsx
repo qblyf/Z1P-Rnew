@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Table, Tag, Card, Space, Select, Typography, Button, message } from 'antd';
+import { Table, Tag, Card, Space, Select, Typography, Button, notification } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined, ExclamationCircleOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useMatch, MatchResult } from './MatchContext';
@@ -15,7 +15,7 @@ export function ResultTable() {
   // 导出 Excel
   const handleExport = async () => {
     if (state.results.length === 0) {
-      message.warning('没有可导出的数据');
+      notification.warning({ message: '没有可导出的数据' });
       return;
     }
 
@@ -56,7 +56,7 @@ export function ResultTable() {
     // 下载文件
     const fileName = `匹配结果_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`;
     xlsx.writeFile(wb, fileName);
-    message.success(`已导出 ${exportData.length} 条数据`);
+    notification.success({ message: `已导出 ${exportData.length} 条数据` });
   };
 
   // 根据状态筛选

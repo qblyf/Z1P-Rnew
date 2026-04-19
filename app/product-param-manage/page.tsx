@@ -8,7 +8,7 @@ import {
   Button,
   Input,
   Layout,
-  message,
+  notification,
   Switch,
   Table,
   Tree,
@@ -334,7 +334,7 @@ function ProductParamManage(): JSX.Element {
             placeholder="搜索"
             onSearch={(searchKeyword: string) => {
               if (searchKeyword.length < 1) {
-                message.warning('请输入更多关键字以进行搜索');
+                notification.warning({ message: '请输入更多关键字以进行搜索' });
                 setSearchValue(searchKeyword);
                 return;
               }

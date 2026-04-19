@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useReducer, useCallback, useRef, useMemo, useState } from 'react';
-import { message } from 'antd';
+import { notification } from 'antd';
 import { MatchingOrchestrator } from '../../utils/services/MatchingOrchestrator';
 import { getBrandBaseList } from '@zsqk/z1-sdk/es/z1p/brand';
 
@@ -139,7 +139,7 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
   // 开始匹配
   const startMatch = useCallback((inputs: string[]) => {
     if (!orchestratorRef.current) {
-      message.error('匹配器未初始化');
+      notification.error({ message: '匹配器未初始化' });
       return;
     }
 
@@ -242,13 +242,13 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('批量匹配失败:', error);
         if (!isCancelledRef.current) {
-          message.error('匹配失败');
+          notification.error({ message: '匹配失败' });
         }
       }
 
       if (!isCancelledRef.current) {
         dispatch({ type: 'SET_STATUS', payload: 'completed' });
-        message.success(`匹配完成：共 ${inputs.length} 条`);
+        notification.success({ message: `匹配完成：共 ${inputs.length} 条` });
       }
     })();
   }, []);
@@ -257,7 +257,7 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
   const cancelMatch = useCallback(() => {
     isCancelledRef.current = true;
     dispatch({ type: 'SET_STATUS', payload: 'ready' });
-    message.info('已取消匹配');
+    notification.info({ message: '已取消匹配' });
   }, []);
 
   // 清空结果

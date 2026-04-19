@@ -1,4 +1,4 @@
-import { Button, message, Modal } from 'antd';
+import { Button, notification, Modal } from 'antd';
 import {
   WarningTwoTone,
   CheckCircleTwoTone,
@@ -29,11 +29,11 @@ function showMergedSuccessMessage(content: string, key: string) {
     }
     
     // 更新消息显示
-    message.success({
-      content: existing.count > 1 ? `${content} ×${existing.count}` : content,
+    notification.success({
+      message: existing.count > 1 ? `${content} ×${existing.count}` : content,
       key: content, // 使用内容作为key，确保相同消息会被更新而不是新建
     });
-    
+
     // 设置清理定时器
     existing.timer = setTimeout(() => {
       messageCounter.delete(content);
@@ -41,8 +41,8 @@ function showMergedSuccessMessage(content: string, key: string) {
   } else {
     // 新消息
     messageCounter.set(content, { count: 1, timer: null });
-    message.success({
-      content,
+    notification.success({
+      message: content,
       key: content,
     });
     
@@ -142,7 +142,7 @@ export function postAwait<T extends (...args: any[]) => Promise<any>>(
           m.destroy();
           // 使用非阻塞的 message 提示
           if (showSuccess) {
-            message.success(successText);
+            notification.success({ message: successText });
           }
         } catch (err) {
           if (stop) {
@@ -235,7 +235,7 @@ export function getAwait<
     /** 是否已超时 */
     let stop = false;
     const key = Math.random().toString();
-    message.loading({ content: '正在处理请求, 请稍等.', key }, 0);
+    notification.info({ message: '正在处理请求, 请稍等.', key });
 
     try {
       const data = await Promise.race([
@@ -247,25 +247,25 @@ export function getAwait<
           }, timeoutThreshold);
         }),
       ]);
-      message.destroy(key);
+      notification.destroy(key);
       if (showSuccess) {
-        message.success('请求处理成功.');
+        notification.success({ message: '请求处理成功.' });
       }
       if (typeof finallyCallback === 'function') {
         finallyCallback(undefined, data);
       }
     } catch (err) {
-      message.destroy(key);
+      notification.destroy(key);
       let errorMsg = '';
       if (stop) {
         errorMsg = '请求处理超时, 可以重试.';
-        message.warning(errorMsg);
+        notification.warning({ message: errorMsg });
       } else if (err instanceof Error) {
         errorMsg = `请求处理失败: ${err.name} ${err.message}`;
-        message.error(errorMsg);
+        notification.error({ message: errorMsg });
       } else {
         errorMsg = '请求处理失败.';
-        message.error(errorMsg);
+        notification.error({ message: errorMsg });
         console.error(err);
       }
       if (typeof finallyCallback === 'function') {
@@ -305,7 +305,7 @@ export function lessAwait<
   return async (...rest: Parameters<T>): Promise<void> => {
     /** 是否已超时 */
     let stop = false;
-    message.loading({ content: '正在处理请求, 请稍等.', key }, 0);
+    notification.info({ message: '正在处理请求, 请稍等.', key });
 
     try {
       const data = await Promise.race([
@@ -317,7 +317,7 @@ export function lessAwait<
           }, timeoutThreshold);
         }),
       ]);
-      message.destroy(key); // 先销毁loading消息
+      notification.destroy(key); // 先销毁loading消息
       if (showSuccess) {
         showMergedSuccessMessage('请求处理成功.', key);
       }
@@ -338,25 +338,22 @@ export function lessAwait<
         color = 'red';
         console.error(err);
       }
-      const hide = message.error(
-        {
-          content: (
-            <>
-              {errorMsg}
-              {'  '}
-              <a
-                onClick={() => {
-                  hide();
-                }}
-              >
-                关闭
-              </a>
-            </>
-          ),
-          key,
-        },
-        10
-      );
+      notification.error({
+        message: (
+          <>
+            {errorMsg}
+            {'  '}
+            <a
+              onClick={() => {
+                notification.destroy(key);
+              }}
+            >
+              关闭
+            </a>
+          </>
+        ),
+        key,
+      });
       if (typeof finallyCallback === 'function') {
         finallyCallback(new Error(errorMsg));
       }

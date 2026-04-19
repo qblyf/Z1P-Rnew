@@ -22,7 +22,7 @@ import {
   Table,
   Tag,
   Tooltip,
-  message,
+  notification,
 } from 'antd';
 import { useEffect, useCallback, useMemo, useState } from 'react';
 
@@ -83,9 +83,9 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : '';
         if (errMsg.includes('expired') || errMsg.includes('5001')) {
-          message.error('登录已过期，请刷新页面重新登录');
+          notification.error({ message: '登录已过期，请刷新页面重新登录' });
         } else {
-          message.error(`获取商品参数定义失败：${errMsg}`);
+          notification.error({ message: `获取商品参数定义失败：${errMsg}` });
         }
       }
     };
@@ -99,7 +99,7 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
         setPValueList(res);
         setPValueListEditing(res);
       } catch (err) {
-        message.error(`获取商品参数值失败：${err instanceof Error ? err.message : ''}`);
+        notification.error({ message: `获取商品参数值失败：${err instanceof Error ? err.message : ''}` });
       }
     };
     return fn();
@@ -223,16 +223,16 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
     }) as Value[];
 
     if (!newValues.length && !updatedValues.length) {
-      message.warning('没有内容需要保存');
+      notification.warning({ message: '没有内容需要保存' });
       return;
     }
 
     if (newValues.length) {
       try {
         await batchAddParamsValue({ list: newValues }, { token });
-        message.success('批量新增商品参数值成功');
+        notification.success({ message: '批量新增商品参数值成功' });
       } catch (err) {
-        message.error(`批量新增商品参数值失败：${err instanceof Error ? err.message : ''}`);
+        notification.error({ message: `批量新增商品参数值失败：${err instanceof Error ? err.message : ''}` });
       }
     }
     if (updatedValues.length) {
@@ -246,9 +246,9 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
             value: v.value,
           })),
         }, { token });
-        message.success('批量修改商品参数值成功');
+        notification.success({ message: '批量修改商品参数值成功' });
       } catch (err) {
-        message.error(`批量修改商品参数值失败：${err instanceof Error ? err.message : ''}`);
+        notification.error({ message: `批量修改商品参数值失败：${err instanceof Error ? err.message : ''}` });
       }
     }
     await getPValueList();

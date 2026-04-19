@@ -5,7 +5,7 @@ import moment from 'moment';
 import 'moment/locale/zh-cn';
 
 import { Modal, Tag, Button, Drawer, Pagination } from 'antd';
-import { message } from 'antd';
+import { notification } from 'antd';
 import { EditTwoTone } from '@ant-design/icons';
 import {
   getUpdateLogList,
@@ -69,11 +69,11 @@ function Log(): JSX.Element {
       cancelText: '否',
       onOk() {
         if (!log) {
-          message.warning('没有找到日志信息');
+          notification.warning({ message: '没有找到日志信息' });
           return;
         }
         if (!token) {
-          message.error('未登录，无法删除');
+          notification.error({ message: '未登录，无法删除' });
           return;
         }
         // 删除系统更新日志
@@ -82,7 +82,7 @@ function Log(): JSX.Element {
         })
           .then(getLogList)
           .then(close)
-          .catch(e => message.success(e.message));
+          .catch(e => notification.success({ message: e.message }));
       },
     });
   };

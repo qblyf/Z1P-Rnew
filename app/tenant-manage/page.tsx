@@ -1,22 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  Card, 
-  Table, 
-  Button, 
-  Space, 
-  Tag, 
-  Modal, 
-  Form, 
-  Input, 
+import {
+  Card,
+  Table,
+  Button,
+  Space,
+  Tag,
+  Modal,
+  Form,
+  Input,
   Select,
   Descriptions,
   Alert,
   Tooltip,
   Row,
   Col,
-  message
+  notification
 } from 'antd';
 import { 
   PlusOutlined, 
@@ -75,7 +75,7 @@ export default function TenantManagePage() {
       }
     } catch (error) {
       console.error('加载账套失败:', error);
-      message.error('加载账套列表失败，请刷新页面重试');
+      notification.error({ message: '加载账套列表失败，请刷新页面重试' });
     } finally {
       setLoading(false);
     }

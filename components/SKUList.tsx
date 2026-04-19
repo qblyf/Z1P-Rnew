@@ -8,7 +8,7 @@ import { useSpuIDContext, useSpuListContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
 import { lessAwait } from '../error';
 import { Z1P_ENDPOINT } from '../constants';
-import { message } from 'antd';
+import { notification } from 'antd';
 
 /**
  * [组件] SKU 列表
@@ -193,10 +193,10 @@ export default function SKUList(props: {
       const gtinDisplay = gtins.length > 3 
         ? `${gtins.slice(0, 3).join(', ')}... (共${gtins.length}个)` 
         : gtins.join(', ');
-      message.success(`69码已复制到剪贴板: ${gtinDisplay}`);
+      notification.success({ message: `69码已复制到剪贴板: ${gtinDisplay}` });
     } catch (err) {
       console.error('复制失败:', err);
-      message.error('复制失败，请手动复制');
+      notification.error({ message: '复制失败，请手动复制' });
     }
   };
 

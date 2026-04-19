@@ -25,7 +25,7 @@ import {
   Tag,
   Tooltip,
   Typography,
-  message,
+  notification,
   Pagination,
 } from 'antd';
 import { 
@@ -333,7 +333,7 @@ function BrandManage() {
       });
 
       if (changedBrands.length === 0) {
-        message.info('没有需要保存的更改');
+        notification.info({ message: '没有需要保存的更改' });
         return;
       }
 
@@ -347,11 +347,11 @@ function BrandManage() {
       );
 
       await Promise.all(promises);
-      message.success(`保存成功，共更新 ${changedBrands.length} 项`);
+      notification.success({ message: `保存成功，共更新 ${changedBrands.length} 项` });
       setHasChanges(false);
       refreshBrandList?.();
     } catch (error) {
-      message.error('保存失败');
+      notification.error({ message: '保存失败' });
       console.error(error);
     } finally {
       setSaving(false);
@@ -747,13 +747,13 @@ function BrandEdit(props: { name: string; onSuccess?: () => void }) {
           style={{ borderRadius: 8 }}
           onClick={postAwait(async () => {
             if (input.name !== undefined && !input.name.trim()) {
-              message.warning('品牌名称不能为空');
+              notification.warning({ message: '品牌名称不能为空' });
               return;
             }
             setLoading(true);
             try {
               await editBrandInfo(name, { ...input }, { auth: token });
-              message.success('修改成功');
+              notification.success({ message: '修改成功' });
               onSuccess?.();
             } finally {
               setLoading(false);
@@ -886,7 +886,7 @@ function BrandAdd(props: { onSuccess?: () => void }) {
           style={{ borderRadius: 8 }}
           onClick={postAwait(async () => {
             if (!input.name) {
-              message.warning('请输入品牌名称');
+              notification.warning({ message: '请输入品牌名称' });
               return;
             }
             setLoading(true);
@@ -896,7 +896,7 @@ function BrandAdd(props: { onSuccess?: () => void }) {
                 { name: input.name, spell: input.spell, order: input.order, color: input.color, logo, display: input.display },
                 { auth: token }
               );
-              message.success('创建成功');
+              notification.success({ message: '创建成功' });
               onSuccess?.();
             } finally {
               setLoading(false);
@@ -1118,7 +1118,7 @@ function SpecManage({ specName, title }: SpecManageProps) {
       const counts = await loadUsageCounts();
       setUsageCounts(counts);
     } catch (error) {
-      message.error('加载失败');
+      notification.error({ message: '加载失败' });
       console.error(error);
     } finally {
       setLoading(false);
@@ -1220,7 +1220,7 @@ function SpecManage({ specName, title }: SpecManageProps) {
         { auth: token }
       );
     } catch (error) {
-      message.error('保存排序失败');
+      notification.error({ message: '保存排序失败' });
       console.error(error);
     }
   }, [token]);
@@ -1308,7 +1308,7 @@ function SpecManage({ specName, title }: SpecManageProps) {
   // 执行移动（用户输入相对位置 → 换算绝对位置 → 插值计算权重）
   const handleMoveConfirm = useCallback(() => {
     if (!moveTarget || movePosition === null || movePosition < 1) {
-      message.warning('请输入有效的目标位置');
+      notification.warning({ message: '请输入有效的目标位置' });
       return;
     }
 
@@ -1319,11 +1319,11 @@ function SpecManage({ specName, title }: SpecManageProps) {
     // 当前相对位置
     const currentRelIdx = filteredSpecs.findIndex((s) => s.zid === movedSpec.zid);
     if (currentRelIdx === -1) {
-      message.error('未找到该规格值');
+      notification.error({ message: '未找到该规格值' });
       return;
     }
     if (currentRelIdx === clampedRelIdx) {
-      message.info('已在目标位置');
+      notification.info({ message: '已在目标位置' });
       setMoveModalOpen(false);
       return;
     }
@@ -1387,7 +1387,7 @@ function SpecManage({ specName, title }: SpecManageProps) {
 
     setMoveModalOpen(false);
     saveSpecWeight(movedSpec.zid, newWeight);
-    message.success(`已将「${movedSpec.value}」移动到第 ${movePosition} 位`);
+    notification.success({ message: `已将「${movedSpec.value}」移动到第 ${movePosition} 位` });
   }, [moveTarget, movePosition, filteredSpecs, specs, search, calcNewWeight, saveSpecWeight]);
 
   if (!token) {
@@ -1778,7 +1778,7 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; s
       setSpuList(filteredSpus);
     } catch (error) {
       console.error('加载SPU列表失败:', error);
-      message.error('加载SPU列表失败');
+      notification.error({ message: '加载SPU列表失败' });
     } finally {
       setSpuLoading(false);
     }
@@ -1867,7 +1867,7 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; s
               style={{ borderRadius: 8 }}
               onClick={postAwait(async () => {
                 if (input.value !== undefined && !input.value.trim()) {
-                  message.warning(`${title}值不能为空`);
+                  notification.warning({ message: `${title}值不能为空` });
                   return;
                 }
                 setLoading(true);
@@ -1897,7 +1897,7 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; s
                     },
                     { auth: token }
                   );
-                  message.success('修改成功');
+                  notification.success({ message: '修改成功' });
                   onSuccess?.();
                 } finally {
                   setLoading(false);
@@ -2070,7 +2070,7 @@ function SpecAdd(props: { specName: SpecName; title: string; onSuccess?: () => v
           style={{ borderRadius: 8 }}
           onClick={postAwait(async () => {
             if (!input.value) {
-              message.warning(`请输入${title}值`);
+              notification.warning({ message: `请输入${title}值` });
               return;
             }
             setLoading(true);
@@ -2097,10 +2097,10 @@ function SpecAdd(props: { specName: SpecName; title: string; onSuccess?: () => v
                 },
                 { auth: token }
               );
-              message.success('创建成功');
+              notification.success({ message: '创建成功' });
               onSuccess?.();
             } catch (error) {
-              message.error('创建失败');
+              notification.error({ message: '创建失败' });
               console.error(error);
             } finally {
               setLoading(false);

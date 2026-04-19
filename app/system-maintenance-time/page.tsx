@@ -4,7 +4,7 @@ import { getSysSettings } from '@zsqk/z1-sdk/es/z1p/sys-setting';
 import {
   Button,
   Layout,
-  message,
+  notification,
   Modal,
   Table,
   Tooltip,
@@ -92,7 +92,7 @@ function SystemMaintenanceTime(): JSX.Element {
 
   useEffect(() => {
     fn().catch(err => {
-      message.error(err.message);
+      notification.error({ message: err.message });
     });
   }, [fn]);
 
@@ -268,7 +268,7 @@ function SystemMaintenanceTime(): JSX.Element {
             onOk={e => {
               if (e) {
                 fn().catch(err => {
-                  message.error(err.message);
+                  notification.error({ message: err.message });
                 });
               }
               setVisible(false);
@@ -292,7 +292,7 @@ function SystemMaintenanceTime(): JSX.Element {
             onOk={e => {
               if (e) {
                 fn().catch(err => {
-                  message.error(err.message);
+                  notification.error({ message: err.message });
                 });
               }
               setBatchVisible(false);

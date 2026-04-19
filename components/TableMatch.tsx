@@ -7,7 +7,7 @@ import { getBrandBaseList } from '@zsqk/z1-sdk/es/z1p/brand';
 import * as XLSX from 'xlsx';
 import { MatchingOrchestrator } from '../utils/services/MatchingOrchestrator';
 import type { BrandData } from '../utils/types';
-import { message } from 'antd';
+import { notification } from 'antd';
 
 /**
  * 表格数据接口
@@ -74,10 +74,10 @@ export function TableMatchComponent() {
 
         const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
         console.log('✓ TableMatch Orchestrator initialized');
-        message.success(`匹配器初始化完成（耗时${totalTime}秒）`);
+        notification.success({ message: `匹配器初始化完成（耗时${totalTime}秒）` });
       } catch (error) {
         console.error('Failed to initialize orchestrator:', error);
-        message.error('匹配器初始化失败');
+        notification.error({ message: '匹配器初始化失败' });
         setMatcherInitialized(true);
       }
     };
@@ -109,7 +109,7 @@ export function TableMatchComponent() {
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
           
           if (jsonData.length === 0) {
-            message.error('文件为空');
+            notification.error({ message: '文件为空' });
             return;
           }
 
@@ -119,9 +119,9 @@ export function TableMatchComponent() {
           setTableData({ headers, rows: rows.map(row => row.map(cell => String(cell || ''))) });
           setSelectedColumn(null);
           setMatchResults([]);
-          message.success(`文件上传成功，共 ${rows.length} 行数据`);
+          notification.success({ message: `文件上传成功，共 ${rows.length} 行数据` });
         } catch (error) {
-          message.error('Excel 文件解析失败');
+          notification.error({ message: 'Excel 文件解析失败' });
           console.error(error);
         }
       };
@@ -137,7 +137,7 @@ export function TableMatchComponent() {
         const lines = text.split('\n').filter(line => line.trim());
         
         if (lines.length === 0) {
-          message.error('文件为空');
+          notification.error({ message: '文件为空' });
           return;
         }
 
@@ -150,9 +150,9 @@ export function TableMatchComponent() {
         setTableData({ headers, rows });
         setSelectedColumn(null);
         setMatchResults([]);
-        message.success(`文件上传成功，共 ${rows.length} 行数据`);
+        notification.success({ message: `文件上传成功，共 ${rows.length} 行数据` });
       } catch (error) {
-        message.error('文件解析失败');
+        notification.error({ message: '文件解析失败' });
         console.error(error);
       }
     };
@@ -165,7 +165,7 @@ export function TableMatchComponent() {
    */
   const handleMatch = async () => {
     if (!tableData || selectedColumn === null) {
-      message.warning('请先上传文件并选择商品列');
+      notification.warning({ message: '请先上传文件并选择商品列' });
       return;
     }
 
@@ -238,9 +238,9 @@ export function TableMatchComponent() {
       setMatchResults(results);
       setMatchProgress(100);
       setCurrentMatching('');
-      message.success(`匹配完成！共 ${results.length} 条记录，成功匹配 ${batchResult.summary.matched} 条`);
+      notification.success({ message: `匹配完成！共 ${results.length} 条记录，成功匹配 ${batchResult.summary.matched} 条` });
     } catch (error) {
-      message.error('匹配失败');
+      notification.error({ message: '匹配失败' });
       console.error(error);
     } finally {
       setMatching(false);
@@ -252,7 +252,7 @@ export function TableMatchComponent() {
    */
   const handleExport = () => {
     if (matchResults.length === 0) {
-      message.warning('没有可导出的结果');
+      notification.warning({ message: '没有可导出的结果' });
       return;
     }
 
@@ -282,7 +282,7 @@ export function TableMatchComponent() {
     link.download = `表格匹配结果_${new Date().getTime()}.csv`;
     link.click();
 
-    message.success('导出成功');
+    notification.success({ message: '导出成功' });
   };
 
   // 统计信息

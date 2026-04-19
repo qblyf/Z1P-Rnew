@@ -2,7 +2,7 @@
 import { SPU, SPUCateID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { getSPUListNew, getSPUCateBaseList, editSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { Button, Col, Form, Row, Select, Table, Tag, Alert, Space, Cascader, Drawer, Modal, Card, Input, Statistic } from 'antd';
-import { message } from 'antd';
+import { notification } from 'antd';
 import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import { PageHeader } from '@ant-design/pro-components';
@@ -321,12 +321,12 @@ function BatchChangeBrandModal(props: {
       const { oldBrand, newBrand } = values;
 
       if (oldBrand === newBrand) {
-        message.warning('原品牌和新品牌不能相同');
+        notification.warning({ message: '原品牌和新品牌不能相同' });
         return;
       }
 
       if (!token) {
-        message.error('未获取到认证信息');
+        notification.error({ message: '未获取到认证信息' });
         return;
       }
 
@@ -378,9 +378,9 @@ function BatchChangeBrandModal(props: {
             setLoading(false);
             
             if (failCount === 0) {
-              message.success(`批量修改完成！成功修改 ${successCount} 个 SPU`);
+              notification.success({ message: `批量修改完成！成功修改 ${successCount} 个 SPU` });
             } else {
-              message.warning(`批量修改完成！成功 ${successCount} 个，失败 ${failCount} 个`);
+              notification.warning({ message: `批量修改完成！成功 ${successCount} 个，失败 ${failCount} 个` });
             }
 
             form.resetFields();
@@ -388,7 +388,7 @@ function BatchChangeBrandModal(props: {
             onClose();
           } catch (error) {
             setLoading(false);
-            message.error('批量修改失败，请重试');
+            notification.error({ message: '批量修改失败，请重试' });
             console.error(error);
           }
         },
@@ -505,14 +505,14 @@ function BatchEditModal(props: {
       const values = await form.validateFields();
       
       if (!token) {
-        message.error('未获取到认证信息');
+        notification.error({ message: '未获取到认证信息' });
         return;
       }
 
       // 检查是否至少选择了一个要修改的字段
       const hasChanges = values.brand || values.cateID || values.description || values.remark;
       if (!hasChanges) {
-        message.warning('请至少选择一个要修改的字段');
+        notification.warning({ message: '请至少选择一个要修改的字段' });
         return;
       }
 
@@ -548,9 +548,9 @@ function BatchEditModal(props: {
             setLoading(false);
             
             if (failCount === 0) {
-              message.success(`批量编辑完成！成功修改 ${successCount} 个 SPU`);
+              notification.success({ message: `批量编辑完成！成功修改 ${successCount} 个 SPU` });
             } else {
-              message.warning(`批量编辑完成！成功 ${successCount} 个，失败 ${failCount} 个`);
+              notification.warning({ message: `批量编辑完成！成功 ${successCount} 个，失败 ${failCount} 个` });
             }
 
             form.resetFields();
@@ -558,7 +558,7 @@ function BatchEditModal(props: {
             onClose();
           } catch (error) {
             setLoading(false);
-            message.error('批量编辑失败，请重试');
+            notification.error({ message: '批量编辑失败，请重试' });
             console.error(error);
           }
         },
@@ -854,7 +854,7 @@ export default function () {
   // 重新加载数据
   const reloadData = () => {
     // 触发重新检查，这里可以通过设置一个标志来触发
-    message.success('数据已更新，请重新点击"开始检查"按钮');
+    notification.success({ message: '数据已更新，请重新点击"开始检查"按钮' });
     setSelectedRowKeys([]);
   };
 
@@ -867,7 +867,7 @@ export default function () {
       .map(spu => spu.id);
     
     setSelectedRowKeys(spusWithIssue);
-    message.success(`已选择 ${spusWithIssue.length} 个具有相同问题的 SPU`);
+    notification.success({ message: `已选择 ${spusWithIssue.length} 个具有相同问题的 SPU` });
   };
 
   // 行选择配置

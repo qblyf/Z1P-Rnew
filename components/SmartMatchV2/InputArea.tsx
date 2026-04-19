@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Input, Button, Upload, Card, Space, message, Typography, Modal, Select } from 'antd';
+import { Input, Button, Upload, Card, Space, notification, Typography, Modal, Select } from 'antd';
 import { UploadOutlined, ClearOutlined, PlayCircleOutlined, FileExcelOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import { useMatch } from './MatchContext';
@@ -66,7 +66,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
   const handleStartMatch = () => {
     const lines = inputText.split('\n').filter((line) => line.trim());
     if (lines.length === 0) {
-      message.warning('请输入商品名称');
+      notification.warning({ message: '请输入商品名称' });
       return;
     }
     clearResults();
@@ -102,7 +102,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
       const data = xlsx.utils.sheet_to_json(ws);
 
       if (data.length === 0) {
-        message.warning('Excel 文件为空');
+        notification.warning({ message: 'Excel 文件为空' });
         onError?.(new Error('Excel 文件为空'));
         return;
       }
@@ -110,7 +110,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
       // 获取所有列名
       const headers = Object.keys(data[0] as object);
       if (headers.length === 0) {
-        message.warning('未找到有效列');
+        notification.warning({ message: '未找到有效列' });
         onError?.(new Error('未找到有效列'));
         return;
       }
@@ -129,7 +129,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
       setColumnModalOpen(true);
     } catch (error) {
       console.error('解析 Excel 失败:', error);
-      message.error('解析 Excel 失败');
+      notification.error({ message: '解析 Excel 失败' });
       onError?.(error as Error);
     }
   };
@@ -145,7 +145,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
   // 确认选择列并提取数据
   const handleColumnConfirm = () => {
     if (!selectedColumn || excelData.length === 0) {
-      message.warning('请选择有效列');
+      notification.warning({ message: '请选择有效列' });
       return;
     }
 
@@ -155,7 +155,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
       .filter(Boolean);
 
     if (productNames.length === 0) {
-      message.warning('所选列无有效数据');
+      notification.warning({ message: '所选列无有效数据' });
       return;
     }
 
@@ -163,7 +163,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
     setInputText(productNames.join('\n'));
     setExcelJustImported(true);
 
-    message.success(`已导入 ${productNames.length} 条数据，请点击"开始匹配"`);
+    notification.success({ message: `已导入 ${productNames.length} 条数据，请点击"开始匹配"` });
     handleModalClose();
   };
 
