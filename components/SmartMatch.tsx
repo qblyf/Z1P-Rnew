@@ -193,7 +193,6 @@ export default function SmartMatch() {
       message.error('匹配失败，请重试');
       console.error(error);
       setMatchProgress(null);
-    } finally {
       setLoading(false);
     }
   };
@@ -427,16 +426,46 @@ export default function SmartMatch() {
   return (
     <>
       {/* 匹配中遮罩层 - 阻止用户操作其他区域 */}
-      {loading && (
+      {loading && matchProgress && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
-          onClick={() => message.warning('陛下莫急，请耐心等待')}
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
         >
-          <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center">
+          <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center w-96">
             <Spin size="large" className="mb-4" />
             <p className="text-lg font-medium text-gray-700">正在匹配中...</p>
-            <p className="text-sm text-gray-500 mt-1">陛下莫急，请耐心等待</p>
+
+            {/* 进度条 */}
+            <div className="w-full mt-4">
+              <div className="flex justify-between text-sm text-gray-500 mb-1">
+                <span>{matchProgress.current} / {matchProgress.total}</span>
+                <span>{Math.round((matchProgress.current / matchProgress.total) * 100)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(matchProgress.current / matchProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            {/* 当前处理项 */}
+            {matchProgress.currentItem && (
+              <p className="text-sm text-gray-400 mt-3 truncate w-full text-center">
+                {matchProgress.currentItem}
+              </p>
+            )}
+
+            {/* 最近日志 */}
+            {matchProgress.logs.length > 0 && (
+              <div className="mt-3 w-full bg-slate-900 rounded-lg p-2 max-h-20 overflow-auto">
+                <div className="font-mono text-xs text-green-400">
+                  {matchProgress.logs.slice(-5).join('\n')}
+                </div>
+              </div>
+            )}
+
+            <p className="text-sm text-gray-400 mt-4">陛下莫急，请耐心等待</p>
           </div>
         </div>
       )}
