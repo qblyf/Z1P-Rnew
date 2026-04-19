@@ -20,6 +20,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
   const [excelHeaders, setExcelHeaders] = useState<string[]>([]);
   const [columnModalOpen, setColumnModalOpen] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<string>('');
+  const [excelJustImported, setExcelJustImported] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { state, startMatch, clearResults } = useMatch();
 
@@ -32,9 +33,14 @@ export function InputArea({ onMatch }: InputAreaProps) {
     }
   }, [state.status]);
 
-  // 防抖自动匹配
+  // 防抖自动匹配（Excel 导入后不触发）
   useEffect(() => {
-    if (!inputText.trim() || !isReady) return;
+    if (!inputText.trim() || !isReady || excelJustImported) {
+      if (excelJustImported) {
+        setExcelJustImported(false);
+      }
+      return;
+    }
 
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -54,7 +60,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [inputText, isReady, startMatch, clearResults, onMatch]);
+  }, [inputText, isReady, excelJustImported, startMatch, clearResults, onMatch]);
 
   // 手动开始匹配
   const handleStartMatch = () => {
@@ -155,6 +161,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
 
     // 只更新输入框，不自动开始匹配
     setInputText(productNames.join('\n'));
+    setExcelJustImported(true);
 
     message.success(`已导入 ${productNames.length} 条数据，请点击"开始匹配"`);
     handleModalClose();
@@ -202,7 +209,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
 
       <div className="mt-2">
         <Text type="secondary" className="text-xs">
-          💡 支持直接粘贴多行商品名称，输入后会自动开始匹配
+          💡 支持直接粘贴多行商品名称，或导入 Excel 后点击"开始匹配"
         </Text>
       </div>
     </Card>
