@@ -48,7 +48,7 @@ function convertToHumanReadable(message: string): string {
   return cleaned.trim();
 }
 
-function getGitLog(): CommitInfo[] {
+function getGitLog(limit: number = 100): CommitInfo[] {
   try {
     // 尝试多个可能的路径
     const possiblePaths = [
@@ -62,7 +62,7 @@ function getGitLog(): CommitInfo[] {
 
     for (const dir of possiblePaths) {
       try {
-        logOutput = execSync(`git log --format="%H|%h|%s|%an|%ad|%cs" -50`, {
+        logOutput = execSync(`git log --format="%H|%h|%s|%an|%ad|%cs" -${limit}`, {
           encoding: 'utf-8',
           cwd: dir,
         });
@@ -104,7 +104,21 @@ function getGitLog(): CommitInfo[] {
   }
 }
 
-export async function GET() {
-  const commits = getGitLog();
-  return NextResponse.json({ commits });
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const limit = parseInt(searchParams.get('limit') || '50', 10);
+  const page = parseInt(searchParams.get('page') || '1', 10);
+
+  const commits = getGitLog(limit);
+  const start = (page - 1) * limit;
+  const end = start + limit;
+  const paginatedCommits = commits.slice(start, end);
+
+  return NextResponse.json({
+    commits: paginatedCommits,
+    total: commits.length,
+    page,
+    limit,
+    totalPages: Math.ceil(commits.length / limit),
+  });
 }

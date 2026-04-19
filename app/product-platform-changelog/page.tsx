@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Tag, Card, Timeline, Spin, Empty } from 'antd';
+import { Tag, Card, Timeline, Spin, Empty, Pagination } from 'antd';
 import { GitCommit, User, Calendar } from 'lucide-react';
 import PageWrap from '../../components/PageWrap';
 
@@ -15,6 +15,16 @@ interface CommitInfo {
   humanReadable: string;
 }
 
+interface ChangelogResponse {
+  commits: CommitInfo[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+const PAGE_SIZE = 20;
+
 function formatDate(dateStr: string) {
   const date = new Date(dateStr);
   return date.toLocaleDateString('zh-CN', {
@@ -27,18 +37,31 @@ function formatDate(dateStr: string) {
 export default function ProductPlatformChangelog() {
   const [commits, setCommits] = useState<CommitInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  useEffect(() => {
-    fetch('/api/changelog')
+  const fetchCommits = (page: number) => {
+    setLoading(true);
+    fetch(`/api/changelog?page=${page}&limit=${PAGE_SIZE}`)
       .then(res => res.json())
-      .then(data => {
+      .then((data: ChangelogResponse) => {
         setCommits(data.commits || []);
+        setTotal(data.total || 0);
         setLoading(false);
       })
       .catch(() => {
         setLoading(false);
       });
-  }, []);
+  };
+
+  useEffect(() => {
+    fetchCommits(currentPage);
+  }, [currentPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   if (loading) {
     return (
@@ -134,6 +157,18 @@ export default function ProductPlatformChangelog() {
               />
             </Card>
           ))}
+        </div>
+
+        {/* 分页 */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '32px' }}>
+          <Pagination
+            current={currentPage}
+            pageSize={PAGE_SIZE}
+            total={total}
+            onChange={handlePageChange}
+            showSizeChanger={false}
+            showQuickJumper
+          />
         </div>
       </div>
     </PageWrap>
