@@ -107,8 +107,14 @@ export const MENU_CONFIG: MenuItem[] = [
       },
       {
         id: 'log',
-        label: '更新日志',
+        label: '帐套更新日志',
         href: '/log',
+        icon: 'FileText',
+      },
+      {
+        id: 'product-platform-changelog',
+        label: '商品平台更新日志',
+        href: '/product-platform-changelog',
         icon: 'FileText',
       },
       {
