@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { Settings } from 'lucide-react';
-import { Button, Checkbox, Dropdown, message } from 'antd';
+import { Button, Checkbox, Dropdown } from 'antd';
+import { message } from '../../utils/notification';
 
 interface ColumnSelectorProps {
   visibleColumns: string[];

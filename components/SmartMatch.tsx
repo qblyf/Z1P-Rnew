@@ -10,7 +10,7 @@ import { parseExcelWithColumnSelection, createInputToRowMapGeneric, previewExcel
 import type { BrandData } from '../utils/types';
 import { InputPanel } from './SmartMatch/InputPanel';
 import { ResultPanel } from './SmartMatch/ResultPanel';
-import { sideNotify } from '../utils/notification';
+import { message } from '../utils/notification';
 
 // 兼容的匹配结果类型（用于UI显示）
 interface UIMatchResult {
@@ -83,7 +83,7 @@ export default function SmartMatch() {
         console.log('✓ MatchingOrchestrator initialized');
       } catch (error) {
         console.error('Failed to initialize orchestrator:', error);
-        sideNotify.error('匹配器初始化失败');
+        message.error('匹配器初始化失败');
         setLoadingData(false);
       }
     };
@@ -110,7 +110,7 @@ export default function SmartMatch() {
   // 处理 Excel 数据的匹配
   const handleExcelMatch = async (rows: ExcelRowData[]) => {
     if (!matcherInitialized) {
-      sideNotify.warning('匹配器初始化中，请稍候');
+      message.warning('匹配器初始化中，请稍候');
       return;
     }
 
@@ -185,12 +185,12 @@ export default function SmartMatch() {
       const spuMatchedCount = batchResult.summary.spuMatched;
       const unmatchedCount = batchResult.summary.unmatched;
 
-      sideNotify.success(
+      message.success(
         `匹配完成，共处理 ${inputs.length} 条记录。` +
         `完全匹配: ${matchedCount}，SPU匹配: ${spuMatchedCount}，未匹配: ${unmatchedCount}`
       );
     } catch (error) {
-      sideNotify.error('匹配失败，请重试');
+      message.error('匹配失败，请重试');
       console.error(error);
       setMatchProgress(null);
     } finally {
@@ -212,7 +212,7 @@ export default function SmartMatch() {
 
     } catch (error) {
       console.error('[Excel导入] 预览失败:', error);
-      sideNotify.error(`预览失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      message.error(`预览失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
 
     // 返回 false 阻止默认上传行为
@@ -222,12 +222,12 @@ export default function SmartMatch() {
   // 处理列选择确认
   const handleColumnConfirm = async () => {
     if (selectedProductColumn === null) {
-      sideNotify.warning('请选择商品名称列');
+      message.warning('请选择商品名称列');
       return;
     }
 
     if (!pendingFile) {
-      sideNotify.warning('文件信息丢失，请重新上传');
+      message.warning('文件信息丢失，请重新上传');
       return;
     }
 
@@ -247,11 +247,11 @@ export default function SmartMatch() {
       const inputText = rows.map(r => r.productName).join('\n');
       setInputText(inputText);
 
-      sideNotify.success(`成功解析 ${rows.length} 条数据，请点击"开始匹配"`);
+      message.success(`成功解析 ${rows.length} 条数据，请点击"开始匹配"`);
 
     } catch (error) {
       console.error('[Excel导入] 解析失败:', error);
-      sideNotify.error(`导入失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      message.error(`导入失败: ${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
       setPendingFile(null);
     }
@@ -276,12 +276,12 @@ export default function SmartMatch() {
     }
 
     if (!inputText.trim()) {
-      sideNotify.warning('请输入商品名称');
+      message.warning('请输入商品名称');
       return;
     }
 
     if (!matcherInitialized) {
-      sideNotify.warning('匹配器初始化中，请稍候');
+      message.warning('匹配器初始化中，请稍候');
       return;
     }
 
@@ -340,13 +340,13 @@ export default function SmartMatch() {
       setResults(uiResults);
       setMatchProgress(null);
 
-      sideNotify.success(`匹配完成，共处理 ${lines.length} 条记录，成功匹配 ${batchResult.summary.matched} 条`);
+      message.success(`匹配完成，共处理 ${lines.length} 条记录，成功匹配 ${batchResult.summary.matched} 条`);
     } catch (error) {
       console.error('匹配失败:', error);
       console.error('error type:', typeof error);
       console.error('error.constructor:', error?.constructor?.name);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      sideNotify.error(`匹配失败: ${errorMessage}`);
+      message.error(`匹配失败: ${errorMessage}`);
       setMatchProgress(null);
     } finally {
       setLoading(false);
@@ -356,7 +356,7 @@ export default function SmartMatch() {
   // 导出结果（支持 Excel 模式）
   const exportResults = () => {
     if (results.length === 0) {
-      sideNotify.warning('没有可导出的结果');
+      message.warning('没有可导出的结果');
       return;
     }
 
@@ -383,7 +383,7 @@ export default function SmartMatch() {
     const prefix = isExcelMode ? 'Excel匹配结果' : '智能匹配结果';
     link.download = `${prefix}_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
-    sideNotify.success('导出成功');
+    message.success('导出成功');
   };
 
   // 清除 Excel 数据

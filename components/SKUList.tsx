@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { SkuID, SKUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { Alert, Col, Row, Table, Tag, Input, Button, Spin, message } from 'antd';
+import { Alert, Col, Row, Table, Tag, Input, Button, Spin } from 'antd';
 import { BarcodeOutlined } from '@ant-design/icons';
 import { getSKUList, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
@@ -8,6 +8,7 @@ import { useSpuIDContext, useSpuListContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
 import { lessAwait } from '../error';
 import { Z1P_ENDPOINT } from '../constants';
+import { message } from '../utils/notification';
 
 /**
  * [组件] SKU 列表

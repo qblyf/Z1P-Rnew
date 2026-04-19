@@ -10,12 +10,13 @@
 
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import OSS from 'ali-oss';
-import { Upload, Button, message, Tooltip } from 'antd';
+import { Upload, Button, Tooltip } from 'antd';
 import { RcFile, UploadProps } from 'antd/lib/upload';
 import { UploadFile, UploadFileStatus } from 'antd/lib/upload/interface';
 import * as _ from 'lodash';
 import { DndProvider, DropTargetMonitor, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { message } from '../utils/notification';
 
 import {
   byte2str,

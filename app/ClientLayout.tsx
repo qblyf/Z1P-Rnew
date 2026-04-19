@@ -13,6 +13,9 @@ import { CanvasWatermark } from '../components/CanvasWatermark';
 import { TokenProvider, useTokenContext } from '../datahooks/auth';
 import { TabsProvider } from '../datahooks/tabs';
 import { MenuStateProvider } from '../datahooks/menuState';
+
+// 导入以触发全局 message/notification 配置
+import '../utils/notification';
 import { AdminLayout } from '../components/Layout/AdminLayout';
 
 import { WPK_BID } from '../constant/for-dev';
