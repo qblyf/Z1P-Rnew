@@ -62,7 +62,7 @@ function getGitLog(limit: number = 100): CommitInfo[] {
 
     for (const dir of possiblePaths) {
       try {
-        logOutput = execSync(`git log --format="%H|%h|%s|%an|%ad|%cs" -${limit}`, {
+        logOutput = execSync(`git log --format="%H|%h|%s|%an|%ai|%ci" -${limit}`, {
           encoding: 'utf-8',
           cwd: dir,
         });
