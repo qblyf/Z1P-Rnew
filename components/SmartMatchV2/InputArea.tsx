@@ -17,16 +17,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
   const [inputText, setInputText] = useState('');
   const [isReady, setIsReady] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const { state, initialize, startMatch, clearResults, isInitialized } = useMatch();
-
-  // 初始化匹配器
-  useEffect(() => {
-    if (!isInitialized) {
-      initialize();
-    } else {
-      setIsReady(true);
-    }
-  }, [initialize, isInitialized]);
+  const { state, startMatch, clearResults } = useMatch();
 
   // 监听初始化状态
   useEffect(() => {
