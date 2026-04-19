@@ -6,6 +6,7 @@ import CacheDataClient from './CacheDataClient';
 import ProductManagerWithHeader from './ProductManager';
 import { Suspense } from 'react';
 import { Z1P_ENDPOINT } from '../../constants';
+import { PageSkeleton } from '../../components/Skeleton';
 
 export default async function () {
   const { accessKeyId, accessKeySecret, roleArn } = ossConfig;
@@ -30,7 +31,7 @@ export default async function () {
 
   // 在此处不必进行页面权限的校验, 详见文档
   return (
-    <Suspense fallback={<>加载中, 请稍候.</>}>
+    <Suspense fallback={<PageSkeleton rows={6} />}>
       <ProductManagerWithHeader />
       <CacheDataClient ossCredentials={JSON.stringify(ossCredentials)} />
     </Suspense>

@@ -23,6 +23,7 @@ import {
 import { UnixTimestamp } from '@zsqk/z1-sdk/es/types/basetypes';
 import { BatchEditSystemMaintenanceTime } from '../../components/BatchEditSystemMaintenanceTime';
 import { Z1P_ENDPOINT } from '../../constants';
+import { PageSkeleton } from '../../components/Skeleton';
 
 /** 后端商品数据返回类型 */
 type Data = {
@@ -304,7 +305,7 @@ function SystemMaintenanceTime(): JSX.Element {
 }
 export default function () {
   return (
-    <Suspense fallback={<>加载中, 请稍候.</>}>
+    <Suspense fallback={<PageSkeleton rows={6} />}>
       <SystemMaintenanceTime />
     </Suspense>
   );

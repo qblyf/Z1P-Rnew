@@ -1,11 +1,13 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState, memo } from 'react';
+import { useEffect, useState, memo, Suspense } from 'react';
 import { Sidebar } from '../Navigation/Sidebar';
 import { TopNavbar } from '../Navigation/TopNavbar';
 import { TabBar } from '../Navigation/TabBar';
 import { useTokenContext } from '../../datahooks/auth';
+import { AdminLayoutSkeleton } from '../Skeleton/AdminLayoutSkeleton';
+import { PageSkeleton } from '../Skeleton/PageSkeleton';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -58,6 +60,11 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
     );
   }
 
+  // 如果 token 还在加载中，显示骨架屏
+  if (token === undefined) {
+    return <AdminLayoutSkeleton />;
+  }
+
   // 如果没有 token 或 token 已过期，不渲染任何内容（会立即重定向）
   if (!token || isTokenExpired) {
     return null;
@@ -83,7 +90,9 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
           {/* 可滚动的内容区域 */}
           <div className="flex-1 overflow-auto">
             <div className="p-6">
-              {children}
+              <Suspense fallback={<PageSkeleton rows={6} />}>
+                {children}
+              </Suspense>
             </div>
           </div>
         </main>

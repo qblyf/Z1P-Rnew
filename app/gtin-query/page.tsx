@@ -17,6 +17,7 @@ import {
   Row,
   Col,
 } from 'antd';
+import { PageSkeleton } from '../../components/Skeleton';
 import { SearchOutlined, ClearOutlined, CopyOutlined, DownloadOutlined } from '@ant-design/icons';
 import { getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
 import { SKU } from '@zsqk/z1-sdk/es/z1p/alltypes';
@@ -241,7 +242,7 @@ export default function GTINQueryPage() {
   ];
 
   return (
-    <Suspense fallback={<Spin tip="加载中..." />}>
+    <Suspense fallback={<PageSkeleton rows={8} />}>
       <PageWrap ppKey="product-manage">
         <Head>
           <title>69码批量查询</title>

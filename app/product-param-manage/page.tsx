@@ -39,6 +39,7 @@ import {
 import { EditParam } from '../../components/EditParam';
 import { ParamsDefinition } from '@zsqk/z1-sdk/es/types/params-definition-types';
 import { ColumnsType } from 'antd/es/table';
+import { PageSkeleton } from '../../components/Skeleton';
 const Search = Input.Search;
 export type MyParamsGroup = Pick<ParamsGroup, 'id'> &
   Partial<Pick<ParamsGroup, 'name' | 'weight'>>;
@@ -548,7 +549,7 @@ function ProductParamManage(): JSX.Element {
 }
 export default function () {
   return (
-    <Suspense fallback={<>加载中, 请稍候.</>}>
+    <Suspense fallback={<PageSkeleton rows={6} />}>
       <ProductParamManage />
     </Suspense>
   );
