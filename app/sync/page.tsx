@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Descriptions, Progress, Space, Card, Row, Col, Tag, Steps, List, Alert, Checkbox } from 'antd';
+import { Button, Descriptions, Progress, Space, Card, Row, Col, Tag, Steps, List, Alert, Checkbox, Collapse } from 'antd';
 import { SyncOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { PageHeader } from '@ant-design/pro-components';
 import { Suspense, useMemo, useState, useEffect } from 'react';
@@ -59,6 +59,9 @@ function ClientPage() {
   }>>(
     clientKeys.map(id => ({ id, tenantID: id, clientName: id }))
   );
+
+  // 失败账套详情
+  const [failedTenants, setFailedTenants] = useState<Array<{ tenantID: string; error: string }>>([]);
 
   // 选中的账套列表
   const [selectedTenants, setSelectedTenants] = useState<string[]>(clientKeys);
@@ -120,6 +123,8 @@ function ClientPage() {
       setDisabled(true);
       setProgress(0);
       setCurrentStepIndex(0);
+      setFailedTenants([]);
+      setMsg('');
 
       // 设置超时处理
       const timeoutId = setTimeout(() => {
@@ -160,6 +165,11 @@ function ClientPage() {
 
         const successCount = results.filter(r => r.success).length;
         const failCount = results.filter(r => !r.success).length;
+        const failedDetails = results
+          .filter(r => !r.success)
+          .map(r => ({ tenantID: r.tenantID, error: r.error?.message || String(r.error) }));
+
+        setFailedTenants(failedDetails);
 
         console.log('✅ 同步完成:', results);
 
@@ -391,9 +401,39 @@ function ClientPage() {
           <Card style={{ marginTop: 16 }}>
             <Alert
               message={msg}
-              type={msg.includes('失败') ? 'error' : msg.includes('完成') ? 'success' : 'info'}
+              type={msg.includes('失败') && failedTenants.length > 0 ? 'error' : msg.includes('完成') ? 'success' : 'info'}
               showIcon
             />
+            {failedTenants.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <Collapse
+                  ghost
+                  size="small"
+                  items={[{
+                    key: 'failed',
+                    label: (
+                      <span style={{ color: '#ff4d4f', fontWeight: 500 }}>
+                        查看失败的 {failedTenants.length} 个账套
+                      </span>
+                    ),
+                    children: (
+                      <List
+                        size="small"
+                        dataSource={failedTenants}
+                        renderItem={(item) => (
+                          <List.Item style={{ padding: '4px 0' }}>
+                            <Space>
+                              <Tag color="error">{item.tenantID}</Tag>
+                              <span style={{ color: '#666', fontSize: '12px' }}>{item.error}</span>
+                            </Space>
+                          </List.Item>
+                        )}
+                      />
+                    )
+                  }]}
+                />
+              </div>
+            )}
           </Card>
         )}
       </Content>
