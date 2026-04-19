@@ -124,8 +124,6 @@ export default function SmartMatch() {
 
     console.log(`[Excel匹配] 开始匹配 ${inputs.length} 条数据`);
 
-    const logs: string[] = [];
-
     setMatchProgress({
       current: 0,
       total: inputs.length,
@@ -134,67 +132,70 @@ export default function SmartMatch() {
       results: null
     });
 
-    try {
-      // 使用 MatchingOrchestrator 进行批量匹配
-      let lastUpdateTime = 0;
-      const updateInterval = 150; // 降低到150ms，减少用户感知延迟
-      const totalCount = inputs.length;
-      // 小数据集每5条日志，大数据集按比例但更频繁
-      const logInterval = totalCount > 100 ? Math.max(5, Math.floor(totalCount / 50)) : 5;
+    // 使用 setTimeout 延迟开始匹配，让 React 先渲染遮罩层
+    setTimeout(async () => {
+      try {
+        // 使用 MatchingOrchestrator 进行批量匹配
+        let lastUpdateTime = 0;
+        const updateInterval = 150; // 降低到150ms，减少用户感知延迟
+        const totalCount = inputs.length;
+        // 小数据集每5条日志，大数据集按比例但更频繁
+        const logInterval = totalCount > 100 ? Math.max(5, Math.floor(totalCount / 50)) : 5;
 
-      const batchResult = await orchestrator.batchMatch(inputs, (index, total, input, result) => {
-        const now = Date.now();
-        // 每条都尝试更新（时间和数量条件满足时）
-        if (now - lastUpdateTime > updateInterval || index === 1 || index === total) {
-          lastUpdateTime = now;
-          const newLog = `[${index}/${total}] ${result ? '✓ ' + (result.matchedInfo.sku || '...') : '匹配中...'}`;
-          setMatchProgress(prev => prev ? {
-            ...prev,
-            current: index,
-            currentItem: input.substring(0, 30) + (input.length > 30 ? '...' : ''),
-            logs: [...prev.logs.slice(-29), newLog]
-          } : null);
-        }
-      });
+        const batchResult = await orchestrator.batchMatch(inputs, (index, total, input, result) => {
+          const now = Date.now();
+          // 每条都尝试更新（时间和数量条件满足时）
+          if (now - lastUpdateTime > updateInterval || index === 1 || index === total) {
+            lastUpdateTime = now;
+            const newLog = `[${index}/${total}] ${result ? '✓ ' + (result.matchedInfo.sku || '...') : '匹配中...'}`;
+            setMatchProgress(prev => prev ? {
+              ...prev,
+              current: index,
+              currentItem: input.substring(0, 30) + (input.length > 30 ? '...' : ''),
+              logs: [...prev.logs.slice(-29), newLog]
+            } : null);
+          }
+        });
 
-      // 转换结果格式，关联 GTIN
-      const uiResults: UIMatchResult[] = batchResult.results
-        .filter((result): result is NonNullable<typeof result> => result !== null)
-        .map(result => {
-          const originalRow = inputToRowMap.get(result.inputName);
-        return {
-          inputName: result.inputName,
-          originalSkuName: originalRow?.productName,
-          matchedSKU: result.matchedInfo.sku || null,
-          matchedSPU: result.matchedInfo.spu || null,
-          matchedBrand: result.extractedInfo.brand || null,
-          matchedVersion: result.extractedInfo.version || null,
-          matchedMemory: result.extractedInfo.memory || null,
-          matchedColor: result.extractedInfo.color || null,
-          matchedGtins: originalRow?.gtin ? [originalRow.gtin] : result.matchedInfo.gtins || [],
-          similarity: result.similarity,
-          status: result.status as 'matched' | 'unmatched' | 'spu-matched',
-        };
-      });
+        // 转换结果格式，关联 GTIN
+        const uiResults: UIMatchResult[] = batchResult.results
+          .filter((result): result is NonNullable<typeof result> => result !== null)
+          .map(result => {
+            const originalRow = inputToRowMap.get(result.inputName);
+          return {
+            inputName: result.inputName,
+            originalSkuName: originalRow?.productName,
+            matchedSKU: result.matchedInfo.sku || null,
+            matchedSPU: result.matchedInfo.spu || null,
+            matchedBrand: result.extractedInfo.brand || null,
+            matchedVersion: result.extractedInfo.version || null,
+            matchedMemory: result.extractedInfo.memory || null,
+            matchedColor: result.extractedInfo.color || null,
+            matchedGtins: originalRow?.gtin ? [originalRow.gtin] : result.matchedInfo.gtins || [],
+            similarity: result.similarity,
+            status: result.status as 'matched' | 'unmatched' | 'spu-matched',
+          };
+        });
 
-      setResults(uiResults);
-      setMatchProgress(null);
+        setResults(uiResults);
+        setMatchProgress(null);
 
-      // 统计匹配结果
-      const matchedCount = batchResult.summary.matched;
-      const spuMatchedCount = batchResult.summary.spuMatched;
-      const unmatchedCount = batchResult.summary.unmatched;
+        // 统计匹配结果
+        const matchedCount = batchResult.summary.matched;
+        const spuMatchedCount = batchResult.summary.spuMatched;
+        const unmatchedCount = batchResult.summary.unmatched;
 
-      message.success(
-        `匹配完成，共处理 ${inputs.length} 条记录。` +
-        `完全匹配: ${matchedCount}，SPU匹配: ${spuMatchedCount}，未匹配: ${unmatchedCount}`
-      );
-    } catch (error) {
-      message.error('匹配失败，请重试');
-      console.error(error);
-      setMatchProgress(null);
-      setLoading(false);
-    }
+        message.success(
+          `匹配完成，共处理 ${inputs.length} 条记录。` +
+          `完全匹配: ${matchedCount}，SPU匹配: ${spuMatchedCount}，未匹配: ${unmatchedCount}`
+        );
+      } catch (error) {
+        message.error('匹配失败，请重试');
+        console.error(error);
+        setMatchProgress(null);
+        setLoading(false);
+      }
+    }, 0);
   };
 
   // 处理 Excel 文件上传（先预览表头）
@@ -290,8 +291,6 @@ export default function SmartMatch() {
 
     const lines = inputText.split('\n').filter(line => line.trim());
 
-    const logs: string[] = [];
-
     setMatchProgress({
       current: 0,
       total: lines.length,
@@ -300,56 +299,59 @@ export default function SmartMatch() {
       results: null
     });
 
-    try {
-      // 使用 MatchingOrchestrator 进行批量匹配
-      let lastUpdateTime = 0;
-      const updateInterval = 150; // 每150ms更新一次UI
+    // 使用 setTimeout 延迟开始匹配，让 React 先渲染遮罩层
+    setTimeout(async () => {
+      try {
+        // 使用 MatchingOrchestrator 进行批量匹配
+        let lastUpdateTime = 0;
+        const updateInterval = 150; // 每150ms更新一次UI
 
-      const batchResult = await orchestrator.batchMatch(lines, (index, total, input, result) => {
-        const now = Date.now();
-        // 每条都尝试更新（时间和数量条件满足时）
-        if (now - lastUpdateTime > updateInterval || index === 1 || index === total) {
-          lastUpdateTime = now;
-          const newLog = `[${index}/${total}] ${result ? '✓ ' + (result.matchedInfo.sku || '...') : '匹配中...'}`;
-          setMatchProgress(prev => prev ? {
-            ...prev,
-            current: index,
-            currentItem: input.substring(0, 30) + (input.length > 30 ? '...' : ''),
-            logs: [...prev.logs.slice(-29), newLog]
-          } : null);
-        }
-      });
+        const batchResult = await orchestrator.batchMatch(lines, (index, total, input, result) => {
+          const now = Date.now();
+          // 每条都尝试更新（时间和数量条件满足时）
+          if (now - lastUpdateTime > updateInterval || index === 1 || index === total) {
+            lastUpdateTime = now;
+            const newLog = `[${index}/${total}] ${result ? '✓ ' + (result.matchedInfo.sku || '...') : '匹配中...'}`;
+            setMatchProgress(prev => prev ? {
+              ...prev,
+              current: index,
+              currentItem: input.substring(0, 30) + (input.length > 30 ? '...' : ''),
+              logs: [...prev.logs.slice(-29), newLog]
+            } : null);
+          }
+        });
 
-      // 匹配完成，一次性设置结果
-      const uiResults: UIMatchResult[] = batchResult.results
-        .filter((r): r is NonNullable<typeof r> => r !== null)
-        .map(result => ({
-          inputName: result.inputName,
-          matchedSKU: result.matchedInfo.sku || null,
-          matchedSPU: result.matchedInfo.spu || null,
-          matchedBrand: result.extractedInfo.brand || null,
-          matchedVersion: result.extractedInfo.version || null,
-          matchedMemory: result.extractedInfo.memory || null,
-          matchedColor: result.extractedInfo.color || null,
-          matchedGtins: result.matchedInfo.gtins || [],
-          similarity: result.similarity,
-          status: result.status as 'matched' | 'unmatched' | 'spu-matched',
-        }));
+        // 匹配完成，一次性设置结果
+        const uiResults: UIMatchResult[] = batchResult.results
+          .filter((r): r is NonNullable<typeof r> => r !== null)
+          .map(result => ({
+            inputName: result.inputName,
+            matchedSKU: result.matchedInfo.sku || null,
+            matchedSPU: result.matchedInfo.spu || null,
+            matchedBrand: result.extractedInfo.brand || null,
+            matchedVersion: result.extractedInfo.version || null,
+            matchedMemory: result.extractedInfo.memory || null,
+            matchedColor: result.extractedInfo.color || null,
+            matchedGtins: result.matchedInfo.gtins || [],
+            similarity: result.similarity,
+            status: result.status as 'matched' | 'unmatched' | 'spu-matched',
+          }));
 
-      setResults(uiResults);
-      setMatchProgress(null);
+        setResults(uiResults);
+        setMatchProgress(null);
 
-      message.success(`匹配完成，共处理 ${lines.length} 条记录，成功匹配 ${batchResult.summary.matched} 条`);
-    } catch (error) {
-      console.error('匹配失败:', error);
-      console.error('error type:', typeof error);
-      console.error('error.constructor:', error?.constructor?.name);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      message.error(`匹配失败: ${errorMessage}`);
-      setMatchProgress(null);
-    } finally {
-      setLoading(false);
-    }
+        message.success(`匹配完成，共处理 ${lines.length} 条记录，成功匹配 ${batchResult.summary.matched} 条`);
+      } catch (error) {
+        console.error('匹配失败:', error);
+        console.error('error type:', typeof error);
+        console.error('error.constructor:', error?.constructor?.name);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        message.error(`匹配失败: ${errorMessage}`);
+        setMatchProgress(null);
+      } finally {
+        setLoading(false);
+      }
+    }, 0);
   };
 
   // 导出结果（支持 Excel 模式）
