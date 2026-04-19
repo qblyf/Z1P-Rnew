@@ -144,15 +144,15 @@ export default function SmartMatch() {
 
       const batchResult = await orchestrator.batchMatch(inputs, (index, total, input, result) => {
         const now = Date.now();
-        // 节流：每150ms更新一次UI，关键节点强制更新
-        const shouldLog = index === 1 || index === total || index % logInterval === 0;
-        if ((now - lastUpdateTime > updateInterval || index === total) && shouldLog) {
+        // 每条都尝试更新（时间和数量条件满足时）
+        if (now - lastUpdateTime > updateInterval || index === 1 || index === total) {
           lastUpdateTime = now;
+          const newLog = `[${index}/${total}] ${result ? '✓ ' + (result.matchedInfo.sku || '...') : '匹配中...'}`;
           setMatchProgress(prev => prev ? {
             ...prev,
             current: index,
             currentItem: input.substring(0, 30) + (input.length > 30 ? '...' : ''),
-            logs: [...prev.logs.slice(-19), `[${index}/${total}] ${result ? '✓ ' + result.matchedInfo.sku : '匹配中...'}`]
+            logs: [...prev.logs.slice(-29), newLog]
           } : null);
         }
       });
@@ -304,21 +304,19 @@ export default function SmartMatch() {
     try {
       // 使用 MatchingOrchestrator 进行批量匹配
       let lastUpdateTime = 0;
-      const updateInterval = 500; // 每500ms更新一次UI
-      const totalCount = lines.length;
-      const logInterval = Math.max(10, Math.floor(totalCount / 20)); // 大数据集只显示关键进度
+      const updateInterval = 150; // 每150ms更新一次UI
 
       const batchResult = await orchestrator.batchMatch(lines, (index, total, input, result) => {
         const now = Date.now();
-        // 节流：每500ms更新一次UI，且大数据集按间隔显示日志
-        const shouldLog = index === 1 || index === total || index % logInterval === 0;
-        if ((now - lastUpdateTime > updateInterval || index === total) && shouldLog) {
+        // 每条都尝试更新（时间和数量条件满足时）
+        if (now - lastUpdateTime > updateInterval || index === 1 || index === total) {
           lastUpdateTime = now;
+          const newLog = `[${index}/${total}] ${result ? '✓ ' + (result.matchedInfo.sku || '...') : '匹配中...'}`;
           setMatchProgress(prev => prev ? {
             ...prev,
             current: index,
             currentItem: input.substring(0, 30) + (input.length > 30 ? '...' : ''),
-            logs: [...prev.logs.slice(-19), `[${index}/${total}] ${result ? '✓ ' + result.matchedInfo.sku : '匹配中...'}`]
+            logs: [...prev.logs.slice(-29), newLog]
           } : null);
         }
       });
