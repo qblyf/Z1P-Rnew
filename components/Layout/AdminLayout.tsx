@@ -6,7 +6,6 @@ import { Sidebar } from '../Navigation/Sidebar';
 import { TopNavbar } from '../Navigation/TopNavbar';
 import { TabBar } from '../Navigation/TabBar';
 import { useTokenContext } from '../../datahooks/auth';
-import { useTabs } from '../../datahooks/tabs';
 import { AdminLayoutSkeleton } from '../Skeleton/AdminLayoutSkeleton';
 import { PageSkeleton } from '../Skeleton/PageSkeleton';
 
@@ -21,7 +20,6 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
   const router = useRouter();
   const pathname = usePathname();
   const { token, isTokenExpired } = useTokenContext();
-  const { isPageLoading } = useTabs();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const toggleSidebar = () => {
@@ -92,13 +90,9 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
           {/* 可滚动的内容区域 */}
           <div className="flex-1 overflow-auto">
             <div className="p-6">
-              {isPageLoading ? (
-                <PageSkeleton rows={8} />
-              ) : (
-                <Suspense fallback={<PageSkeleton rows={6} />}>
-                  {children}
-                </Suspense>
-              )}
+              <Suspense fallback={<PageSkeleton rows={6} />}>
+                {children}
+              </Suspense>
             </div>
           </div>
         </main>
