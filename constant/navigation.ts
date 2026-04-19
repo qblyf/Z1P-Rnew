@@ -56,14 +56,8 @@ export const MENU_CONFIG: MenuItem[] = [
     icon: 'Search',
     children: [
       {
-        id: 'smart-match',
-        label: '在线匹配',
-        href: '/smart-match',
-        icon: 'Zap',
-      },
-      {
         id: 'smart-match-v2',
-        label: '在线匹配 V2',
+        label: '在线匹配',
         href: '/smart-match-v2',
         icon: 'Zap',
       },
