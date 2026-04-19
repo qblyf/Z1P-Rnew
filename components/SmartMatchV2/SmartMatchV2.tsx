@@ -9,12 +9,16 @@ import { ResultTable } from './ResultTable';
 import { useState, useEffect } from 'react';
 
 function SmartMatchContent() {
-  const { state } = useMatch();
+  const { state, initialize, isInitialized } = useMatch();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // 初始化匹配器
+    if (!isInitialized) {
+      initialize();
+    }
+  }, [initialize, isInitialized]);
 
   // 服务端渲染或未挂载时，显示加载状态
   if (!mounted || state.status === 'idle' || state.status === 'initializing') {
