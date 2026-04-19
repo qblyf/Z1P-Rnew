@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LogOut, User, ChevronDown, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTokenContext } from '../../datahooks/auth';
@@ -9,8 +9,17 @@ import { detectDeviceType } from '../../utils/deviceDetect';
 
 export function UserProfile() {
   const [isOpen, setIsOpen] = useState(false);
+  const [version, setVersion] = useState('1.0.0');
   const router = useRouter();
   const { payload } = useTokenContext();
+
+  // 获取版本号
+  useEffect(() => {
+    fetch('/api/version')
+      .then(res => res.json())
+      .then(data => setVersion(data.version))
+      .catch(() => setVersion('1.0.0'));
+  }, []);
 
   const handleLogout = () => {
     setCacheToken(null);
@@ -92,7 +101,7 @@ export function UserProfile() {
 
           <div className="px-4 py-2 border-t border-gray-200 mt-2 pt-2">
             <p className="text-xs text-gray-400">
-              版本 {process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}
+              版本 {version}
             </p>
           </div>
         </div>
