@@ -89,6 +89,13 @@ export class MatchingOrchestrator {
   private skuList: SKUWithBrand[] = [];
   private skuIndex: SKUIndex = { byBrand: new Map(), all: [] };
 
+  // 懒加载相关
+  private loadedBrands = new Set<string>(); // 已加载的品牌
+  private brandSkuCache = new Map<string, SKUWithBrand[]>(); // 品牌SKU缓存
+  private allSkusLoaded = false; // 是否已加载全部SKU
+  private loadingBrands = new Set<string>(); // 正在加载的品牌（防止并发重复加载）
+  private spuMap = new Map<number, { name: string; brand: string }>(); // SPU映射
+
   constructor() {
     this.infoExtractor = new InfoExtractor();
   }
@@ -108,11 +115,11 @@ export class MatchingOrchestrator {
       // 初始化信息提取器
       this.infoExtractor.setBrandList(brandList);
 
-      // 加载SKU数据并构建索引
-      console.log('📦 加载SKU数据...');
+      // 加载SKU数据并构建索引（懒加载，只加载SPU）
+      console.log('📦 加载SKU数据（懒加载模式）...');
       await this.loadSkuData();
       this.buildSkuIndex();
-      console.log(`✅ SKU索引构建完成: ${this.skuIndex.all.length} 个SKU, ${this.skuIndex.byBrand.size} 个品牌`);
+      console.log(`✅ SKU索引构建完成: ${this.spuMap.size} 个SPU, ${this.spuMap.size} 个品牌映射`);
 
       this.isInitialized = true;
 
@@ -124,22 +131,14 @@ export class MatchingOrchestrator {
   }
 
   /**
-   * 加载SKU数据
-   * 批量加载所有"在用"状态的SKU，并通过SPU关联获取品牌信息
+   * 加载SKU数据 - 懒加载版本
+   * 只加载SPU建立品牌映射，SKU数据按需加载
    */
   private async loadSkuData(): Promise<void> {
-    const allSkuList: SKUWithBrand[] = [];
-    const batchSize = 5000;
-    let offset = 0;
-    let hasMore = true;
-    let totalLoaded = 0;
-
-    // 加载SPU数据用于获取品牌
-    const spuMap = new Map<number, { name: string; brand: string }>();
-
-    // 先加载所有SPU建立ID到品牌的映射
+    // 先加载所有SPU建立ID到品牌的映射（轻量级）
     let spuOffset = 0;
     let spuHasMore = true;
+
     while (spuHasMore) {
       const spuList = await getSPUListNew(
         {
@@ -153,7 +152,7 @@ export class MatchingOrchestrator {
 
       for (const spu of spuList) {
         if (spu.brand && spu.brand.trim()) {
-          spuMap.set(spu.id, { name: spu.name, brand: spu.brand });
+          this.spuMap.set(spu.id, { name: spu.name, brand: spu.brand });
         }
       }
 
@@ -164,68 +163,115 @@ export class MatchingOrchestrator {
       }
     }
 
-    console.log(`  已加载 ${spuMap.size} 个SPU用于品牌映射`);
+    console.log(`  已加载 ${this.spuMap.size} 个SPU用于品牌映射`);
+    console.log('  SKU数据将在匹配时按需加载（懒加载模式）');
+  }
 
-    // 批量加载SKU
-    while (hasMore) {
-      const skuList = await getSKUList(
-        {
-          states: [SKUState.在用],
-          limit: batchSize,
-          offset,
-          orderBy: [{ key: 'id', sort: 'ASC' }] as any,
-        },
-        ['id', 'name', 'spuID']
-      );
+  /**
+   * 按需加载单个品牌的SKU数据
+   */
+  private async loadBrandSkus(brand: string): Promise<SKUWithBrand[]> {
+    // 如果已加载，直接返回缓存
+    if (this.loadedBrands.has(brand)) {
+      return this.brandSkuCache.get(brand) || [];
+    }
 
-      totalLoaded += skuList.length;
+    // 如果正在加载，等待完成
+    if (this.loadingBrands.has(brand)) {
+      while (this.loadingBrands.has(brand)) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      return this.brandSkuCache.get(brand) || [];
+    }
 
-      for (const item of skuList) {
-        if (!item.name) continue;
+    // 标记为正在加载
+    this.loadingBrands.add(brand);
 
-        const spu = spuMap.get(item.spuID);
-        if (spu) {
-          allSkuList.push({
-            id: item.id,
-            name: item.name,
-            spuId: item.spuID,
-            spuName: spu.name,
-            brand: spu.brand,
-          });
+    try {
+      const brandSkus: SKUWithBrand[] = [];
+      const batchSize = 5000;
+      let offset = 0;
+      let hasMore = true;
+
+      // 通过SPU名称模糊匹配该品牌下的所有SKU
+      // 由于没有直接按品牌查询SKU的API，需要通过SPU关联
+      while (hasMore) {
+        const skuList = await getSKUList(
+          {
+            states: [SKUState.在用],
+            limit: batchSize,
+            offset,
+            orderBy: [{ key: 'id', sort: 'ASC' }] as any,
+          },
+          ['id', 'name', 'spuID']
+        );
+
+        for (const item of skuList) {
+          if (!item.name) continue;
+
+          const spu = this.spuMap.get(item.spuID);
+          if (spu && spu.brand === brand) {
+            brandSkus.push({
+              id: item.id,
+              name: item.name,
+              spuId: item.spuID,
+              spuName: spu.name,
+              brand: spu.brand,
+            });
+          }
+        }
+
+        if (skuList.length < batchSize) {
+          hasMore = false;
+        } else {
+          offset += batchSize;
         }
       }
 
-      if (skuList.length < batchSize) {
-        hasMore = false;
-      } else {
-        offset += batchSize;
-      }
+      // 缓存结果
+      this.brandSkuCache.set(brand, brandSkus);
+      this.loadedBrands.add(brand);
 
-      if (allSkuList.length % 10000 === 0 || skuList.length < batchSize) {
-        console.log(`  已加载 ${allSkuList.length} 个有效SKU...`);
-      }
+      console.log(`  [懒加载] 品牌 "${brand}" 的 ${brandSkus.length} 个SKU已加载`);
+      return brandSkus;
+    } finally {
+      this.loadingBrands.delete(brand);
     }
+  }
 
-    // 过滤有品牌的SKU
-    this.skuList = allSkuList.filter(s => s.brand);
-    console.log(`  SKU数据加载完成: ${this.skuList.length} 个有效SKU (从 ${totalLoaded} 个总SKU)`);
+  /**
+   * 预加载热门品牌的SKU数据
+   */
+  async preloadBrands(brands: string[]): Promise<void> {
+    console.log(`  [预加载] 开始预加载 ${brands.length} 个品牌的SKU数据...`);
+    await Promise.all(brands.map(brand => this.loadBrandSkus(brand)));
+    console.log(`  [预加载] 完成`);
   }
 
   /**
    * 构建SKU索引
-   * 按品牌分组并建立全量列表
+   * 懒加载模式下只构建已加载品牌的索引
    */
   private buildSkuIndex(): void {
     const byBrand = new Map<string, SKUWithBrand[]>();
 
-    for (const sku of this.skuList) {
-      if (!byBrand.has(sku.brand)) {
-        byBrand.set(sku.brand, []);
-      }
-      byBrand.get(sku.brand)!.push(sku);
+    for (const [brand, skus] of this.brandSkuCache) {
+      byBrand.set(brand, skus);
     }
 
-    this.skuIndex = { byBrand, all: this.skuList };
+    this.skuIndex = { byBrand, all: [] }; // 懒加载模式不使用全量列表
+  }
+
+  /**
+   * 获取品牌的SKU列表（自动处理懒加载）
+   */
+  private async getBrandSkus(brand: string): Promise<SKUWithBrand[]> {
+    // 已缓存则直接返回
+    if (this.loadedBrands.has(brand)) {
+      return this.brandSkuCache.get(brand) || [];
+    }
+    // 未缓存则按需加载
+    return await this.loadBrandSkus(brand);
   }
 
   // ==================== SKU直接匹配相关方法和属性 ====================
@@ -414,10 +460,10 @@ export class MatchingOrchestrator {
   }
 
   /**
-   * SKU直接匹配
+   * SKU直接匹配（异步版本，支持懒加载）
    * 在整个SKU库中直接查找最佳匹配
    */
-  private matchSkuDirect(inputName: string): { match: SKUWithBrand | null; score: number; reason: string } {
+  private async matchSkuDirect(inputName: string): Promise<{ match: SKUWithBrand | null; score: number; reason: string }> {
     let bestMatch: SKUWithBrand | null = null;
     let bestScore = 0;
     let bestReason = '';
@@ -425,10 +471,34 @@ export class MatchingOrchestrator {
     const normalizedInput = this.normalizeSkuName(inputName);
     const brand = this.extractBrand(inputName);
 
-    // 第一轮：按品牌筛选
+    // 第一轮：按品牌筛选（使用懒加载）
     if (brand) {
-      const brandSkus = this.skuIndex.byBrand.get(brand);
-      if (brandSkus) {
+      const brandSkus = await this.getBrandSkus(brand);
+      for (const sku of brandSkus) {
+        const skuName = sku.name || '';
+        const normalizedSku = this.normalizeSkuName(skuName);
+        const similarity = this.stringSimilarity(normalizedInput, normalizedSku);
+
+        if (similarity > bestScore) {
+          bestScore = similarity;
+          bestMatch = sku;
+          bestReason = `相似度: ${(similarity * 100).toFixed(1)}%`;
+        }
+      }
+    }
+
+    // 如果按品牌筛选没找到合适的，回退到全量搜索（懒加载所有品牌）
+    if (!bestMatch || bestScore < 0.4) {
+      bestMatch = null;
+      bestScore = 0;
+      bestReason = '';
+
+      // 收集所有唯一的品牌名
+      const uniqueBrands = [...new Set([...this.spuMap.values()].map(spu => spu.brand))];
+
+      // 遍历所有品牌并加载其SKU
+      for (const brandName of uniqueBrands) {
+        const brandSkus = await this.getBrandSkus(brandName);
         for (const sku of brandSkus) {
           const skuName = sku.name || '';
           const normalizedSku = this.normalizeSkuName(skuName);
@@ -437,27 +507,8 @@ export class MatchingOrchestrator {
           if (similarity > bestScore) {
             bestScore = similarity;
             bestMatch = sku;
-            bestReason = `相似度: ${(similarity * 100).toFixed(1)}%`;
+            bestReason = `相似度(无品牌): ${(similarity * 100).toFixed(1)}%`;
           }
-        }
-      }
-    }
-
-    // 如果按品牌筛选没找到合适的，回退到不限制品牌
-    if (!bestMatch || bestScore < 0.4) {
-      bestMatch = null;
-      bestScore = 0;
-      bestReason = '';
-
-      for (const sku of this.skuIndex.all) {
-        const skuName = sku.name || '';
-        const normalizedSku = this.normalizeSkuName(skuName);
-        const similarity = this.stringSimilarity(normalizedInput, normalizedSku);
-
-        if (similarity > bestScore) {
-          bestScore = similarity;
-          bestMatch = sku;
-          bestReason = `相似度(无品牌): ${(similarity * 100).toFixed(1)}%`;
         }
       }
     }
@@ -493,8 +544,8 @@ export class MatchingOrchestrator {
     try {
       console.log(`\n[匹配流程] 开始SKU直接匹配: "${input}"`);
 
-      // 1. 使用SKU直接匹配
-      const skuMatchResult = this.matchSkuDirect(input);
+      // 1. 使用SKU直接匹配（异步懒加载）
+      const skuMatchResult = await this.matchSkuDirect(input);
 
       let status: 'matched' | 'unmatched' | 'spu-matched' = 'unmatched';
       let similarity = 0;
@@ -562,15 +613,17 @@ export class MatchingOrchestrator {
   }
   
   /**
-   * 批量匹配
+   * 批量匹配（并发优化版本）
    *
    * @param inputs 输入字符串数组
    * @param onProgress 进度回调函数 (currentIndex, totalCount, currentInput, result) => void
+   * @param concurrency 每批并发数，默认5
    * @returns 批量匹配结果
    */
   async batchMatch(
     inputs: string[],
-    onProgress?: (currentIndex: number, totalCount: number, currentInput: string, result: MatchResult | null) => void
+    onProgress?: (currentIndex: number, totalCount: number, currentInput: string, result: MatchResult | null) => void,
+    concurrency = 5
   ): Promise<BatchMatchResult> {
     if (!this.isInitialized) {
       throw new Error('MatchingOrchestrator 未初始化，请先调用 initialize()');
@@ -578,45 +631,65 @@ export class MatchingOrchestrator {
 
     const startTime = Date.now();
 
-    console.log(`\n[批量匹配] 开始处理 ${inputs.length} 条记录...`);
+    console.log(`\n[批量匹配] 开始处理 ${inputs.length} 条记录（并发数: ${concurrency}）...`);
 
-    const results: MatchResult[] = [];
+    const results: MatchResult[] = new Array(inputs.length);
     let matched = 0;
     let spuMatched = 0;
     let unmatched = 0;
+    let processedCount = 0;
 
-    for (let i = 0; i < inputs.length; i++) {
-      let result: MatchResult | null = null;
-      try {
-        result = await this.match(inputs[i]);
-        results.push(result);
+    // 分批并发处理
+    for (let batchStart = 0; batchStart < inputs.length; batchStart += concurrency) {
+      const batchEnd = Math.min(batchStart + concurrency, inputs.length);
+      const batchInputs = inputs.slice(batchStart, batchEnd);
+      const batchIndices = Array.from({ length: batchInputs.length }, (_, i) => batchStart + i);
 
-        if (result.status === 'matched') {
-          matched++;
-        } else if (result.status === 'spu-matched') {
-          spuMatched++;
+      // 并发处理当前批次
+      const batchPromises = batchInputs.map(async (input, localIndex) => {
+        const globalIndex = batchStart + localIndex;
+        try {
+          const result = await this.match(input);
+          return { index: globalIndex, result, error: null };
+        } catch (error) {
+          console.error(`[错误] 处理第 ${globalIndex + 1} 条记录失败:`, error);
+          return { index: globalIndex, result: null, error };
+        }
+      });
+
+      // 等待当前批次完成
+      const batchResults = await Promise.all(batchPromises);
+
+      // 处理批次结果
+      for (const { index, result } of batchResults) {
+        results[index] = result;
+
+        if (result) {
+          if (result.status === 'matched') {
+            matched++;
+          } else if (result.status === 'spu-matched') {
+            spuMatched++;
+          } else {
+            unmatched++;
+          }
         } else {
           unmatched++;
         }
 
-        // 每处理10条记录输出一次进度
-        if ((i + 1) % 10 === 0) {
-          console.log(`[进度] 已处理 ${i + 1}/${inputs.length} 条记录`);
+        processedCount++;
+
+        // 调用进度回调
+        if (onProgress) {
+          onProgress(processedCount, inputs.length, inputs[index], result);
         }
-      } catch (error) {
-        console.error(`[错误] 处理第 ${i + 1} 条记录失败: ${error}`);
-        // 继续处理下一条
       }
 
-      // 调用进度回调
-      if (onProgress) {
-        onProgress(i + 1, inputs.length, inputs[i], result);
-      }
+      console.log(`[进度] 已处理 ${processedCount}/${inputs.length} 条记录`);
     }
-    
+
     const duration = Date.now() - startTime;
     const matchRate = inputs.length > 0 ? (matched / inputs.length) * 100 : 0;
-    
+
     console.log(`\n[批量匹配完成]`);
     console.log(`  总数: ${inputs.length}`);
     console.log(`  完全匹配: ${matched}`);
@@ -624,7 +697,7 @@ export class MatchingOrchestrator {
     console.log(`  未匹配: ${unmatched}`);
     console.log(`  匹配率: ${matchRate.toFixed(2)}%`);
     console.log(`  耗时: ${duration}ms`);
-    
+
     return {
       results,
       summary: {

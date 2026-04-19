@@ -1,7 +1,7 @@
 'use client';
 
 import { Download, Search } from 'lucide-react';
-import { Button, Card, Space, Tag, Progress } from 'antd';
+import { Button, Card, Space, Tag, Progress, Drawer } from 'antd';
 import { SyncOutlined } from '@ant-design/icons';
 import { ResultTable } from './ResultTable';
 import { ColumnSelector } from './ColumnSelector';
@@ -56,15 +56,23 @@ export function ResultPanel({
   onPageChange,
   matchProgress,
 }: ResultPanelProps) {
-  // 匹配中状态
+  // 匹配中状态 - 用侧边抽屉显示
   if (matchProgress) {
     return (
-      <Card
-        className="flex-1 flex flex-col"
-        styles={{ body: { padding: '24px', display: 'flex', flexDirection: 'column', height: '100%' } }}
-      >
-        <MatchingProgressUI total={matchProgress.total} logs={matchProgress.logs} />
-      </Card>
+      <>
+        {/* 空状态占位 */}
+        <Card
+          className="flex-1 flex items-center justify-center"
+          styles={{ body: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' } }}
+        >
+          <div className="text-center text-slate-400">
+            <Search size={48} className="mx-auto mb-4 opacity-50" />
+            <p className="text-lg">匹配进度在侧边栏显示</p>
+          </div>
+        </Card>
+        {/* 侧边抽屉显示进度 */}
+        <MatchingProgressDrawer total={matchProgress.total} logs={matchProgress.logs} />
+      </>
     );
   }
 
@@ -137,32 +145,39 @@ export function ResultPanel({
   );
 }
 
-// 匹配进度展示组件
-function MatchingProgressUI({ total, logs }: { total: number; logs: string[] }) {
+// 匹配进度侧边抽屉组件
+function MatchingProgressDrawer({ total, logs }: { total: number; logs: string[] }) {
   return (
-    <div className="flex flex-col h-full">
-      {/* 顶部状态区域 */}
-      <div className="flex flex-col items-center py-6">
-        {/* 中心动画区域 */}
-        <div className="relative mb-4">
-          <div className="w-20 h-20 rounded-full border-4 border-slate-200 flex items-center justify-center">
-            <SyncOutlined className="animate-spin text-3xl text-blue-500" />
+    <Drawer
+      title={
+        <div className="flex items-center gap-2">
+          <SyncOutlined className="animate-spin text-blue-500" />
+          <span>正在匹配中...</span>
+        </div>
+      }
+      placement="right"
+      width={400}
+      open={true}
+      closable={false}
+      styles={{ body: { padding: '16px' } }}
+    >
+      <div className="flex flex-col h-full">
+        <Progress
+          percent={Math.round((logs.length / total) * 100)}
+          status="active"
+          format={() => `${logs.length} / ${total}`}
+          className="mb-4"
+        />
+
+        {/* 日志显示区域 */}
+        <div className="flex-1 bg-slate-900 rounded-lg p-3 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+          <div className="font-mono text-xs text-green-400 space-y-1">
+            {logs.slice(-30).map((log, idx) => (
+              <div key={idx} className="whitespace-pre-wrap break-all">{log}</div>
+            ))}
           </div>
         </div>
-
-        {/* 状态文字 */}
-        <h3 className="text-lg font-medium text-slate-700 mb-2">正在匹配中...</h3>
-        <p className="text-slate-500 mb-4">已处理 {logs.length} / {total} 条</p>
       </div>
-
-      {/* 日志显示区域 */}
-      <div className="flex-1 mx-4 mb-4 bg-slate-900 rounded-lg p-3 overflow-auto" style={{ maxHeight: 'calc(100vh - 400px)' }}>
-        <div className="font-mono text-xs text-green-400 space-y-1">
-          {logs.slice(-20).map((log, idx) => (
-            <div key={idx} className="whitespace-pre-wrap break-all">{log}</div>
-          ))}
-        </div>
-      </div>
-    </div>
+    </Drawer>
   );
 }
