@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Spin, Upload, Button, Select, Modal, Progress, Tag, Space } from 'antd';
 import { UploadOutlined, FileExcelOutlined, ClearOutlined } from '@ant-design/icons';
 import { CheckCircleOutlined, SyncOutlined } from '@ant-design/icons';
@@ -46,7 +46,14 @@ export default function SmartMatch() {
 
   const [results, setResults] = useState<UIMatchResult[]>([]);
 
-  // 匹配进度状态
+  // 匹配进度状态 - 使用 ref 存储数据，state 触发更新
+  const matchProgressRef = useRef<{
+    current: number;
+    total: number;
+    currentItem: string;
+    logs: string[];
+    results: UIMatchResult[] | null;
+  } | null>(null);
   const [matchProgress, setMatchProgress] = useState<{
     current: number;
     total: number;
@@ -124,13 +131,29 @@ export default function SmartMatch() {
 
     console.log(`[Excel匹配] 开始匹配 ${inputs.length} 条数据`);
 
-    setMatchProgress({
+    // 初始化进度
+    matchProgressRef.current = {
       current: 0,
       total: inputs.length,
       currentItem: '正在匹配...',
       logs: [],
       results: null
-    });
+    };
+    setMatchProgress({ ...matchProgressRef.current });
+
+    // 使用 requestAnimationFrame 来批量更新 state
+    let scheduledUpdate = false;
+    const scheduleUpdate = () => {
+      if (!scheduledUpdate) {
+        scheduledUpdate = true;
+        requestAnimationFrame(() => {
+          scheduledUpdate = false;
+          if (matchProgressRef.current) {
+            setMatchProgress({ ...matchProgressRef.current });
+          }
+        });
+      }
+    };
 
     // 让 React 先渲染遮罩层，再开始匹配
     await Promise.resolve();
@@ -149,12 +172,12 @@ export default function SmartMatch() {
         if (now - lastUpdateTime > updateInterval || index === 1 || index === total) {
           lastUpdateTime = now;
           const newLog = `[${index}/${total}] ${result ? '✓ ' + (result.matchedInfo.sku || '...') : '匹配中...'}`;
-          setMatchProgress(prev => prev ? {
-            ...prev,
-            current: index,
-            currentItem: input.substring(0, 30) + (input.length > 30 ? '...' : ''),
-            logs: [...prev.logs.slice(-29), newLog]
-          } : null);
+          if (matchProgressRef.current) {
+            matchProgressRef.current.current = index;
+            matchProgressRef.current.currentItem = input.substring(0, 30) + (input.length > 30 ? '...' : '');
+            matchProgressRef.current.logs = [...matchProgressRef.current.logs.slice(-29), newLog];
+          }
+          scheduleUpdate();
         }
       });
 
@@ -179,6 +202,7 @@ export default function SmartMatch() {
       });
 
       setResults(uiResults);
+      matchProgressRef.current = null;
       setMatchProgress(null);
 
       // 统计匹配结果
@@ -193,6 +217,7 @@ export default function SmartMatch() {
     } catch (error) {
       message.error('匹配失败，请重试');
       console.error(error);
+      matchProgressRef.current = null;
       setMatchProgress(null);
       setLoading(false);
     }
@@ -291,13 +316,29 @@ export default function SmartMatch() {
 
     const lines = inputText.split('\n').filter(line => line.trim());
 
-    setMatchProgress({
+    // 初始化进度
+    matchProgressRef.current = {
       current: 0,
       total: lines.length,
       currentItem: '',
       logs: [],
       results: null
-    });
+    };
+    setMatchProgress({ ...matchProgressRef.current });
+
+    // 使用 requestAnimationFrame 来批量更新 state
+    let scheduledUpdate = false;
+    const scheduleUpdate = () => {
+      if (!scheduledUpdate) {
+        scheduledUpdate = true;
+        requestAnimationFrame(() => {
+          scheduledUpdate = false;
+          if (matchProgressRef.current) {
+            setMatchProgress({ ...matchProgressRef.current });
+          }
+        });
+      }
+    };
 
     // 让 React 先渲染遮罩层，再开始匹配
     await Promise.resolve();
@@ -313,12 +354,12 @@ export default function SmartMatch() {
         if (now - lastUpdateTime > updateInterval || index === 1 || index === total) {
           lastUpdateTime = now;
           const newLog = `[${index}/${total}] ${result ? '✓ ' + (result.matchedInfo.sku || '...') : '匹配中...'}`;
-          setMatchProgress(prev => prev ? {
-            ...prev,
-            current: index,
-            currentItem: input.substring(0, 30) + (input.length > 30 ? '...' : ''),
-            logs: [...prev.logs.slice(-29), newLog]
-          } : null);
+          if (matchProgressRef.current) {
+            matchProgressRef.current.current = index;
+            matchProgressRef.current.currentItem = input.substring(0, 30) + (input.length > 30 ? '...' : '');
+            matchProgressRef.current.logs = [...matchProgressRef.current.logs.slice(-29), newLog];
+          }
+          scheduleUpdate();
         }
       });
 
@@ -339,6 +380,7 @@ export default function SmartMatch() {
         }));
 
       setResults(uiResults);
+      matchProgressRef.current = null;
       setMatchProgress(null);
 
       message.success(`匹配完成，共处理 ${lines.length} 条记录，成功匹配 ${batchResult.summary.matched} 条`);
@@ -348,6 +390,7 @@ export default function SmartMatch() {
       console.error('error.constructor:', error?.constructor?.name);
       const errorMessage = error instanceof Error ? error.message : String(error);
       message.error(`匹配失败: ${errorMessage}`);
+      matchProgressRef.current = null;
       setMatchProgress(null);
     } finally {
       setLoading(false);
