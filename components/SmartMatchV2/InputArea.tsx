@@ -119,8 +119,15 @@ export function InputArea({ onMatch }: InputAreaProps) {
     }
   };
 
+  // 关闭弹窗并清理数据
+  const handleModalClose = () => {
+    setColumnModalOpen(false);
+    setExcelData([]);
+    setExcelHeaders([]);
+    setSelectedColumn('');
+  };
+
   // 确认选择列并提取数据
-  const handleColumnConfirm = () => {
     if (!selectedColumn || excelData.length === 0) {
       message.warning('请选择有效列');
       return;
@@ -145,7 +152,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
     onMatch?.();
 
     message.success(`成功解析 ${productNames.length} 条数据`);
-    setColumnModalOpen(false);
+    handleModalClose();
   };
 
   // 计算行数
@@ -200,7 +207,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
       title="选择商品名称列"
       open={columnModalOpen}
       onOk={handleColumnConfirm}
-      onCancel={() => setColumnModalOpen(false)}
+      onCancel={handleModalClose}
       okText="确认"
       cancelText="取消"
     >
