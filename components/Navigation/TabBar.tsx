@@ -13,31 +13,33 @@ export const TabBar = memo(function TabBar() {
     e.preventDefault();
   }, []);
 
+  // 静态菜单配置（不需要依赖 tabs，removeTab 等已经是稳定引用）
+  const closeMenuItem = {
+    key: 'close',
+    label: '关闭',
+    onClick: ({ key }: { key: string }) => removeTab(key),
+  };
+  const closeOthersMenuItem = {
+    key: 'closeOthers',
+    label: '关闭其他',
+    onClick: ({ key }: { key: string }) => clearOtherTabs(key),
+  };
+  const closeAllMenuItem = {
+    key: 'closeAll',
+    label: '关闭所有',
+    onClick: () => clearAllTabs(),
+  };
+
   const getContextMenuItems = useCallback((tabKey: string): MenuProps['items'] => {
     const tab = tabs.find((t) => t.key === tabKey);
     const closableTabs = tabs.filter((t) => t.closable);
-    
+
     return [
-      {
-        key: 'close',
-        label: '关闭',
-        disabled: !tab?.closable,
-        onClick: () => removeTab(tabKey),
-      },
-      {
-        key: 'closeOthers',
-        label: '关闭其他',
-        disabled: closableTabs.length <= 1,
-        onClick: () => clearOtherTabs(tabKey),
-      },
-      {
-        key: 'closeAll',
-        label: '关闭所有',
-        disabled: closableTabs.length === 0,
-        onClick: () => clearAllTabs(),
-      },
+      { ...closeMenuItem, disabled: !tab?.closable },
+      { ...closeOthersMenuItem, disabled: closableTabs.length <= 1 },
+      { ...closeAllMenuItem, disabled: closableTabs.length === 0 },
     ];
-  }, [tabs, removeTab, clearOtherTabs, clearAllTabs]);
+  }, [tabs, closeMenuItem, closeOthersMenuItem, closeAllMenuItem]);
 
   const hasClosableTabs = useMemo(() => tabs.some((t) => t.closable), [tabs]);
 

@@ -32,12 +32,11 @@ export function TabsProvider({ children }: { children: ReactNode }) {
 
   // 监听路由变化，显示页面加载状态
   useEffect(() => {
-    // 路由变化时显示加载状态
     setIsPageLoading(true);
-    // 模拟一个短暂延迟后隐藏加载状态
+    // Next.js 路由切换完成后会自动隐藏loading，这里仅做兜底
     const timer = setTimeout(() => {
       setIsPageLoading(false);
-    }, 100);
+    }, 50);
     return () => clearTimeout(timer);
   }, [pathname]);
 
