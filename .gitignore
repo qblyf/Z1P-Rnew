@@ -46,3 +46,4 @@ constant/oss-config.ts
 
 # TypeScript build info
 *.tsbuildinfo
+.playwright-mcp/
