@@ -20,7 +20,7 @@ function SmartMatchContent() {
   if (!mounted || state.status === 'idle' || state.status === 'initializing') {
     return (
       <div className="flex items-center justify-center h-64">
-        <Spin indicator={<LoadingOutlined style={{ fontSize: 32 }} spin />} tip="初始化中..." />
+        <Spin indicator={<LoadingOutlined style={{ fontSize: 32 }} spin />} tip="加载中..." />
       </div>
     );
   }
