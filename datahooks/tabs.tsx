@@ -13,6 +13,7 @@ export interface TabItem {
 interface TabsContextValue {
   tabs: TabItem[];
   activeKey: string;
+  isPageLoading: boolean;
   addTab: (tab: TabItem) => void;
   removeTab: (key: string) => void;
   setActiveTab: (key: string) => void;
@@ -25,8 +26,20 @@ const TabsContext = createContext<TabsContextValue | undefined>(undefined);
 export function TabsProvider({ children }: { children: ReactNode }) {
   const [tabs, setTabs] = useState<TabItem[]>([]);
   const [activeKey, setActiveKey] = useState<string>('');
+  const [isPageLoading, setIsPageLoading] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  // 监听路由变化，显示页面加载状态
+  useEffect(() => {
+    // 路由变化时显示加载状态
+    setIsPageLoading(true);
+    // 模拟一个短暂延迟后隐藏加载状态
+    const timer = setTimeout(() => {
+      setIsPageLoading(false);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [pathname]);
 
   // 添加标签页
   const addTab = useCallback((tab: TabItem) => {
@@ -97,13 +110,14 @@ export function TabsProvider({ children }: { children: ReactNode }) {
     () => ({
       tabs,
       activeKey,
+      isPageLoading,
       addTab,
       removeTab,
       setActiveTab,
       clearOtherTabs,
       clearAllTabs,
     }),
-    [tabs, activeKey, addTab, removeTab, setActiveTab, clearOtherTabs, clearAllTabs]
+    [tabs, activeKey, isPageLoading, addTab, removeTab, setActiveTab, clearOtherTabs, clearAllTabs]
   );
 
   return (
