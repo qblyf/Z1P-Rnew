@@ -66,7 +66,7 @@ export interface MatchResult {
  * 批量匹配结果
  */
 export interface BatchMatchResult {
-  results: MatchResult[];
+  results: (MatchResult | null)[];
   summary: {
     total: number;
     matched: number;
