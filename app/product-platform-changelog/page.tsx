@@ -42,7 +42,7 @@ export default function ProductPlatformChangelog() {
 
   if (loading) {
     return (
-      <PageWrap ppKey="product-platform-changelog">
+      <PageWrap ppKey="product-manage">
         <div className="flex items-center justify-center h-64">
           <Spin size="large" />
         </div>
@@ -52,7 +52,7 @@ export default function ProductPlatformChangelog() {
 
   if (commits.length === 0) {
     return (
-      <PageWrap ppKey="product-platform-changelog">
+      <PageWrap ppKey="product-manage">
         <div className="flex items-center justify-center h-64">
           <Empty description="暂无更新日志" />
         </div>
@@ -82,7 +82,7 @@ export default function ProductPlatformChangelog() {
   }
 
   return (
-    <PageWrap ppKey="product-platform-changelog">
+    <PageWrap ppKey="product-manage">
       <div style={{ marginLeft: '40px', marginTop: '35px', paddingBottom: '32px' }}>
         <h3
           style={{
