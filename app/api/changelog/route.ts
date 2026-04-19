@@ -55,7 +55,7 @@ function getGitLog(): CommitInfo[] {
     const lines = logOutput.trim().split('\n');
     return lines.map(line => {
       const [hash, shortHash, message, author, , date] = line.split('|');
-      const version = parseVersionFromMessage(message);
+      const version = parseVersionFromMessage(message) ?? undefined;
       const humanReadable = convertToHumanReadable(message);
 
       return {
