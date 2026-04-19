@@ -27,9 +27,9 @@ function SmartMatchContent() {
   // 获取当前正在处理的项目（如果有）
   const currentItem = useMemo(() => {
     if (state.status !== 'matching' || state.results.length === 0) return null;
-    const lastResult = state.results[state.results.length - 1];
-    return lastResult?.inputName || null;
-  }, [state.status, state.results]);
+    const idx = Math.min(state.currentIndex, state.results.length - 1);
+    return state.results[idx]?.inputName || null;
+  }, [state.status, state.currentIndex, state.results]);
 
   // 服务端渲染或未挂载时，显示加载状态
   if (!mounted || state.status === 'idle' || state.status === 'initializing') {

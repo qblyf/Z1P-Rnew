@@ -28,6 +28,7 @@ interface MatchState {
   matched: number;
   spuMatched: number;
   unmatched: number;
+  currentIndex: number;
   results: MatchResult[];
   error: string | null;
 }
@@ -40,6 +41,7 @@ type MatchAction =
   | { type: 'ADD_RESULT'; payload: MatchResult }
   | { type: 'UPDATE_RESULT'; payload: { key: string; result: Partial<MatchResult> } }
   | { type: 'SET_STATS'; payload: { total: number; matched: number; spuMatched: number; unmatched: number } }
+  | { type: 'SET_CURRENT_INDEX'; payload: number }
   | { type: 'RESET' };
 
 // 初始状态
@@ -49,6 +51,7 @@ const initialState: MatchState = {
   matched: 0,
   spuMatched: 0,
   unmatched: 0,
+  currentIndex: 0,
   results: [],
   error: null,
 };
@@ -79,6 +82,8 @@ function matchReducer(state: MatchState, action: MatchAction): MatchState {
         spuMatched: action.payload.spuMatched,
         unmatched: action.payload.unmatched,
       };
+    case 'SET_CURRENT_INDEX':
+      return { ...state, currentIndex: action.payload };
     case 'RESET':
       return initialState;
     default:
@@ -143,6 +148,7 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'SET_STATUS', payload: 'matching' });
     dispatch({ type: 'CLEAR_RESULTS' });
     dispatch({ type: 'SET_STATS', payload: { total: inputs.length, matched: 0, spuMatched: 0, unmatched: 0 } });
+    dispatch({ type: 'SET_CURRENT_INDEX', payload: 0 });
 
     // 初始化所有输入为 pending 状态
     inputs.forEach((input, index) => {
@@ -212,6 +218,9 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
               type: 'SET_STATS',
               payload: { total: inputs.length, matched, spuMatched, unmatched },
             });
+
+            // 更新当前处理索引
+            dispatch({ type: 'SET_CURRENT_INDEX', payload: i + 1 });
           } catch (err) {
             console.error(`匹配失败 [${input}]:`, err);
             unmatched++;
@@ -255,6 +264,7 @@ export function MatchProvider({ children }: { children: React.ReactNode }) {
   const clearResults = useCallback(() => {
     dispatch({ type: 'CLEAR_RESULTS' });
     dispatch({ type: 'SET_STATS', payload: { total: 0, matched: 0, spuMatched: 0, unmatched: 0 } });
+    dispatch({ type: 'SET_CURRENT_INDEX', payload: 0 });
     dispatch({ type: 'SET_STATUS', payload: 'ready' });
   }, []);
 
