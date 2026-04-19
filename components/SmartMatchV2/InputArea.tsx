@@ -150,7 +150,8 @@ export function InputArea({ onMatch }: InputAreaProps) {
   const lineCount = inputText.split('\n').filter((line) => line.trim()).length;
 
   return (
-    <Card
+    <>
+      <Card
       title="输入商品"
       extra={
         <Space>
@@ -220,5 +221,6 @@ export function InputArea({ onMatch }: InputAreaProps) {
         )}
       </div>
     </Modal>
+    </>
   );
 }

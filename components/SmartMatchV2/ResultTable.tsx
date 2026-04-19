@@ -115,8 +115,6 @@ export function ResultTable() {
   ], []);
 
   return (
-
-  return (
     <Card title="匹配结果">
       <Space className="mb-4">
         <Text>筛选：</Text>
