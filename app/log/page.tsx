@@ -1,12 +1,11 @@
 'use client';
-// 更新日志
 
 import moment from 'moment';
 import 'moment/locale/zh-cn';
 
-import { Modal, Tag, Button, Drawer, Pagination } from 'antd';
+import { Modal, Tag, Button, Drawer, Pagination, Tooltip, Popconfirm } from 'antd';
 import { notification } from 'antd';
-import { EditTwoTone } from '@ant-design/icons';
+import { EditTwoTone, PlusOutlined, DeleteOutlined, CalendarOutlined, NodeIndexOutlined, RocketOutlined } from '@ant-design/icons';
 import {
   getUpdateLogList,
   deleteUpdateLog,
@@ -18,27 +17,29 @@ import LogAdd from '../../components/LogAdd';
 import LogEdit from '../../components/LogEdit';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTokenContext } from '../../datahooks/auth';
+import './log.css';
 
 function formatDate(v: number) {
-  return moment(v * 1000).format('YYYY-M-D');
+  return moment(v * 1000).format('YYYY-MM-DD');
+}
+
+function formatDateVerbose(v: number) {
+  return moment(v * 1000).format('MM月DD日');
 }
 
 /**
  * 更新日志
- * @param props
- * @returns JSX.Element
- * @author zhaoxuxu<zhaoxuxujc@gmail.com>
  */
 function Log(): JSX.Element {
   const { displayButton = true } = {};
   const { token } = useTokenContext();
-  const [addVisible, setAddVisible] = useState<boolean>(false);
-  const [editVisible, setEditVisible] = useState<boolean>(false);
+  const [addVisible, setAddVisible] = useState(false);
+  const [editVisible, setEditVisible] = useState(false);
   const [logListAll, setLogListAll] = useState<UpdateLog[]>([]);
   const [editLog, setEditLog] = useState<UpdateLog>();
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [total, setTotal] = useState<number>(0);
-  const [pageSize] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 10;
 
   const getLogList = useCallback(() => {
     lessAwait(async () => {
@@ -48,18 +49,20 @@ function Log(): JSX.Element {
     })();
   }, []);
 
-  useEffect(getLogList, [getLogList]);
+  useEffect(() => {
+    getLogList();
+  }, [getLogList]);
 
-  const changePage = useCallback((page: React.SetStateAction<number>) => {
+  const changePage = useCallback((page: number) => {
     setCurrentPage(page);
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const logListDisplay = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     const end = start + pageSize;
     return logListAll.slice(start, end);
-  }, [currentPage, logListAll, pageSize]);
+  }, [currentPage, logListAll]);
 
   const onDelLog = (log: UpdateLog) => {
     Modal.confirm({
@@ -67,6 +70,7 @@ function Log(): JSX.Element {
       content: '删除操作是危险且不可逆的',
       okText: '是',
       cancelText: '否',
+      okButtonProps: { danger: true },
       onOk() {
         if (!log) {
           notification.warning({ message: '没有找到日志信息' });
@@ -76,156 +80,146 @@ function Log(): JSX.Element {
           notification.error({ message: '未登录，无法删除' });
           return;
         }
-        // 删除系统更新日志
-        deleteUpdateLog(log.id, {
-          auth: token,
-        })
-          .then(getLogList)
-          .then(close)
-          .catch(e => notification.success({ message: e.message }));
+        deleteUpdateLog(log.id, { auth: token })
+          .then(() => {
+            notification.success({ message: '删除成功' });
+            getLogList();
+          })
+          .catch((e) => notification.error({ message: e.message }));
       },
     });
   };
 
   return (
     <PageWrap ppKey={'product-manage'}>
-      <div
-        style={{ marginLeft: '40px', marginTop: '35px', paddingBottom: '32px' }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
-          <h3
-            style={{
-              lineHeight: '32px',
-              fontSize: '20px',
-              fontWeight: 'bold',
-              color: 'black',
-            }}
-          >
-            更新日志
-          </h3>
+      {/* 顶部英雄区 */}
+      <div className="log-hero">
+        <div className="log-hero-inner">
+          <div className="log-hero-icon">
+            <NodeIndexOutlined />
+          </div>
+          <h1 className="log-hero-title">帐套更新日志</h1>
+          <p className="log-hero-subtitle">记录每一次系统更新与迭代</p>
           {displayButton && (
             <Button
-              icon={<EditTwoTone />}
-              type="text"
+              type="primary"
+              icon={<PlusOutlined />}
+              className="log-add-btn"
               onClick={() => setAddVisible(true)}
-            />
+            >
+              添加更新
+            </Button>
           )}
         </div>
-        <div style={{ marginTop: '10px' }}>
-          {logListDisplay?.map((v, i) => (
-            <div key={i.toString()}>
-              <div
-                style={{
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  color: '#000000',
-                }}
-              >
-                {v.version}
-              </div>
-              <div
-                style={{
-                  marginTop: '20px',
-                }}
-              >
-                <Tag
-                  style={{
-                    lineHeight: '30px',
-                    paddingLeft: '10px',
-                    paddingRight: '10px',
-                    fontSize: '15px',
-                  }}
-                >
-                  {v.date ? formatDate(Number(v.date || 0)) : '--'}
-                </Tag>
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  margin: '0 0.5rem 0',
-                  alignItems: 'flex-start',
-                  marginTop: '20px',
-                }}
-              >
-                <div
-                  style={{
-                    border: '3px solid #1677FF',
-                    width: '3px',
-                    height: '3px',
-                    boxSizing: 'content-box',
-                    borderRadius: '50%',
-                    flexGrow: '0',
-                    flexShrink: '0',
-                    marginTop: '7px',
-                    marginRight: '4px',
-                  }}
-                ></div>
-                <div
-                  style={{
-                    whiteSpace: 'pre-wrap',
-                    fontSize: '14px',
-                    fontWeight: '400',
-                    color: '#333333',
-                  }}
-                >
-                  {v.content}
-                </div>
-              </div>
-              {displayButton && (
-                <div
-                  style={{
-                    marginBottom: '60px',
-                    marginLeft: '5px',
-                  }}
-                >
-                  <Button
-                    type="text"
-                    style={{ color: '#1677FF' }}
-                    onClick={() => {
-                      setEditVisible(true);
-                      setEditLog(v);
-                    }}
-                  >
-                    编辑
-                  </Button>
-                  <Button
-                    danger
-                    type="text"
-                    onClick={() => {
-                      onDelLog(v);
-                    }}
-                  >
-                    删除
-                  </Button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <Pagination
-          simple
-          current={currentPage}
-          total={total}
-          pageSize={pageSize}
-          onChange={changePage}
-        />
       </div>
+
+      {/* 更新日志列表 */}
+      <div className="log-list">
+        {logListDisplay?.map((v, i) => (
+          <div key={i.toString()} className="log-card">
+            {/* 左侧日期 */}
+            <div className="log-card-date">
+              <div className="log-date-main">
+                <CalendarOutlined className="log-date-icon" />
+                <span className="log-date-text">
+                  {v.date ? formatDateVerbose(Number(v.date || 0)) : '--'}
+                </span>
+              </div>
+              <div className="log-date-year">
+                {v.date ? moment(Number(v.date || 0) * 1000).format('YYYY') : ''}
+              </div>
+            </div>
+
+            {/* 中部分隔线 */}
+            <div className="log-card-line">
+              <div className="log-line-dot" />
+              <div className="log-line-bar" />
+            </div>
+
+            {/* 右侧内容 */}
+            <div className="log-card-body">
+              <div className="log-card-header">
+                <Tag className="log-version-tag" icon={<RocketOutlined />}>
+                  {v.version || 'v?.?'}
+                </Tag>
+                {displayButton && (
+                  <div className="log-card-actions">
+                    <Tooltip title="编辑">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<EditTwoTone />}
+                        onClick={() => {
+                          setEditVisible(true);
+                          setEditLog(v);
+                        }}
+                      />
+                    </Tooltip>
+                    <Popconfirm
+                      title="确定删除此日志吗？"
+                      description="删除操作不可逆"
+                      onConfirm={() => onDelLog(v)}
+                      okText="删除"
+                      cancelText="取消"
+                      okButtonProps={{ danger: true }}
+                    >
+                      <Tooltip title="删除">
+                        <Button
+                          type="text"
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                        />
+                      </Tooltip>
+                    </Popconfirm>
+                  </div>
+                )}
+              </div>
+              <div className="log-card-content">{v.content}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 分页 */}
+      {total > pageSize && (
+        <div className="log-pagination">
+          <Pagination
+            current={currentPage}
+            total={total}
+            pageSize={pageSize}
+            onChange={changePage}
+            showTotal={(t) => `共 ${t} 条`}
+          />
+        </div>
+      )}
+
+      {/* 添加 Drawer */}
       <Drawer
-        title="添加更新日志"
+        title={
+          <span className="log-drawer-title">
+            <PlusOutlined /> 添加更新日志
+          </span>
+        }
         destroyOnClose
         open={addVisible}
         onClose={() => setAddVisible(false)}
-        width={typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 450}
+        width={typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 480}
       >
         <LogAdd close={() => setAddVisible(false)} updateList={getLogList} />
       </Drawer>
+
+      {/* 编辑 Drawer */}
       <Drawer
-        title="编辑更新日志"
+        title={
+          <span className="log-drawer-title">
+            <EditTwoTone /> 编辑更新日志
+          </span>
+        }
         destroyOnClose
         open={editVisible}
         onClose={() => setEditVisible(false)}
-        width={typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 450}
+        width={typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 480}
       >
         <LogEdit
           close={() => setEditVisible(false)}

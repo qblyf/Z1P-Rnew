@@ -1,0 +1,237 @@
+/* ===== Hero Section ===== */
+.log-hero {
+  background: linear-gradient(135deg, #52c41a 0%, #237804 100%);
+  border-radius: 0 0 24px 24px;
+  padding: 48px 40px 56px;
+  margin-bottom: 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.log-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.log-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -40%;
+  left: -5%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.log-hero-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.log-hero-icon {
+  width: 72px;
+  height: 72px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 36px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.log-hero-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: white;
+  margin: 0 0 8px;
+  letter-spacing: -0.5px;
+}
+
+.log-hero-subtitle {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 24px;
+}
+
+.log-add-btn {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: white !important;
+  height: 40px;
+  padding: 0 24px;
+  border-radius: 20px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+}
+
+.log-add-btn:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+/* ===== Log List ===== */
+.log-list {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 24px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ===== Log Card ===== */
+.log-card {
+  display: grid;
+  grid-template-columns: 100px 40px 1fr;
+  min-height: 120px;
+  position: relative;
+}
+
+/* 日期区 */
+.log-card-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 16px;
+  text-align: center;
+}
+
+.log-date-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.log-date-icon {
+  font-size: 18px;
+  color: #52c41a;
+}
+
+.log-date-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #262626;
+}
+
+.log-date-year {
+  font-size: 12px;
+  color: #8c8c8c;
+  margin-top: 2px;
+}
+
+/* 分隔线区 */
+.log-card-line {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.log-line-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #52c41a, #237804);
+  box-shadow: 0 0 0 4px white, 0 2px 8px rgba(82, 196, 26, 0.3);
+  margin-top: 18px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.log-line-bar {
+  width: 2px;
+  flex: 1;
+  background: linear-gradient(to bottom, #d9d9d9, transparent);
+  margin-top: 4px;
+  min-height: 80px;
+}
+
+/* 最后一个卡片不显示连接线 */
+.log-card:last-child .log-line-bar {
+  background: transparent;
+}
+
+/* 内容区 */
+.log-card-body {
+  padding: 12px 0 24px 20px;
+  min-width: 0;
+}
+
+.log-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-top: 12px;
+}
+
+.log-version-tag {
+  background: linear-gradient(135deg, #52c41a, #237804) !important;
+  color: white !important;
+  border: none !important;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 12px !important;
+  border-radius: 6px !important;
+  height: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.log-card-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.log-card:hover .log-card-actions {
+  opacity: 1;
+}
+
+.log-card-content {
+  font-size: 14px;
+  color: #595959;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #fafbfc;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #f0f0f0;
+}
+
+/* ===== Pagination ===== */
+.log-pagination {
+  display: flex;
+  justify-content: center;
+  padding: 0 24px 48px;
+}
+
+/* ===== Drawer Title ===== */
+.log-drawer-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
