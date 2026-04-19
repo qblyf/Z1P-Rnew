@@ -21,12 +21,6 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
   const pathname = usePathname();
   const { token, isTokenExpired } = useTokenContext();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  // 等待组件挂载，避免 hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -66,8 +60,8 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
     );
   }
 
-  // 如果 token 还在加载中且已挂载，显示骨架屏
-  if (token === undefined && mounted) {
+  // 如果 token 还在加载中，显示骨架屏
+  if (token === undefined) {
     return <AdminLayoutSkeleton />;
   }
 

@@ -13,8 +13,7 @@ export const SidebarSkeleton = memo(function SidebarSkeleton({
   const menuItems = collapsed ? 5 : 6;
 
   return (
-    // 使用 div 代替 aside 避免 hydration mismatch
-    <div
+    <aside
       className={`bg-white border-r border-gray-200 h-full overflow-y-auto transition-all duration-300 ${
         collapsed ? 'w-16' : 'w-64'
       }`}
@@ -47,6 +46,6 @@ export const SidebarSkeleton = memo(function SidebarSkeleton({
           </div>
         ))}
       </div>
-    </div>
+    </aside>
   );
 });
