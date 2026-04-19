@@ -80,7 +80,9 @@ export function InputArea({ onMatch }: InputAreaProps) {
     const xlsx = await import('xlsx');
 
     try {
-      const wb = xlsx.read(file, { type: 'array' });
+      // file 是 File 对象，需要转为 ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      const wb = xlsx.read(arrayBuffer, { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = xlsx.utils.sheet_to_json(ws);
 
