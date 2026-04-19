@@ -89,6 +89,12 @@ export function UserProfile() {
             <LogOut size={16} />
             <span className="text-sm">退出登录</span>
           </button>
+
+          <div className="px-4 py-2 border-t border-gray-200 mt-2 pt-2">
+            <p className="text-xs text-gray-400">
+              版本 {process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}
+            </p>
+          </div>
         </div>
       )}
     </div>
