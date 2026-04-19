@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { execSync } from 'child_process';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 
 interface CommitInfo {
   hash: string;
@@ -8,6 +10,7 @@ interface CommitInfo {
   author: string;
   date: string;
   version?: string;
+  humanReadable: string;
 }
 
 function parseVersionFromMessage(message: string): string | null {
@@ -47,14 +50,41 @@ function convertToHumanReadable(message: string): string {
 
 function getGitLog(): CommitInfo[] {
   try {
-    const logOutput = execSync('git log --format="%H|%h|%s|%an|%ad|%cs" -50', {
-      encoding: 'utf-8',
-      cwd: process.cwd(),
-    });
+    // 尝试多个可能的路径
+    const possiblePaths = [
+      process.cwd(),
+      '/var/task',
+      '/app',
+    ];
+
+    let logOutput = '';
+    let workDir = '';
+
+    for (const dir of possiblePaths) {
+      try {
+        logOutput = execSync(`git log --format="%H|%h|%s|%an|%ad|%cs" -50`, {
+          encoding: 'utf-8',
+          cwd: dir,
+        });
+        workDir = dir;
+        break;
+      } catch {
+        continue;
+      }
+    }
+
+    if (!logOutput) {
+      console.error('Could not find git repository in any of:', possiblePaths);
+      return [];
+    }
+
+    console.log('Git log fetched from:', workDir);
 
     const lines = logOutput.trim().split('\n');
     return lines.map(line => {
-      const [hash, shortHash, message, author, , date] = line.split('|');
+      const parts = line.split('|');
+      if (parts.length < 6) return null;
+      const [hash, shortHash, message, author, , date] = parts;
       const version = parseVersionFromMessage(message) ?? undefined;
       const humanReadable = convertToHumanReadable(message);
 
@@ -67,7 +97,7 @@ function getGitLog(): CommitInfo[] {
         version,
         humanReadable,
       };
-    });
+    }).filter(Boolean) as CommitInfo[];
   } catch (error) {
     console.error('Failed to get git log:', error);
     return [];
