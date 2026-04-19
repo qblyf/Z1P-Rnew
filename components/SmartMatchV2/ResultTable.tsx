@@ -125,9 +125,7 @@ export function ResultTable() {
           onChange={(value) => setStatusFilter(value)}
           options={[
             { label: '已匹配', value: 'matched' },
-            { label: 'SPU匹配', value: 'spu-matched' },
             { label: '未匹配', value: 'unmatched' },
-            { label: '匹配中', value: 'pending' },
           ]}
         />
         <Text type="secondary">
