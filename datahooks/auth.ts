@@ -96,16 +96,13 @@ export function setCacheToken(v: string | null): void {
 
 /**
  * [Hooks] 自动登录
+ * 使用 useEffect 初始化 token，避免服务端/客户端水合不匹配
  */
 function useToken() {
-  const [token, setToken] = useState<string | null>(undefined as any);
+  const [token, setToken] = useState<string | null>(null);
   const [errMsg, setErrMsg] = useState<string>();
   const [isTokenExpired, setIsTokenExpired] = useState(false);
-
-  // 服务端检查
-  if (typeof window === 'undefined') {
-    return { token: null, errMsg: null, payload: null, isTokenExpired: false };
-  }
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // 监听 localStorage 变化（来自其他标签页或同一页面的更新）
   useEffect(() => {
@@ -130,14 +127,11 @@ function useToken() {
       }
     };
 
-    // 监听来自其他标签页的 storage 事件
+    // 监听 storage 变化（来自其他标签页或同一页面的更新）
     window.addEventListener('storage', handleStorageChange);
-    // 监听自定义的 storage 事件（同一页面内的更新）
-    window.addEventListener('storage', handleStorageChange as EventListener);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('storage', handleStorageChange as EventListener);
     };
   }, []);
 
@@ -153,10 +147,12 @@ function useToken() {
         console.warn('Cached token is invalid:', err);
         setCacheToken(null);
         setIsTokenExpired(true);
+        setIsInitialized(true);
       } else {
         console.log('Valid cached token found');
         setToken(t as string);
         setIsTokenExpired(false);
+        setIsInitialized(true);
         return;
       }
     }
@@ -192,6 +188,8 @@ function useToken() {
                   console.error('Auto login error:', err);
                   setErrMsg(`${err}`);
                   setToken(null);
+                }).finally(() => {
+                  setIsInitialized(true);
                 });
               });
             });
@@ -202,6 +200,7 @@ function useToken() {
       console.error('Failed to load DingTalk SDK:', err);
       setErrMsg('无法加载钉钉SDK');
       setToken(null);
+      setIsInitialized(true);
     });
   }, []);
 
