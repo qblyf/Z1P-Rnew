@@ -1,6 +1,123 @@
 [
   {
-    "hash": "f7c3fd5",
+    "hash": "bdf56434d1a6fcb4fc3a4bba32afd7eb83e7e0ee",
+    "shortHash": "bdf5643",
+    "message": "[v1.0.78] fix(smart-match-v2): 修复 Excel 导入后自动触发匹配的问题",
+    "author": "Harmony",
+    "date": "2026-04-20 16:24:33 +0800",
+    "version": "1.0.78",
+    "humanReadable": "修复 Excel 导入后自动触发匹配的问题"
+  },
+  {
+    "hash": "6b7af3339166f0bfc02cf2f546aa66149c8c1cbe",
+    "shortHash": "6b7af33",
+    "message": "[v1.0.77] [v1.0.76] refactor: 优化项目文件结构",
+    "author": "Harmony",
+    "date": "2026-04-20 16:07:25 +0800",
+    "version": "1.0.77",
+    "humanReadable": "优化项目文件结构"
+  },
+  {
+    "hash": "e3b8d7269213a7411ce0fc255674508860a6c171",
+    "shortHash": "e3b8d72",
+    "message": "[v1.0.75] [v1.0.74] perf: 性能优化与提示消息修复",
+    "author": "Harmony",
+    "date": "2026-04-20 15:58:12 +0800",
+    "version": "1.0.75",
+    "humanReadable": "性能优化与提示消息修复"
+  },
+  {
+    "hash": "183751d56c441e71d5f438039366cec79786f992",
+    "shortHash": "183751d",
+    "message": "[v1.0.73] feat(data-export): 数据导出页面 UI 重新设计",
+    "author": "Harmony",
+    "date": "2026-04-19 22:24:42 +0800",
+    "version": "1.0.73",
+    "humanReadable": "数据导出页面 UI 重新设计"
+  },
+  {
+    "hash": "5d5883830bd6a836d824ec20a97ab854d81d96b6",
+    "shortHash": "5d58838",
+    "message": "[v1.0.72] fix(tabs): 重构标签页系统，实现自动添加与持久化",
+    "author": "Harmony",
+    "date": "2026-04-19 22:21:52 +0800",
+    "version": "1.0.72",
+    "humanReadable": "重构标签页系统，实现自动添加与持久化"
+  },
+  {
+    "hash": "aca907329faaa655b94b1eb7bea02edc020caa04",
+    "shortHash": "aca9073",
+    "message": "[v1.0.71] feat(homepage): 全新首页 UI 设计",
+    "author": "Harmony",
+    "date": "2026-04-19 22:15:50 +0800",
+    "version": "1.0.71",
+    "humanReadable": "全新首页 UI 设计"
+  },
+  {
+    "hash": "8e8f93a3a0cdbb6cfa2f4d5c1191024532ae6f05",
+    "shortHash": "8e8f93a",
+    "message": "[v1.0.70] feat(log): 帐套更新日志全新 UI 设计",
+    "author": "Harmony",
+    "date": "2026-04-19 22:12:31 +0800",
+    "version": "1.0.70",
+    "humanReadable": "帐套更新日志全新 UI 设计"
+  },
+  {
+    "hash": "1ccb1fd9165d36c935082f6386f3c787b3cec2a5",
+    "shortHash": "1ccb1fd",
+    "message": "[v1.0.69] feat(changelog): 全新 UI 设计",
+    "author": "Harmony",
+    "date": "2026-04-19 22:10:56 +0800",
+    "version": "1.0.69",
+    "humanReadable": "全新 UI 设计"
+  },
+  {
+    "hash": "2b9296ec105930c4450c96f6727164a830cbc972",
+    "shortHash": "2b9296e",
+    "message": "[v1.0.68] perf: 优化菜单切换性能",
+    "author": "Harmony",
+    "date": "2026-04-19 22:07:19 +0800",
+    "version": "1.0.68",
+    "humanReadable": "优化菜单切换性能"
+  },
+  {
+    "hash": "ddfd55e6d36b8b925eb2e2248fb6633f23202a45",
+    "shortHash": "ddfd55e",
+    "message": "[v1.0.67] fix: 将全局提示从 message 改为 notification（右上角）",
+    "author": "Harmony",
+    "date": "2026-04-19 22:01:52 +0800",
+    "version": "1.0.67",
+    "humanReadable": "将全局提示从 message 改为 notification（右上角）"
+  },
+  {
+    "hash": "ed840781fd085e992497da27889c28e3f6d2c432",
+    "shortHash": "ed84078",
+    "message": "[v1.0.66] fix: 修复匹配中显示当前处理项不正确的问题",
+    "author": "Harmony",
+    "date": "2026-04-19 21:48:57 +0800",
+    "version": "1.0.66",
+    "humanReadable": "修复匹配中显示当前处理项不正确的问题"
+  },
+  {
+    "hash": "b5572ce29c1c6e07f7f85b8d17151977e1c9b1de",
+    "shortHash": "b5572ce",
+    "message": "[v1.0.65] fix: Excel 导入后不自动匹配，需点击\"开始匹配\"",
+    "author": "Harmony",
+    "date": "2026-04-19 21:46:36 +0800",
+    "version": "1.0.65",
+    "humanReadable": "Excel 导入后不自动匹配，需点击\"开始匹配\""
+  },
+  {
+    "hash": "47ed9d9704787aaebff27f4782bf0bb0c821817d",
+    "shortHash": "47ed9d9",
+    "message": "[v1.0.64] [v1.0.64] chore: 添加 v1.0.4 至 v1.0.63 所有历史更新日志",
+    "author": "Harmony",
+    "date": "2026-04-19 21:43:39 +0800",
+    "version": "1.0.64",
+    "humanReadable": "添加 v1.0.4 至 v1.0.63 所有历史更新日志"
+  },
+  {
+    "hash": "f7c3fd59c8ebbc2246105db03e8fad72fe8aeba5",
     "shortHash": "f7c3fd5",
     "message": "[v1.0.63] refactor: 更新日志改为从 JSON 文件读取",
     "author": "Harmony",
