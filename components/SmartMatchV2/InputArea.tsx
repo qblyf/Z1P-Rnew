@@ -21,8 +21,10 @@ export function InputArea({ onMatch }: InputAreaProps) {
   const [columnModalOpen, setColumnModalOpen] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<string>('');
   const [excelJustImported, setExcelJustImported] = useState(false);
-  // 用 ref 追踪 Excel 导入状态，避免 useEffect 依赖问题
+  // 用 ref 追踪 Excel 导入状态
   const excelJustImportedRef = useRef(false);
+  // 追踪用户是否通过手动输入触发了 inputText 变化
+  const userTypedRef = useRef(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { state, startMatch, clearResults } = useMatch();
 
@@ -35,16 +37,20 @@ export function InputArea({ onMatch }: InputAreaProps) {
     }
   }, [state.status]);
 
-  // 防抖自动匹配（Excel 导入后不触发）
+  // 防抖自动匹配 - 仅在用户输入时触发
   useEffect(() => {
     // Excel 导入后，不触发自动匹配
-    // 使用 ref 追踪，避免 state 更新触发重新渲染导致 useEffect 再次运行
     if (excelJustImportedRef.current) {
       excelJustImportedRef.current = false;
       return;
     }
 
-    if (!inputText.trim() || !isReady) {
+    if (!inputText.trim()) {
+      return;
+    }
+
+    // 如果不是用户输入，不触发自动匹配
+    if (!userTypedRef.current) {
       return;
     }
 
@@ -66,7 +72,32 @@ export function InputArea({ onMatch }: InputAreaProps) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [inputText, isReady, startMatch, clearResults, onMatch]);
+  }, [inputText, startMatch, clearResults, onMatch]);
+
+  // 当 isReady 变为 true 时，仅在用户手动输入过的情况下触发自动匹配
+  useEffect(() => {
+    if (!isReady || !inputText.trim()) {
+      return;
+    }
+
+    // 只有用户手动输入过，才在 isReady 变为 true 时触发
+    if (!userTypedRef.current) {
+      return;
+    }
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      const lines = inputText.split('\n').filter((line) => line.trim());
+      if (lines.length > 0) {
+        clearResults();
+        startMatch(lines);
+        onMatch?.();
+      }
+    }, 300);
+  }, [isReady]);
 
   // 手动开始匹配
   const handleStartMatch = () => {
@@ -169,6 +200,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
     setInputText(productNames.join('\n'));
     setExcelJustImported(true);
     excelJustImportedRef.current = true;
+    userTypedRef.current = false; // 导入不是用户输入
 
     notification.success({ message: `已导入 ${productNames.length} 条数据，请点击"开始匹配"` });
     handleModalClose();
@@ -209,7 +241,10 @@ export function InputArea({ onMatch }: InputAreaProps) {
         placeholder="输入商品名称，每行一条...
 或者粘贴多行商品名称"
         value={inputText}
-        onChange={(e) => setInputText(e.target.value)}
+        onChange={(e) => {
+          setInputText(e.target.value);
+          userTypedRef.current = true; // 用户手动输入
+        }}
         rows={6}
         disabled={state.status === 'matching'}
       />
