@@ -21,6 +21,8 @@ export function InputArea({ onMatch }: InputAreaProps) {
   const [columnModalOpen, setColumnModalOpen] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<string>('');
   const [excelJustImported, setExcelJustImported] = useState(false);
+  // 用 ref 追踪 Excel 导入状态，避免 useEffect 依赖问题
+  const excelJustImportedRef = useRef(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { state, startMatch, clearResults } = useMatch();
 
@@ -36,9 +38,9 @@ export function InputArea({ onMatch }: InputAreaProps) {
   // 防抖自动匹配（Excel 导入后不触发）
   useEffect(() => {
     // Excel 导入后，不触发自动匹配
-    // 需要通过 ref 来追踪，因为 useEffect 执行时 state 可能还未更新
-    if (excelJustImported) {
-      setExcelJustImported(false);
+    // 使用 ref 追踪，避免 state 更新触发重新渲染导致 useEffect 再次运行
+    if (excelJustImportedRef.current) {
+      excelJustImportedRef.current = false;
       return;
     }
 
@@ -64,7 +66,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [inputText, isReady, excelJustImported, startMatch, clearResults, onMatch]);
+  }, [inputText, isReady, startMatch, clearResults, onMatch]);
 
   // 手动开始匹配
   const handleStartMatch = () => {
@@ -166,6 +168,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
     // 只更新输入框，不自动开始匹配
     setInputText(productNames.join('\n'));
     setExcelJustImported(true);
+    excelJustImportedRef.current = true;
 
     notification.success({ message: `已导入 ${productNames.length} 条数据，请点击"开始匹配"` });
     handleModalClose();
