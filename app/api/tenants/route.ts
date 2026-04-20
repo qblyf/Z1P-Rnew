@@ -110,9 +110,7 @@ export async function GET(request: Request) {
     }
     
     // 直接使用 clientName 作为 tenantID
-    function extractTenantID(clientName: string): string {
-      return clientName;
-    }
+    const extractTenantID = (clientName: string): string => clientName;
     
     // 将 SDK 返回的数据转换为统一格式
     const tenants = sysSettings.map((setting) => {

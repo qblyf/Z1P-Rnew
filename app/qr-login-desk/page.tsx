@@ -258,7 +258,7 @@ function QrLoginDeskPage() {
                     ✓ 扫码成功
                   </p>
                   <p className="text-slate-600 text-xs">
-                    请在手机上点击"确认登录"按钮
+                    请在手机上点击「确认登录」按钮
                   </p>
                 </div>
                 <p className="text-emerald-600 text-xs">

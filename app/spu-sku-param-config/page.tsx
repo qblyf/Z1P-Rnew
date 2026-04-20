@@ -313,7 +313,7 @@ function Page() {
                       marginTop: '8px',
                     }}
                   >
-                    💡 点击参数值可过滤下方 SKU 列表。如需修改参数值，请使用下方"修改 SPU 与 SKUs 的关系"功能。
+                    💡 点击参数值可过滤下方 SKU 列表。如需修改参数值，请使用下方「修改 SPU 与 SKUs 的关系」功能。
                   </div>
                   {definitionExtList
                     .filter(

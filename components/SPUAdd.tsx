@@ -56,10 +56,6 @@ export default function SPUAdd() {
     throw new Error('因外层组件处理, 所以不该到达此处');
   }
 
-  useEffect(() => {
-    init();
-  }, []);
-
   const init = async () => {
     const nextOrder = await nextSpuOrder({ auth: token });
     setOrder(String(nextOrder));
@@ -76,6 +72,10 @@ export default function SPUAdd() {
       keywords: [],
     });
   };
+
+  useEffect(() => {
+    init();
+  }, []);
 
   const similarSpuName = useMemo(() => {
     const s = pinyin

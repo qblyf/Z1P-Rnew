@@ -50,11 +50,6 @@ export default function TenantManagePage() {
   // 获取用户 token
   const { token } = useTokenContext();
 
-  // 数据加载 - 依赖 token
-  useEffect(() => {
-    loadTenants();
-  }, [token]);
-
   const loadTenants = async () => {
     if (!token) {
       console.warn('未登录，无法加载账套列表');
@@ -80,6 +75,12 @@ export default function TenantManagePage() {
       setLoading(false);
     }
   };
+
+  // 数据加载 - 依赖 token
+  useEffect(() => {
+    loadTenants();
+  }, [token]);
+
   // 处理新增/编辑
   const handleEdit = (tenant?: TenantConfig) => {
     setEditingTenant(tenant || null);

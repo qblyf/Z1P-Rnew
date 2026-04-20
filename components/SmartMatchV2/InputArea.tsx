@@ -177,7 +177,7 @@ export function InputArea({ onMatch }: InputAreaProps) {
 
       <div className="mt-2">
         <Text type="secondary" className="text-xs">
-          💡 支持直接粘贴多行商品名称，或导入 Excel 后点击"开始匹配"
+          💡 支持直接粘贴多行商品名称，或导入 Excel 后点击「开始匹配」
         </Text>
       </div>
     </Card>
