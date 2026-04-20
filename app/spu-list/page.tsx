@@ -571,6 +571,7 @@ export default function () {
   // 初始化时加载数据
   useEffect(() => {
     loadData(1, pageSize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 权限检查 - 必须在所有hook调用之后

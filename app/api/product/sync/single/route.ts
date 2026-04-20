@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     // 移除 tenantID（如果存在），API 不需要此参数
-    const { tenantID, ...syncParams } = body;
+    const { tenantID: _tenantID, ...syncParams } = body;
 
     // 直接转发请求到后端，不添加 Authorization header
     // 后端通过其他机制进行认证

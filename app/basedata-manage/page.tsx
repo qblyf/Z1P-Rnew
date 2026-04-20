@@ -118,7 +118,7 @@ function DraggableBrandCard({ brand, index, moveCard, onEdit }: DraggableBrandCa
       const hoverBoundingRect = ref.current?.getBoundingClientRect();
       const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
       const clientOffset = monitor.getClientOffset();
-      const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
+      const hoverClientY = (clientOffset?.y ?? 0) - hoverBoundingRect.top;
 
       if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
         return;

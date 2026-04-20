@@ -106,7 +106,7 @@ const SPUCateList = memo(function SPUCateList(props: {
       let current = originalData.find((v: { id: number }) => v.id === id);
       while (current && current.pid !== 0) {
         ancestorIds.add(current.pid);
-        current = originalData.find((v: { id: number }) => v.id === current!.pid);
+        current = originalData.find((v: { id: number }) => v.id === current?.pid);
       }
     });
     

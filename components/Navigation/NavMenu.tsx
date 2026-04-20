@@ -47,7 +47,7 @@ export function NavMenu({ item, isMobile = false }: NavMenuProps) {
             </button>
             {isOpen && (
               <div className="mt-1 ml-4 space-y-1 border-l-2 border-slate-200 pl-2">
-                {item.children!.map((child) => (
+                {item.children?.map((child) => (
                   child.href?.startsWith('http') ? (
                     <a key={child.id} href={child.href} target="_blank" rel="noopener noreferrer">
                       <div
@@ -158,7 +158,7 @@ export function NavMenu({ item, isMobile = false }: NavMenuProps) {
       {/* Dropdown Menu */}
       {hasChildren && (
         <div className="absolute left-0 top-full w-48 bg-white rounded-lg shadow-lg border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2 z-50">
-          {item.children!.map((child) => (
+          {item.children?.map((child) => (
             child.href?.startsWith('http') ? (
               <a key={child.id} href={child.href} target="_blank" rel="noopener noreferrer">
                 <div

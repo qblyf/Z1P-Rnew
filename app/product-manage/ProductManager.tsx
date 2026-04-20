@@ -201,7 +201,7 @@ export function ProductManager() {
         </BrandListProvider>
       </>
     );
-  }, [spuCateID, setMode, setSpuID, setSpuEditDefaultTab]);
+  }, [setMode, setSpuID, setSpuEditDefaultTab]);
 
   // SKU 内容
   const skuContent = useMemo(() => {

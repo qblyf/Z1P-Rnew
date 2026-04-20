@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -56,17 +56,17 @@ function HomeContent(): JSX.Element {
     setDeviceType(detectDeviceType());
   }, []);
 
-  const getLoginPage = () => {
+  const getLoginPage = useCallback(() => {
     if (deviceType === 'mobile') return '/qr-login-mobile';
     return '/qr-login-desk';
-  };
+  }, [deviceType]);
 
   useEffect(() => {
     if (!deviceType) return;
     if (token === null || token === undefined) {
       router.push(getLoginPage());
     }
-  }, [token, router, deviceType]);
+  }, [token, router, deviceType, getLoginPage]);
 
   useEffect(() => {
     (async () => {

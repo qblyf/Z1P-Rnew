@@ -151,6 +151,7 @@ function ClientPage() {
     return results;
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fn = useMemo(() => {
     console.log('SyncButton init');
     return async () => {
@@ -228,7 +229,9 @@ function ClientPage() {
       } finally {
         setDisabled(false);
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, selectedTenants]);
 
   // 同步步骤配置

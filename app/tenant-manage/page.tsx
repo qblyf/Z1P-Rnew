@@ -79,6 +79,7 @@ export default function TenantManagePage() {
   // 数据加载 - 依赖 token
   useEffect(() => {
     loadTenants();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   // 处理新增/编辑

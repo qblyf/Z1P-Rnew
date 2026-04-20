@@ -74,6 +74,7 @@ export default function SPUAdd() {
 
   useEffect(() => {
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const similarSpuName = useMemo(() => {
