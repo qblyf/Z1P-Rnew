@@ -58,8 +58,7 @@ function ChangeTableWithoutData(props: {
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
 
   // 获取某个字段的上一次修改值
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getPreviousValue = useCallback((currentRecord: ChangeLog, fieldKey: string): any => {
+  const getPreviousValue = useCallback((currentRecord: ChangeLog, fieldKey: string): unknown => {
     if (!data) return undefined;
     
     // 找到当前记录在列表中的位置
@@ -74,13 +73,11 @@ function ChangeTableWithoutData(props: {
       if (prevLog.logFor !== currentRecord.logFor) continue;
       
       // 检查是否是修改操作
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const isEditOp = (prevLog as any).operate?.includes('edit') || (prevLog as any).operate?.includes('update');
+      const isEditOp = prevLog.operate.includes('edit') || prevLog.operate.includes('update');
       if (!isEditOp) continue;
-
+      
       // 检查是否修改了相同的字段
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prevPresent = (prevLog as any).present || {};
+      const prevPresent = 'present' in prevLog ? prevLog.present as Record<string, unknown> : {};
       if (fieldKey in prevPresent) {
         return prevPresent[fieldKey];
       }
@@ -111,16 +108,13 @@ function ChangeTableWithoutData(props: {
 
   // 获取修改的字段名称列表
   const getChangedFieldNames = (record: ChangeLog): string[] => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const isEditOperation = (record as any).operate?.includes('edit') || (record as any).operate?.includes('update');
-
+    
     if (!isEditOperation) {
       return [];
     }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    
     const original = (record as any).original || {};
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const present = (record as any).present || {};
     
     // 获取所有修改的字段
@@ -226,11 +220,8 @@ function ChangeTableWithoutData(props: {
         ),
         rowExpandable: (record) => {
           // 检查是否有详细信息可以展示
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const hasPresent = 'present' in record && record.present && Object.keys(record.present as any).length > 0;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const hasChange = 'change' in record && record.change && Object.keys(record.change as any).length > 0;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const hasOriginal = 'original' in record && record.original && Object.keys(record.original as any).length > 0;
           
           return !!(hasPresent || hasChange || hasOriginal);
@@ -287,20 +278,16 @@ function RenderUser(props: { userIdent: string }) {
   return <span>{props.userIdent}</span>;
 }
 
-function RenderChangeDetail(props: {
+function RenderChangeDetail(props: { 
   log: ChangeLog;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getPreviousValue: (record: ChangeLog, fieldKey: string) => any;
 }) {
   const { log, getPreviousValue } = props;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isEditOperation = (log as any).operate?.includes('edit') || (log as any).operate?.includes('update');
-
+  
   // 如果是修改操作，显示修改前后对比
   if (isEditOperation && 'original' in log && 'present' in log) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const original = (log as any).original || {};
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const present = (log as any).present || {};
     
     // 获取所有修改的字段
@@ -430,25 +417,17 @@ function RenderChangeDetail(props: {
   }
   
   // 非修改操作，使用原有逻辑
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items: { label: string; type: 'change' | 'add' | 'remove'; value: any }[] = [];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if ('present' in log && (log as any).present && Object.keys((log as any).present).length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     items.push({ label: '修改后的内容', type: 'change', value: (log as any).present });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if ('change' in log && (log as any).change && Object.keys((log as any).change).length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     items.push({ label: '新增的内容', type: 'add', value: (log as any).change });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if ('original' in log && (log as any).original && Object.keys((log as any).original).length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     items.push({ label: '修改前的内容', type: 'remove', value: (log as any).original });
   }
 
@@ -502,7 +481,6 @@ function RenderChangeDetail(props: {
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function formatDetailValue(value: any): string {
   if (value === null || value === undefined || value === '') {
     return '-';
@@ -577,7 +555,6 @@ function formatDetailValue(value: any): string {
   return String(value);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function formatImagesDetail(images: any): string {
   const parts: string[] = [];
   
@@ -708,7 +685,6 @@ function getFriendlyFieldName(key: string): string {
   return fieldMap[key] || key;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function formatHumanReadable(value: any): string {
   if (value === null || value === undefined) {
     return '-';
@@ -741,7 +717,6 @@ function formatHumanReadable(value: any): string {
   return String(value);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function formatImageObject(images: any): string {
   if (!images || typeof images !== 'object') {
     return String(images);
@@ -764,7 +739,6 @@ function formatImageObject(images: any): string {
   return parts.length > 0 ? parts.join(' | ') : '无图片';
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function formatSkuIDsArray(skuIDs: any[]): string {
   if (!Array.isArray(skuIDs) || skuIDs.length === 0) {
     return '无商品规格';
@@ -790,7 +764,6 @@ function formatSkuIDsArray(skuIDs: any[]): string {
   return skuDetails.join('\n');
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function formatSingleSku(sku: any): string {
   if (!sku || typeof sku !== 'object') {
     return String(sku);

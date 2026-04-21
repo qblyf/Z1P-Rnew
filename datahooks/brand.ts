@@ -18,7 +18,7 @@ function useBrandList() {
       lessAwait(async () => {
         const d = await getBrandBaseList();
         setBrandList(d);
-      }, { showSuccess: false })(),
+      })(),
     [setBrandList]
   );
 

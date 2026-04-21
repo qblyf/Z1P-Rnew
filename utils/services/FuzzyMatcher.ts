@@ -80,22 +80,15 @@ export class FuzzyMatcher {
     const inputBrand = extractedInfo.brand.value;
     const inputModel = extractedInfo.model.value;
     const originalInput = extractedInfo.originalInput;
-    
-    console.log(`[模糊匹配] 开始模糊匹配，候选SPU: ${candidates.length} 个`);
-    
-    // 日志：开始模糊匹配
-    if (this.logger) {
-      console.log(`[模糊匹配] 开始匹配 - 输入: "${originalInput}", 品牌: "${inputBrand}", 型号: "${inputModel}", 阈值: ${threshold}`);
-    }
-    
+
     let checkedCount = 0;
     let filteredCount = 0;
     let brandMismatchCount = 0;
     let lowSimilarityCount = 0;
-    
+
     for (const spu of candidates) {
       checkedCount++;
-      
+
       // 过滤不符合条件的 SPU
       if (options?.shouldFilterSPU && options.shouldFilterSPU(originalInput, spu.name)) {
         filteredCount++;
@@ -120,7 +113,6 @@ export class FuzzyMatcher {
       
       // 如果输入品牌识别成功，但 SPU 品牌未识别，也应该跳过
       if (inputBrand && !spuBrand) {
-        console.log(`[模糊匹配] 跳过 SPU "${spu.name}" - 输入品牌"${inputBrand}"已识别，但SPU品牌未识别`);
         brandMismatchCount++;
         continue;
       }
@@ -168,9 +160,7 @@ export class FuzzyMatcher {
               versionMatch: { matched: false, score: 0 },
               details: this.generateExplanation(inputBrand, inputModel, spuBrand, spuModel, modelScore, score, keywordBonus)
             };
-            
-            console.log(`[模糊匹配] ✓ 找到匹配: "${spu.name}", 型号相似度: ${modelScore.toFixed(2)}, 基础分: ${score.toFixed(2)}, 关键词加分: ${keywordBonus.toFixed(2)}, 最终分数: ${finalScore.toFixed(2)}`);
-            
+
             matches.push({
               spu,
               score: finalScore,
@@ -185,17 +175,7 @@ export class FuzzyMatcher {
         }
       }
     }
-    
-    const duration = Date.now() - startTime;
-    
-    console.log(`[模糊匹配] 找到 ${matches.length} 个模糊匹配`);
-    
-    // 日志：模糊匹配结果
-    if (this.logger) {
-      console.log(`[模糊匹配] 完成 - 找到${matches.length}个匹配, 耗时${duration}ms`);
-      console.log(`[模糊匹配] 详细统计: 检查${checkedCount}个, 过滤${filteredCount}个, 品牌不匹配${brandMismatchCount}个, 相似度过低${lowSimilarityCount}个`);
-    }
-    
+
     return matches.sort((a, b) => b.score - a.score);
   }
   

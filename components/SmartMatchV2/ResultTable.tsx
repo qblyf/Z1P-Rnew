@@ -12,11 +12,6 @@ export function ResultTable() {
   const { state } = useMatch();
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
-  // 根据状态筛选
-  const filteredResults = statusFilter
-    ? state.results.filter((r) => r.status === statusFilter)
-    : state.results;
-
   // 导出 Excel
   const handleExport = async () => {
     if (state.results.length === 0) {
@@ -63,6 +58,11 @@ export function ResultTable() {
     xlsx.writeFile(wb, fileName);
     notification.success({ message: `已导出 ${exportData.length} 条数据` });
   };
+
+  // 根据状态筛选
+  const filteredResults = statusFilter
+    ? state.results.filter((r) => r.status === statusFilter)
+    : state.results;
 
   // 状态标签
   const getStatusTag = (status: MatchResult['status']) => {

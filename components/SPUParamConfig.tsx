@@ -61,7 +61,7 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
   const [editingCustomValue, setEditingCustomValue] = useState<string | null>(null);
   const [pValueList, setPValueList] = useState<Value[]>([]);
   const [pValueListEditing, setPValueListEditing] = useState<Value[] | NewValue[]>([]);
-  const [skuList, setSkuList] = useState<{ id: number; spuID: number }[]>([]);
+  const [skuList, setSkuList] = useState<{ id: number; spuID: number; name: string; gtins?: string; state?: number }[]>([]);
   const [skuParamValuesMap, setSkuParamValuesMap] = useState<Record<number, Value[]>>({});
 
   const { token } = useTokenContext();
@@ -118,8 +118,8 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
           { limit: 1000, offset: 0, orderBy: [{ key: GetSKUListOrderByKey.skuID, sort: OrderBySort.降序 }] },
           { sku: ['id', 'name', 'gtins', 'state'], spu: ['brand'] }
         );
-        const filteredRes = res.filter((item) => item.spuID === spuID);
-        setSkuList(filteredRes);
+        const filteredRes = (res as (typeof res[0] & { spuID: number })[]).filter((item) => item.spuID === spuID);
+        setSkuList(filteredRes as any);
 
         const paramValuesMap: Record<number, Value[]> = {};
         for (const sku of filteredRes) {
@@ -179,9 +179,9 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
 
   // 更新参数值（用于选择参数选项时）
   const updateParamValue = useCallback((definitionID: number, value: string | null) => {
-    setPValueListEditing(prev => {
+    setPValueListEditing(((prev: any) => {
       // 查找已有的值（可能是Value类型或NewValue类型）
-      const existingIndex = prev.findIndex(pv => {
+      const existingIndex = prev.findIndex((pv: any) => {
         if ('definitionID' in pv) {
           return pv.definitionID === definitionID;
         }
@@ -190,17 +190,15 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
         }
         return false;
       });
-      
+
       if (existingIndex >= 0) {
         // 更新已有的值
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const updated = [...prev] as any[];
+        const updated = [...prev] as (Value | NewValue)[];
         updated[existingIndex] = { ...updated[existingIndex], value: value || '' };
         return updated;
       } else {
         // 新增值 - 使用paramDefinition字段
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const newValue: any = {
+        const newValue: NewValue = {
           spu: spuID,
           paramDefinition: definitionID,
           value: value || '',
@@ -209,10 +207,9 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
         if (skuID) {
           newValue.sku = skuID;
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return [...prev, newValue] as any;
+        return [...prev, newValue] as (Value | NewValue)[];
       }
-    });
+    }) as any);
   }, [spuID, skuID]);
 
   const handleSave = async () => {
@@ -288,10 +285,7 @@ export default function SPUParamConfig({ spuID, skuID }: SPUParamConfigProps) {
                     // 获取当前参数的编辑值
                     const currentValue = pValueListEditing.find(pv => {
                       if ('definitionID' in pv) return pv.definitionID === def.definitionID;
-                      if ('paramDefinition' in pv) {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        return (pv as any).paramDefinition === def.definitionID;
-                      }
+                      if ('paramDefinition' in pv) return pv.paramDefinition === def.definitionID;
                       return false;
                     })?.value;
                     return (

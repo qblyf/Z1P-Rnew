@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     // 移除 tenantID（如果存在），API 不需要此参数
-    const { tenantID: _tenantID, ...syncParams } = body;
+    const { tenantID, ...syncParams } = body;
 
     // 直接转发请求到后端，不添加 Authorization header
     // 后端通过其他机制进行认证
@@ -33,13 +33,19 @@ export async function POST(request: Request) {
     if (!contentType?.includes('application/json')) {
       const text = await res.text();
       console.error('❌ API返回非JSON响应:', text.substring(0, 500));
-      throw new Error(`API返回了错误的响应格式: ${res.status} ${text.substring(0, 100)}`);
+      return NextResponse.json(
+        { success: false, error: `API返回了错误的响应格式: ${res.status} ${text.substring(0, 100)}` },
+        { status: 400 }
+      );
     }
 
     const data = await res.json();
 
     if (data.errMsg) {
-      throw new Error(`backend code ${data.code}: ${data.errMsg}`);
+      return NextResponse.json(
+        { success: false, error: `backend code ${data.code}: ${data.errMsg}` },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({

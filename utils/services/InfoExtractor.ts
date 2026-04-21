@@ -214,7 +214,6 @@ export class InfoExtractor {
     
     // If brand list is not loaded, return no match
     if (this.brandList.length === 0) {
-      console.warn('Brand list not loaded in InfoExtractor');
       return {
         value: null,
         confidence: 0,

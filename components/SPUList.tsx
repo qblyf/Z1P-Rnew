@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { SpuID } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { Alert, Col, Row, Table, Tag, Input, Button } from 'antd';
+import { Alert, Col, Row, Table, Tag, Input, Button, Empty } from 'antd';
 import { useBrandListContext } from '../datahooks/brand';
 import { useSpuIDContext, useSpuListContext } from '../datahooks/product';
 
@@ -86,6 +86,7 @@ export default function SPUList(props: {
         rowKey="id"
         dataSource={spuList}
         showHeader={false}
+        locale={{ emptyText: <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
         onRow={(record) => {
           return {
             onClick: () => {

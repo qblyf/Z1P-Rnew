@@ -26,7 +26,7 @@ export function getPayload(
   if (typeof window === 'undefined') {
     return [null, new Error('服务端环境下无法解析token')];
   }
-  
+
   if (!p || typeof p !== 'string') {
     return [null, new Error('无效的 JWT 字符串')];
   }
@@ -65,7 +65,7 @@ function getCacheToken(): [string, null] | [null, Error] {
   if (typeof window === 'undefined') {
     return [null, new Error('服务端环境下无法访问localStorage')];
   }
-  
+
   const cacheToken = window.localStorage.getItem('token');
   if (cacheToken === null) {
     return [null, new Error('没有从缓存中拿到数据')];
@@ -77,16 +77,15 @@ function getCacheToken(): [string, null] | [null, Error] {
 /**
  * 设置缓存的 token
  * @param v token 字符串或 null（清除缓存）
- * 
+ *
  * Note: Token 有效性检查在 getPayload() 中进行
  */
 export function setCacheToken(v: string | null): void {
   // 服务端检查
   if (typeof window === 'undefined') {
-    console.warn('服务端环境下无法访问localStorage');
     return;
   }
-  
+
   if (typeof v === 'string') {
     window.localStorage.setItem('token', v);
   } else {
@@ -108,50 +107,43 @@ function useToken() {
   // 监听 localStorage 变化（来自其他标签页或同一页面的更新）
   useEffect(() => {
     const handleStorageChange = (e?: StorageEvent) => {
-      console.log('Storage change detected, checking for token...', e);
-      const [t] = getCacheToken();
+            const [t] = getCacheToken();
       if (t) {
         const [_, err] = getPayload(t as string);
         if (err) {
-          console.warn('Invalid token in cache:', err);
-          setCacheToken(null);
+                    setCacheToken(null);
           setToken(null);
           setIsTokenExpired(true);
         } else {
-          console.log('Valid token found in cache after storage change');
-          setToken(t as string);
+                    setToken(t as string);
           setIsTokenExpired(false);
         }
       } else {
-        console.log('No token in cache after storage change');
-        setToken(null);
+                setToken(null);
       }
     };
 
     // 监听 storage 变化（来自其他标签页或同一页面的更新）
     window.addEventListener('storage', handleStorageChange);
-    
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
   useEffect(() => {
-    console.log('useToken useEffect called');
-
+    
     // 检查是否已经有缓存.
     const [t] = getCacheToken();
     if (t) {
       const [_, err] = getPayload(t as string);
       if (err) {
         // 清空缓存中的 token
-        console.warn('Cached token is invalid:', err);
-        setCacheToken(null);
+                setCacheToken(null);
         setIsTokenExpired(true);
         setIsInitialized(true);
       } else {
-        console.log('Valid cached token found');
-        setToken(t as string);
+                setToken(t as string);
         setIsTokenExpired(false);
         setIsInitialized(true);
         return;
@@ -181,8 +173,7 @@ function useToken() {
                     }
                   } else {
                     // 非钉钉环境，设置为null表示没有token，让页面跳转到登录页面
-                    console.log('Not in DingTalk environment');
-                    setErrMsg('环境限制, 无法进行自动登录');
+                                        setErrMsg('环境限制, 无法进行自动登录');
                     setToken(null);
                   }
                 })().catch(err => {
@@ -213,8 +204,7 @@ function useToken() {
     const [p, err] = getPayload(token);
     // 校验过期时间, 如果过期则清空 token
     if (p === null) {
-      console.warn(`getPayload 没有拿到有效数据`, err);
-      setCacheToken(null);
+            setCacheToken(null);
       setErrMsg(`token 已经无效, ${err}`);
       setIsTokenExpired(true);
       return null;

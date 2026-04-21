@@ -13,9 +13,7 @@ import { CanvasWatermark } from '../components/CanvasWatermark';
 import { TokenProvider, useTokenContext } from '../datahooks/auth';
 import { TabsProvider } from '../datahooks/tabs';
 import { MenuStateProvider } from '../datahooks/menuState';
-
-// 导入以触发全局 message/notification 配置
-import '../utils/notification';
+import { setupNotificationConfig } from '../utils/notification';
 import { AdminLayout } from '../components/Layout/AdminLayout';
 
 import { WPK_BID } from '../constant/for-dev';
@@ -33,6 +31,11 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
    * 判断是否应该加载监控
    */
   const [shouldLoadMonitoring, setShouldLoadMonitoring] = useState(false);
+
+  // 配置 antd notification
+  useEffect(() => {
+    setupNotificationConfig();
+  }, []);
 
   // 使用 useEffect 确保只在客户端执行
   useEffect(() => {
@@ -69,10 +72,9 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           strategy="afterInteractive"
           src="https://g.alicdn.com/woodpeckerx/jssdk??wpkReporter.js"
           onLoad={() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const win = window as any;
+            const win = window as unknown as { __wpk?: { installAll: () => void }; wpkReporter: new (bid: string) => { installAll: () => void } };
             if (!win.__wpk) {
-              win.__wpk = new win.wpkReporter({ bid: WPK_BID });
+              win.__wpk = new win.wpkReporter(WPK_BID);
             }
             win.__wpk.installAll();
           }}

@@ -194,35 +194,28 @@ export class DataPreparationService {
    */
   async initialize(brandList: BrandData[]): Promise<void> {
     this.brandList = brandList;
-    
+
     // 加载规格标准化配置
     await this.loadSpecNormalizationConfig();
-    
-    console.log('✓ DataPreparationService initialized with', brandList.length, 'brands');
-    console.log('✓ Loaded', this.specNormalizationMap.size, 'spec normalization rules');
   }
-  
+
   /**
    * 加载规格标准化配置
-   * 
+   *
    * 从text-mappings.json加载capacityNormalizations配置
-   * 
+   *
    * Requirements: 2.1.4 - 系统能识别并合并相同含义的规格
    * Design: Section 3.1.2 - 规格标准化
    */
   private async loadSpecNormalizationConfig(): Promise<void> {
     try {
       const config = await ConfigLoader.load<TextMappingsConfig>('text-mappings');
-      
+
       if (config && config.capacityNormalizations) {
         // 将配置转换为Map
         for (const [key, value] of Object.entries(config.capacityNormalizations)) {
           this.specNormalizationMap.set(key, value as string);
         }
-        
-        console.log('✓ Loaded spec normalization config:', this.specNormalizationMap.size, 'rules');
-      } else {
-        console.warn('⚠️  No capacityNormalizations found in text-mappings config');
       }
     } catch (error) {
       console.error('❌ Failed to load spec normalization config:', error);
@@ -295,29 +288,27 @@ export class DataPreparationService {
    * @param spuList SPU列表
    */
   buildBrandIndex(spuList: SPUData[]): void {
-    console.log('=== 开始构建品牌索引 ===');
     const startTime = Date.now();
-    
+
     // 清空现有索引
     this.brandIndex.clear();
-    
+
     let indexedCount = 0;
     let noBrandCount = 0;
     const brandCounts = new Map<string, number>(); // 用于统计每个品牌的SPU数量
-    
+
     for (const spu of spuList) {
       // 获取品牌名（优先使用spu.brand字段）
       const brand = this.extractBrand(spu);
-      
+
       if (!brand) {
         noBrandCount++;
-        console.warn(`⚠️  SPU "${spu.name}" (ID: ${spu.id}) 品牌提取失败`);
         continue;
       }
-      
+
       // 构建索引键列表（支持中文和拼音）
       const keys = this.getBrandIndexKeys(brand);
-      
+
       // 为每个键添加品牌索引
       for (const key of keys) {
         if (!this.brandIndex.has(key)) {
@@ -325,30 +316,30 @@ export class DataPreparationService {
         }
         this.brandIndex.get(key)!.push(spu);
       }
-      
+
       // 统计品牌SPU数量（使用标准化的品牌名）
       const normalizedBrand = brand.toLowerCase();
       brandCounts.set(normalizedBrand, (brandCounts.get(normalizedBrand) || 0) + 1);
-      
+
       indexedCount++;
     }
-    
+
     const endTime = Date.now();
     const buildTime = endTime - startTime;
-    
+
     // 计算统计信息
     const totalSPUs = indexedCount;
     const totalBrands = brandCounts.size;
     const avgSPUsPerBrand = totalBrands > 0 ? totalSPUs / totalBrands : 0;
-    
+
     // 获取Top品牌（按SPU数量排序）
     const topBrands = Array.from(brandCounts.entries())
       .map(([brand, count]) => ({ brand, count }))
       .sort((a, b) => b.count - a.count);
-    
+
     // 估算内存使用
     const memoryUsage = this.estimateMapMemory(this.brandIndex);
-    
+
     // 更新统计信息
     this.statistics.brandIndex = {
       totalBrands,
@@ -357,30 +348,10 @@ export class DataPreparationService {
       topBrands,
       buildTime,
     };
-    
+
     // 更新总体统计
     this.statistics.overall.totalIndexBuildTime += buildTime;
     this.statistics.overall.estimatedMemoryUsage += memoryUsage;
-    
-    console.log('=== 品牌索引构建完成 ===');
-    console.log(`总SPU数量: ${spuList.length}`);
-    console.log(`成功索引: ${indexedCount} 个SPU`);
-    console.log(`品牌数量: ${totalBrands} 个（唯一品牌）`);
-    console.log(`索引键数量: ${this.brandIndex.size} 个（包含中文和拼音）`);
-    console.log(`无品牌: ${noBrandCount} 个SPU`);
-    console.log(`平均每品牌SPU数: ${avgSPUsPerBrand.toFixed(2)}`);
-    console.log(`构建耗时: ${buildTime}ms`);
-    console.log(`估算内存: ${this.formatBytes(memoryUsage)}`);
-    
-    // 输出品牌索引的前10个品牌（用于调试）
-    const brandKeys = Array.from(this.brandIndex.keys()).slice(0, 10);
-    console.log(`品牌索引示例: ${brandKeys.join(', ')}${this.brandIndex.size > 10 ? '...' : ''}`);
-    
-    // 输出Top 5品牌
-    if (topBrands.length > 0) {
-      const top5 = topBrands.slice(0, 5).map(item => `${item.brand}(${item.count})`).join(', ');
-      console.log(`Top 5 品牌: ${top5}`);
-    }
   }
   
   /**
@@ -394,57 +365,55 @@ export class DataPreparationService {
    * @param spuList SPU列表
    */
   buildModelIndex(spuList: SPUData[]): void {
-    console.log('=== 开始构建型号索引 ===');
     const startTime = Date.now();
-    
+
     // 清空现有索引
     this.modelIndex.clear();
-    
+
     let indexedCount = 0;
     let noModelCount = 0;
     const modelCounts = new Map<string, number>(); // 用于统计每个型号的SPU数量
-    
+
     for (const spu of spuList) {
       // 提取型号
       const model = this.extractModelFromSPU(spu);
-      
+
       if (!model) {
         noModelCount++;
-        console.warn(`⚠️  SPU "${spu.name}" (ID: ${spu.id}) 型号提取失败`);
         continue;
       }
-      
+
       // 标准化型号（小写、去除多余空格）
       const normalizedModel = this.normalizeModel(model);
-      
+
       // 添加到索引
       if (!this.modelIndex.has(normalizedModel)) {
         this.modelIndex.set(normalizedModel, []);
       }
       this.modelIndex.get(normalizedModel)!.push(spu);
-      
+
       // 统计型号SPU数量
       modelCounts.set(normalizedModel, (modelCounts.get(normalizedModel) || 0) + 1);
-      
+
       indexedCount++;
     }
-    
+
     const endTime = Date.now();
     const buildTime = endTime - startTime;
-    
+
     // 计算统计信息
     const totalSPUs = indexedCount;
     const totalModels = this.modelIndex.size;
     const avgSPUsPerModel = totalModels > 0 ? totalSPUs / totalModels : 0;
-    
+
     // 获取Top型号（按SPU数量排序）
     const topModels = Array.from(modelCounts.entries())
       .map(([model, count]) => ({ model, count }))
       .sort((a, b) => b.count - a.count);
-    
+
     // 估算内存使用
     const memoryUsage = this.estimateMapMemory(this.modelIndex);
-    
+
     // 更新统计信息
     this.statistics.modelIndex = {
       totalModels,
@@ -453,29 +422,10 @@ export class DataPreparationService {
       topModels,
       buildTime,
     };
-    
+
     // 更新总体统计
     this.statistics.overall.totalIndexBuildTime += buildTime;
     this.statistics.overall.estimatedMemoryUsage += memoryUsage;
-    
-    console.log('=== 型号索引构建完成 ===');
-    console.log(`总SPU数量: ${spuList.length}`);
-    console.log(`成功索引: ${indexedCount} 个SPU`);
-    console.log(`型号数量: ${totalModels} 个`);
-    console.log(`无型号: ${noModelCount} 个SPU`);
-    console.log(`平均每型号SPU数: ${avgSPUsPerModel.toFixed(2)}`);
-    console.log(`构建耗时: ${buildTime}ms`);
-    console.log(`估算内存: ${this.formatBytes(memoryUsage)}`);
-    
-    // 输出型号索引的前10个型号（用于调试）
-    const modelKeys = Array.from(this.modelIndex.keys()).slice(0, 10);
-    console.log(`型号索引示例: ${modelKeys.join(', ')}${this.modelIndex.size > 10 ? '...' : ''}`);
-    
-    // 输出Top 5型号
-    if (topModels.length > 0) {
-      const top5 = topModels.slice(0, 5).map(item => `${item.model}(${item.count})`).join(', ');
-      console.log(`Top 5 型号: ${top5}`);
-    }
   }
   
   /**
@@ -516,68 +466,11 @@ export class DataPreparationService {
   
   /**
    * 打印索引统计摘要
-   * 
+   *
    * 输出格式化的统计信息到控制台，便于调试和监控
    */
   printStatisticsSummary(): void {
-    console.log('\n╔════════════════════════════════════════════════════════════╗');
-    console.log('║           数据准备服务 - 索引统计摘要                      ║');
-    console.log('╚════════════════════════════════════════════════════════════╝\n');
-    
-    // 品牌索引统计
-    console.log('📊 品牌索引:');
-    console.log(`   • 品牌数量: ${this.statistics.brandIndex.totalBrands}`);
-    console.log(`   • SPU总数: ${this.statistics.brandIndex.totalSPUs}`);
-    console.log(`   • 平均每品牌SPU数: ${this.statistics.brandIndex.avgSPUsPerBrand.toFixed(2)}`);
-    console.log(`   • 构建耗时: ${this.statistics.brandIndex.buildTime}ms`);
-    if (this.statistics.brandIndex.topBrands.length > 0) {
-      console.log('   • Top 5 品牌:');
-      this.statistics.brandIndex.topBrands.slice(0, 5).forEach((item, index) => {
-        console.log(`     ${index + 1}. ${item.brand}: ${item.count} 个SPU`);
-      });
-    }
-    
-    // 型号索引统计
-    console.log('\n📊 型号索引:');
-    console.log(`   • 型号数量: ${this.statistics.modelIndex.totalModels}`);
-    console.log(`   • SPU总数: ${this.statistics.modelIndex.totalSPUs}`);
-    console.log(`   • 平均每型号SPU数: ${this.statistics.modelIndex.avgSPUsPerModel.toFixed(2)}`);
-    console.log(`   • 构建耗时: ${this.statistics.modelIndex.buildTime}ms`);
-    if (this.statistics.modelIndex.topModels.length > 0) {
-      console.log('   • Top 5 型号:');
-      this.statistics.modelIndex.topModels.slice(0, 5).forEach((item, index) => {
-        console.log(`     ${index + 1}. ${item.model}: ${item.count} 个SPU`);
-      });
-    }
-    
-    // 规格索引统计
-    console.log('\n📊 规格索引:');
-    console.log(`   • 颜色数量: ${this.statistics.specIndex.colors.total}`);
-    console.log(`   • 规格数量: ${this.statistics.specIndex.specs.total}`);
-    console.log(`   • 组合数量: ${this.statistics.specIndex.combos.total}`);
-    console.log(`   • SKU总数: ${this.statistics.specIndex.totalSKUsProcessed}`);
-    console.log(`   • 构建耗时: ${this.statistics.specIndex.buildTime}ms`);
-    
-    if (this.statistics.specIndex.colors.topColors.length > 0) {
-      console.log('   • Top 5 颜色:');
-      this.statistics.specIndex.colors.topColors.slice(0, 5).forEach((item, index) => {
-        console.log(`     ${index + 1}. ${item.color}: ${item.count} 个SKU`);
-      });
-    }
-    
-    if (this.statistics.specIndex.specs.topSpecs.length > 0) {
-      console.log('   • Top 5 规格:');
-      this.statistics.specIndex.specs.topSpecs.slice(0, 5).forEach((item, index) => {
-        console.log(`     ${index + 1}. ${item.spec}: ${item.count} 个SKU`);
-      });
-    }
-    
-    // 总体统计
-    console.log('\n📊 总体统计:');
-    console.log(`   • 总构建耗时: ${this.statistics.overall.totalIndexBuildTime}ms`);
-    console.log(`   • 估算内存使用: ${this.formatBytes(this.statistics.overall.estimatedMemoryUsage)}`);
-    
-    console.log('\n' + '═'.repeat(60) + '\n');
+    // Statistics summary logging removed for production
   }
   
   /**
@@ -960,7 +853,6 @@ export class DataPreparationService {
    * @param spuList SPU列表
    */
   buildSpecIndex(spuList: SPUData[]): void {
-    console.log('=== 开始构建规格索引 ===');
     const startTime = Date.now();
     
     // 清空现有索引
@@ -1128,47 +1020,6 @@ export class DataPreparationService {
     // 更新总体统计
     this.statistics.overall.totalIndexBuildTime += buildTime;
     this.statistics.overall.estimatedMemoryUsage += totalMemory;
-    
-    console.log('=== 规格索引构建完成 ===');
-    console.log(`总SPU数量: ${spuList.length}`);
-    console.log(`处理的SPU: ${processedSPUCount} 个`);
-    console.log(`跳过的SPU: ${skippedSPUCount} 个（无skuIDs）`);
-    console.log(`总SKU数量: ${totalSKUCount} 个`);
-    console.log(`颜色数量: ${totalColors} 个（平均每颜色 ${avgSPUsPerColor.toFixed(2)} 个SPU）`);
-    console.log(`规格数量: ${totalSpecs} 个（平均每规格 ${avgSPUsPerSpec.toFixed(2)} 个SPU）`);
-    console.log(`组合数量: ${totalCombos} 个（平均每组合 ${avgSPUsPerCombo.toFixed(2)} 个SPU）`);
-    console.log(`构建耗时: ${buildTime}ms`);
-    console.log(`估算内存: ${this.formatBytes(totalMemory)}`);
-    
-    // 输出频率排序列表的统计信息
-    console.log(`\n📊 频率统计（按使用频率降序排序）:`);
-    console.log(`   • 颜色频率列表: ${this.specIndexes.frequencyLists.colors.length} 项`);
-    console.log(`   • 规格频率列表: ${this.specIndexes.frequencyLists.specs.length} 项`);
-    console.log(`   • 组合频率列表: ${this.specIndexes.frequencyLists.combos.length} 项`);
-    
-    // 输出频率最高的前5个颜色（用于调试）
-    if (topColors.length > 0) {
-      const top5Colors = topColors.slice(0, 5)
-        .map(item => `${item.color}(${item.count})`)
-        .join(', ');
-      console.log(`高频颜色 (Top 5): ${top5Colors}`);
-    }
-    
-    // 输出频率最高的前5个规格（用于调试）
-    if (topSpecs.length > 0) {
-      const top5Specs = topSpecs.slice(0, 5)
-        .map(item => `${item.spec}(${item.count})`)
-        .join(', ');
-      console.log(`高频规格 (Top 5): ${top5Specs}`);
-    }
-    
-    // 输出频率最高的前5个组合（用于调试）
-    if (topCombos.length > 0) {
-      const top5Combos = topCombos.slice(0, 5)
-        .map(item => `${item.combo}(${item.count})`)
-        .join(', ');
-      console.log(`高频组合 (Top 5): ${top5Combos}`);
-    }
   }
   
   /**
@@ -1252,50 +1103,46 @@ export class DataPreparationService {
    * // }
    */
   preprocessSPUs(spuList: SPUData[]): import('../types').EnhancedSPUData[] {
-    console.log('=== 开始预处理SPU列表 ===');
     const startTime = Date.now();
-    
+
     // 统计计数器
     let successCount = 0;
     let skippedCount = 0;
     let brandExtractionFailures = 0;
     let modelExtractionFailures = 0;
-    
+
     // 用于统计精简度分布
     const simplicityDistribution = new Map<number, number>();
-    
+
     const enhancedSPUs: import('../types').EnhancedSPUData[] = [];
-    
+
     for (const spu of spuList) {
       // 验证SPU是否有name字段
       if (!spu.name || !spu.name.trim()) {
-        console.warn(`⚠️  SPU ID ${spu.id} 缺少name字段或name为空，跳过预处理`);
         skippedCount++;
         continue;
       }
-      
+
       // 1. 提取品牌
       const extractedBrand = this.extractBrand(spu);
       if (!extractedBrand) {
-        console.warn(`⚠️  SPU "${spu.name}" (ID: ${spu.id}) 品牌提取失败`);
         brandExtractionFailures++;
       }
-      
+
       // 2. 提取型号
       const extractedModel = this.extractModel(spu, extractedBrand);
       if (!extractedModel) {
-        console.warn(`⚠️  SPU "${spu.name}" (ID: ${spu.id}) 型号提取失败`);
         modelExtractionFailures++;
       }
-      
+
       // 3. 标准化型号（用于匹配）
-      const normalizedModel = extractedModel 
+      const normalizedModel = extractedModel
         ? this.normalizeModelForMatching(extractedModel)
         : null;
-      
+
       // 4. 计算精简度
       const simplicity = this.calculateSimplicity(spu, extractedBrand, extractedModel);
-      
+
       // 统计精简度分布
       simplicityDistribution.set(
         simplicity,
@@ -1315,80 +1162,6 @@ export class DataPreparationService {
       enhancedSPUs.push(enhancedSPU);
       successCount++;
     }
-    
-    const endTime = Date.now();
-    const processingTime = endTime - startTime;
-    
-    // 计算统计信息
-    const totalSPUs = spuList.length;
-    const processedSPUs = successCount;
-    const avgProcessingTime = processedSPUs > 0 ? processingTime / processedSPUs : 0;
-    
-    // 计算精简度统计
-    const simplicityValues = Array.from(simplicityDistribution.keys()).sort((a, b) => a - b);
-    const minSimplicity = simplicityValues.length > 0 ? simplicityValues[0] : 0;
-    const maxSimplicity = simplicityValues.length > 0 ? simplicityValues[simplicityValues.length - 1] : 0;
-    const avgSimplicity = processedSPUs > 0
-      ? enhancedSPUs.reduce((sum, spu) => sum + spu.simplicity, 0) / processedSPUs
-      : 0;
-    
-    // 输出统计信息
-    console.log('=== SPU预处理完成 ===');
-    console.log(`总SPU数量: ${totalSPUs}`);
-    console.log(`成功处理: ${successCount} 个SPU (${((successCount / totalSPUs) * 100).toFixed(2)}%)`);
-    console.log(`跳过处理: ${skippedCount} 个SPU (缺少name字段)`);
-    console.log(`品牌提取失败: ${brandExtractionFailures} 个SPU`);
-    console.log(`型号提取失败: ${modelExtractionFailures} 个SPU`);
-    console.log(`处理耗时: ${processingTime}ms`);
-    console.log(`平均每个SPU: ${avgProcessingTime.toFixed(2)}ms`);
-    
-    console.log('\n📊 精简度统计:');
-    console.log(`   • 最小值: ${minSimplicity}`);
-    console.log(`   • 最大值: ${maxSimplicity}`);
-    console.log(`   • 平均值: ${avgSimplicity.toFixed(2)}`);
-    
-    // 输出精简度分布（前10个最常见的值）
-    const topSimplicities = Array.from(simplicityDistribution.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10);
-    
-    if (topSimplicities.length > 0) {
-      console.log('   • 分布 (Top 10):');
-      topSimplicities.forEach(([simplicity, count], index) => {
-        console.log(`     ${index + 1}. 精简度=${simplicity}: ${count} 个SPU`);
-      });
-    }
-    
-    // 输出示例（前3个增强的SPU）
-    if (enhancedSPUs.length > 0) {
-      console.log('\n📝 预处理示例 (前3个):');
-      enhancedSPUs.slice(0, 3).forEach((spu, index) => {
-        console.log(`   ${index + 1}. ${spu.name}`);
-        console.log(`      • 品牌: ${spu.extractedBrand || 'null'}`);
-        console.log(`      • 型号: ${spu.extractedModel || 'null'}`);
-        console.log(`      • 标准化型号: ${spu.normalizedModel || 'null'}`);
-        console.log(`      • 精简度: ${spu.simplicity}`);
-      });
-    }
-    
-    // 性能警告
-    if (processingTime > 5000) {
-      console.warn(`⚠️  预处理耗时 ${processingTime}ms 超过5秒，可能影响启动速度`);
-    }
-    
-    // 质量警告
-    const brandFailureRate = totalSPUs > 0 ? (brandExtractionFailures / totalSPUs) * 100 : 0;
-    const modelFailureRate = totalSPUs > 0 ? (modelExtractionFailures / totalSPUs) * 100 : 0;
-    
-    if (brandFailureRate > 5) {
-      console.warn(`⚠️  品牌提取失败率 ${brandFailureRate.toFixed(2)}% 较高，建议检查品牌库`);
-    }
-    
-    if (modelFailureRate > 10) {
-      console.warn(`⚠️  型号提取失败率 ${modelFailureRate.toFixed(2)}% 较高，建议检查提取逻辑`);
-    }
-    
-    console.log('\n' + '═'.repeat(60) + '\n');
     
     return enhancedSPUs;
   }

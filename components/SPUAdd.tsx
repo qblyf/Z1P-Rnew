@@ -4,6 +4,7 @@ import { Button, DatePicker, Form, Input, Select } from 'antd';
 import { useState, useMemo, useEffect } from 'react';
 import update from 'immutability-helper';
 import pinyin from 'tiny-pinyin';
+import _ from 'lodash';
 import { UploadFile } from 'antd/lib/upload/interface';
 import dayjs from 'dayjs';
 
@@ -55,6 +56,10 @@ export default function SPUAdd() {
     throw new Error('因外层组件处理, 所以不该到达此处');
   }
 
+  useEffect(() => {
+    init();
+  }, []);
+
   const init = async () => {
     const nextOrder = await nextSpuOrder({ auth: token });
     setOrder(String(nextOrder));
@@ -71,11 +76,6 @@ export default function SPUAdd() {
       keywords: [],
     });
   };
-
-  useEffect(() => {
-    init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const similarSpuName = useMemo(() => {
     const s = pinyin
@@ -108,12 +108,12 @@ export default function SPUAdd() {
     return <>请在商品分类中选择到要新增SPU的最末级分类</>;
   }
 
-  const isLast = spuCateList.every((v: { pid: number }) => v.pid !== spuCateID);
+  const isLast = spuCateList.every(v => v.pid !== spuCateID);
   if (!isLast) {
     return <>请在商品分类中选择到要新增SPU的最末级分类</>;
   }
 
-  const spuCate = spuCateList.find((v: { id: number }) => v.id === spuCateID);
+  const spuCate = spuCateList.find(v => v.id === spuCateID);
   if (!spuCate) {
     return <>没有找到 spuCate</>;
   }
@@ -349,8 +349,7 @@ export default function SPUAdd() {
                 generation: input.generation,
                 order: Number(order),
               };
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              setSpuList(update(spuList, { $push: [newSpu as any] }) as any);
+              setSpuList(update(spuList as any, { $push: [newSpu] }) as any);
             })}
           >
             提交修改

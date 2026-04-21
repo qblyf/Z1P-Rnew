@@ -98,20 +98,8 @@ export class DebugTools {
     this.currentDebugInfo.performance.stepDurations[step.name] = step.duration;
 
     if (this.config.logToConsole) {
-      const icon = step.success ? '✅' : '❌';
-      console.log(`${icon} ${step.name} (${step.duration.toFixed(2)}ms)`);
-      
-      if (this.config.verbose) {
-        console.log('  输入:', step.input);
-        console.log('  输出:', step.output);
-      }
-      
       if (step.error) {
         console.error('  错误:', step.error);
-      }
-      
-      if (step.warnings && step.warnings.length > 0) {
-        console.warn('  警告:', step.warnings);
       }
     }
   }
@@ -400,18 +388,7 @@ export class DebugTools {
   }
 
   private printSummary(debugInfo: MatchDebugInfo): void {
-    console.log('');
-    console.log('📋 调试摘要:');
-    console.log(`  状态: ${this.getStatusEmoji(debugInfo.result.status)} ${debugInfo.result.status}`);
-    console.log(`  总耗时: ${debugInfo.performance.totalDuration.toFixed(2)}ms`);
-    console.log(`  步骤数: ${debugInfo.steps.length}`);
-    
-    if (debugInfo.issues.length > 0) {
-      console.log('  问题:');
-      debugInfo.issues.forEach(issue => {
-        console.log(`    - ${issue}`);
-      });
-    }
+    // Debug summary removed for production
   }
 
   private getStatusEmoji(status: string): string {

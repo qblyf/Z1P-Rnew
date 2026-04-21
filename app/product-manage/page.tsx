@@ -14,7 +14,7 @@ export default async function () {
   // 利用 Next.js 的缓存特性，缓存 OSS 临时凭证
   // 凭证有效期为 1200 秒（20 分钟），与 revalidate 时间一致
   let ossCredentials = null;
-  
+
   // 只有在配置了 OSS 凭证时才生成临时凭证
   if (accessKeyId && accessKeySecret && roleArn) {
     ossCredentials = await fetch(`${Z1P_ENDPOINT}/test`, {

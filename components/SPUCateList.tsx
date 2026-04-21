@@ -94,7 +94,7 @@ const SPUCateList = memo(function SPUCateList(props: {
     
     // 找出所有匹配的项
     const matchedIds = new Set<number>();
-    originalData.forEach((v: { id: number; name: string }) => {
+    originalData.forEach(v => {
       if (v.name.replaceAll(/\s/g, '').toLowerCase().includes(s)) {
         matchedIds.add(v.id);
       }
@@ -103,15 +103,15 @@ const SPUCateList = memo(function SPUCateList(props: {
     // 找出所有匹配项的祖先
     const ancestorIds = new Set<number>();
     matchedIds.forEach(id => {
-      let current = originalData.find((v: { id: number }) => v.id === id);
+      let current = originalData.find(v => v.id === id);
       while (current && current.pid !== 0) {
         ancestorIds.add(current.pid);
-        current = originalData.find((v: { id: number }) => v.id === current?.pid);
+        current = originalData.find(v => v.id === current!.pid);
       }
     });
     
     // 返回匹配项和祖先项
-    return originalData.filter((v: { id: number }) => matchedIds.has(v.id) || ancestorIds.has(v.id));
+    return originalData.filter(v => matchedIds.has(v.id) || ancestorIds.has(v.id));
   }, [originalData, search]);
 
   const treeData: TreeProps['treeData'] = useMemo(() => {

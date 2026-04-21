@@ -3,6 +3,7 @@ import { Button, Form, Input, Row, Select, Switch } from 'antd';
 import { useEffect, useState } from 'react';
 import pinyin from 'tiny-pinyin';
 import update from 'immutability-helper';
+import _ from 'lodash';
 import { UploadFile } from 'antd/lib/upload/interface';
 
 import { getAllPids, validateGTIN } from './SKUManager';
@@ -225,13 +226,13 @@ export function SKUAdd(props: {
             if (image) {
               rest.thumbnail = image.url || '';
             }
-            
+
             // 验证官网价格式
             const priceNum = Number(listPrice);
             if (listPrice && (isNaN(priceNum) || priceNum < 0)) {
               throw new Error('官网价格式无效，请输入有效的数字');
             }
-            
+
             const skuID = await appendSKUInfo(
               { spuID: spu.spuID, ...selected },
               {

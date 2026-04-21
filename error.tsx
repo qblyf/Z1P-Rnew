@@ -20,14 +20,14 @@ const MESSAGE_MERGE_WINDOW = 2000; // 2秒内的相同消息会被合并
  */
 function showMergedSuccessMessage(content: string, key: string) {
   const existing = messageCounter.get(content);
-  
+
   if (existing) {
     // 已有相同消息，增加计数
     existing.count++;
     if (existing.timer) {
       clearTimeout(existing.timer);
     }
-    
+
     // 更新消息显示
     notification.success({
       message: existing.count > 1 ? `${content} ×${existing.count}` : content,
@@ -45,7 +45,7 @@ function showMergedSuccessMessage(content: string, key: string) {
       message: content,
       key: content,
     });
-    
+
     // 设置清理定时器
     const timer = setTimeout(() => {
       messageCounter.delete(content);
@@ -231,11 +231,11 @@ export function getAwait<
     showSuccess?: boolean;
   } = {}
 ) {
-  const loadingKey = 'get-await-loading';
   return async (...rest: Parameters<T>): Promise<void> => {
     /** 是否已超时 */
     let stop = false;
-    notification.info({ message: '正在处理请求, 请稍等.', key: loadingKey });
+    const key = Math.random().toString();
+    notification.info({ message: '正在处理请求, 请稍等.', key });
 
     try {
       const data = await Promise.race([
@@ -247,7 +247,7 @@ export function getAwait<
           }, timeoutThreshold);
         }),
       ]);
-      notification.destroy(loadingKey);
+      notification.destroy(key);
       if (showSuccess) {
         notification.success({ message: '请求处理成功.' });
       }
@@ -255,7 +255,7 @@ export function getAwait<
         finallyCallback(undefined, data);
       }
     } catch (err) {
-      notification.destroy(loadingKey);
+      notification.destroy(key);
       let errorMsg = '';
       if (stop) {
         errorMsg = '请求处理超时, 可以重试.';
@@ -301,11 +301,11 @@ export function lessAwait<
     showSuccess?: boolean;
   } = {}
 ) {
-  const loadingKey = 'less-await-loading';
+  const key = Math.random().toString();
   return async (...rest: Parameters<T>): Promise<void> => {
     /** 是否已超时 */
     let stop = false;
-    notification.info({ message: '正在处理请求, 请稍等.', key: loadingKey });
+    notification.info({ message: '正在处理请求, 请稍等.', key });
 
     try {
       const data = await Promise.race([
@@ -317,9 +317,9 @@ export function lessAwait<
           }, timeoutThreshold);
         }),
       ]);
-      notification.destroy(loadingKey); // 先销毁loading消息
+      notification.destroy(key); // 先销毁loading消息
       if (showSuccess) {
-        showMergedSuccessMessage('请求处理成功.', loadingKey);
+        showMergedSuccessMessage('请求处理成功.', key);
       }
       if (typeof finallyCallback === 'function') {
         finallyCallback(undefined, data);
@@ -345,14 +345,14 @@ export function lessAwait<
             {'  '}
             <a
               onClick={() => {
-                notification.destroy(loadingKey);
+                notification.destroy(key);
               }}
             >
               关闭
             </a>
           </>
         ),
-        key: loadingKey,
+        key,
       });
       if (typeof finallyCallback === 'function') {
         finallyCallback(new Error(errorMsg));

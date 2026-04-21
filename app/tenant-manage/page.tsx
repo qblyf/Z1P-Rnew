@@ -50,16 +50,24 @@ export default function TenantManagePage() {
   // 获取用户 token
   const { token } = useTokenContext();
 
+  // 数据加载 - 依赖 token
+  useEffect(() => {
+    loadTenants();
+  }, [token]);
+
   const loadTenants = async () => {
     if (!token) {
-      console.warn('未登录，无法加载账套列表');
       return;
     }
     
     setLoading(true);
     try {
       // 从 SDK API 加载所有账套信息
-      const response = await fetch(`/api/tenants?token=${encodeURIComponent(token)}`);
+      const response = await fetch('/api/tenants', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const result = await response.json();
       
       if (result.success && result.data) {
@@ -74,13 +82,6 @@ export default function TenantManagePage() {
       setLoading(false);
     }
   };
-
-  // 数据加载 - 依赖 token
-  useEffect(() => {
-    loadTenants();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-
   // 处理新增/编辑
   const handleEdit = (tenant?: TenantConfig) => {
     setEditingTenant(tenant || null);

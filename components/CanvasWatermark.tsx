@@ -29,7 +29,6 @@ export function CanvasWatermark({
     const canvasEl = document.createElement('canvas');
     const ctx = canvasEl.getContext('2d');
     if (ctx === null) {
-      console.warn('系统不支持 2d canvas, 无法加载水印');
       return;
     }
 

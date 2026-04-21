@@ -28,9 +28,9 @@ import {
   notification,
   Pagination,
 } from 'antd';
-import { 
-  EditOutlined, 
-  PlusOutlined, 
+import {
+  EditOutlined,
+  PlusOutlined,
   SearchOutlined,
   TagsOutlined,
   EyeOutlined,
@@ -96,13 +96,13 @@ function DraggableBrandCard({ brand, index, moveCard, onEdit }: DraggableBrandCa
   const [{ handlerId }, drop] = useDrop<
     { index: number },
     void,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    { handlerId: any }
+    { handlerId: number | undefined }
   >({
     accept: ItemTypes.BRAND_CARD,
     collect(monitor) {
+      const id = monitor.getHandlerId();
       return {
-        handlerId: monitor.getHandlerId(),
+        handlerId: typeof id === 'number' ? id : undefined,
       };
     },
     hover(item: { index: number }, monitor) {
@@ -119,7 +119,7 @@ function DraggableBrandCard({ brand, index, moveCard, onEdit }: DraggableBrandCa
       const hoverBoundingRect = ref.current?.getBoundingClientRect();
       const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
       const clientOffset = monitor.getClientOffset();
-      const hoverClientY = (clientOffset?.y ?? 0) - hoverBoundingRect.top;
+      const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
 
       if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
         return;
@@ -254,8 +254,8 @@ function BrandManage() {
     if (!localBrands) return [];
     if (!search) return localBrands;
     const s = search.toLowerCase();
-    return localBrands.filter(b => 
-      b.name.toLowerCase().includes(s) || 
+    return localBrands.filter(b =>
+      b.name.toLowerCase().includes(s) ||
       (b.spell && b.spell.toLowerCase().includes(s))
     );
   }, [localBrands, search]);
@@ -272,8 +272,8 @@ function BrandManage() {
     if (!localBrands) return { total: 0, visible: 0, hidden: 0 };
     return {
       total: localBrands.length,
-      visible: localBrands.filter(b => (b as { display?: boolean }).display !== false).length,
-      hidden: localBrands.filter(b => (b as { display?: boolean }).display === false).length,
+      visible: localBrands.filter(b => (b as unknown as { display?: boolean }).display !== false).length,
+      hidden: localBrands.filter(b => (b as unknown as { display?: boolean }).display === false).length,
     };
   }, [localBrands]);
 
@@ -307,17 +307,17 @@ function BrandManage() {
       const draggedItem = newBrands[dragIndex];
       newBrands.splice(dragIndex, 1);
       newBrands.splice(hoverIndex, 0, draggedItem);
-      
+
       // 重新计算order（降序，最大值在前）
       const maxOrder = 999;
       const step = maxOrder / newBrands.length;
       newBrands.forEach((brand, index) => {
         brand.order = Math.round(maxOrder - index * step);
       });
-      
+
       return newBrands;
     });
-    
+
     setHasChanges(true);
   }, []);
 
@@ -326,7 +326,7 @@ function BrandManage() {
     if (!token) return;
     try {
       setSaving(true);
-      
+
       // 找出有变更的项
       const changedBrands = localBrands.filter((brand) => {
         const original = originalBrands.find((o) => o.name === brand.name);
@@ -390,10 +390,10 @@ function BrandManage() {
       {/* 统计卡片 */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={8}>
-          <Card 
-            size="small" 
-            style={{ 
-              borderRadius: 12, 
+          <Card
+            size="small"
+            style={{
+              borderRadius: 12,
               border: 'none',
               boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
             }}
@@ -405,10 +405,10 @@ function BrandManage() {
                   {stats.total}
                 </Title>
               </div>
-              <div style={{ 
-                width: 48, 
-                height: 48, 
-                borderRadius: 12, 
+              <div style={{
+                width: 48,
+                height: 48,
+                borderRadius: 12,
                 backgroundColor: '#e6f7ff',
                 display: 'flex',
                 alignItems: 'center',
@@ -420,10 +420,10 @@ function BrandManage() {
           </Card>
         </Col>
         <Col xs={24} sm={8}>
-          <Card 
-            size="small" 
-            style={{ 
-              borderRadius: 12, 
+          <Card
+            size="small"
+            style={{
+              borderRadius: 12,
               border: 'none',
               boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
             }}
@@ -435,10 +435,10 @@ function BrandManage() {
                   {stats.visible}
                 </Title>
               </div>
-              <div style={{ 
-                width: 48, 
-                height: 48, 
-                borderRadius: 12, 
+              <div style={{
+                width: 48,
+                height: 48,
+                borderRadius: 12,
                 backgroundColor: '#f6ffed',
                 display: 'flex',
                 alignItems: 'center',
@@ -450,10 +450,10 @@ function BrandManage() {
           </Card>
         </Col>
         <Col xs={24} sm={8}>
-          <Card 
-            size="small" 
-            style={{ 
-              borderRadius: 12, 
+          <Card
+            size="small"
+            style={{
+              borderRadius: 12,
               border: 'none',
               boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
             }}
@@ -465,10 +465,10 @@ function BrandManage() {
                   {stats.hidden}
                 </Title>
               </div>
-              <div style={{ 
-                width: 48, 
-                height: 48, 
-                borderRadius: 12, 
+              <div style={{
+                width: 48,
+                height: 48,
+                borderRadius: 12,
                 backgroundColor: '#fffbe6',
                 display: 'flex',
                 alignItems: 'center',
@@ -482,9 +482,9 @@ function BrandManage() {
       </Row>
 
       {/* 主内容卡片 */}
-      <Card 
-        style={{ 
-          borderRadius: 12, 
+      <Card
+        style={{
+          borderRadius: 12,
           border: 'none',
           boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
         }}
@@ -514,9 +514,9 @@ function BrandManage() {
                   保存排序
                 </Button>
               )}
-              <Button 
-                type="primary" 
-                icon={<PlusOutlined />} 
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
                 onClick={handleAdd}
                 style={{ borderRadius: 8 }}
               >
@@ -533,12 +533,12 @@ function BrandManage() {
               <Row gutter={[12, 12]}>
                 {paginatedBrands.map((brand, index) => {
                   return (
-                    <Col 
-                      key={brand.name} 
-                      xs={12} 
-                      sm={8} 
-                      md={6} 
-                      lg={4} 
+                    <Col
+                      key={brand.name}
+                      xs={12}
+                      sm={8}
+                      md={6}
+                      lg={4}
                       xl={3}
                       xxl={2}
                     >
@@ -554,10 +554,10 @@ function BrandManage() {
               </Row>
 
               {/* 分页 */}
-              <div style={{ 
-                marginTop: 24, 
-                display: 'flex', 
-                justifyContent: 'center' 
+              <div style={{
+                marginTop: 24,
+                display: 'flex',
+                justifyContent: 'center'
               }}>
                 <Pagination
                   current={currentPage}
@@ -570,15 +570,15 @@ function BrandManage() {
                   showSizeChanger
                   showQuickJumper
                   pageSizeOptions={[60, 120, 180, 240]}
-                  showTotal={(total, range) => 
+                  showTotal={(total, range) =>
                     `第 ${range[0]}-${range[1]} 个，共 ${total} 个品牌`
                   }
                 />
               </div>
             </>
           ) : (
-            <Empty 
-              description="没有找到匹配的品牌" 
+            <Empty
+              description="没有找到匹配的品牌"
               style={{ padding: '60px 0' }}
             />
           )
@@ -638,7 +638,7 @@ function BrandEdit(props: { name: string; onSuccess?: () => void }) {
       setPreData(info);
     };
     setInput({});
-    lessAwait(fn, { showSuccess: false })();
+    lessAwait(fn)();
   }, [name]);
 
   const { token } = useTokenContext();
@@ -657,19 +657,19 @@ function BrandEdit(props: { name: string; onSuccess?: () => void }) {
 
   return (
     <Form layout="vertical" style={{ marginTop: 8 }}>
-      <Form.Item 
-        label="品牌名称" 
+      <Form.Item
+        label="品牌名称"
         tooltip="修改品牌名称后，系统中所有引用该品牌的地方都会更新"
       >
-        <Input 
-          value={input.name ?? preData.name} 
+        <Input
+          value={input.name ?? preData.name}
           onChange={e => {
             setInput(update(input, { name: { $set: e.target.value } }));
           }}
           placeholder="输入品牌名称"
-          style={{ 
+          style={{
             borderRadius: 8,
-          }} 
+          }}
         />
       </Form.Item>
 
@@ -708,8 +708,8 @@ function BrandEdit(props: { name: string; onSuccess?: () => void }) {
         {(input.color || preData.color) && (
           <div style={{ marginTop: 12 }}>
             <Text type="secondary" style={{ fontSize: 12, marginRight: 8 }}>预览：</Text>
-            <Tag 
-              color={input.color ?? preData.color} 
+            <Tag
+              color={input.color ?? preData.color}
               style={{ borderRadius: 6, padding: '2px 12px' }}
             >
               {name}
@@ -797,9 +797,9 @@ function BrandAdd(props: { onSuccess?: () => void }) {
 
   return (
     <Form layout="vertical" style={{ marginTop: 8 }}>
-      <Form.Item 
-        label="品牌名称" 
-        required 
+      <Form.Item
+        label="品牌名称"
+        required
         tooltip="品牌的唯一标识名称"
       >
         <Input
@@ -847,8 +847,8 @@ function BrandAdd(props: { onSuccess?: () => void }) {
         {input.color && (
           <div style={{ marginTop: 12 }}>
             <Text type="secondary" style={{ fontSize: 12, marginRight: 8 }}>预览：</Text>
-            <Tag 
-              color={input.color} 
+            <Tag
+              color={input.color}
               style={{ borderRadius: 6, padding: '2px 12px' }}
             >
               {input.name || '品牌名称'}
@@ -1073,12 +1073,12 @@ function SpecManage({ specName, title }: SpecManageProps) {
 
       // 统计每个规格值的使用次数
       const counts = new Map<string, number>();
-      
+
       for (const spu of spuList) {
         if (spu.skuIDs && Array.isArray(spu.skuIDs)) {
           for (const sku of spu.skuIDs) {
             let specValue: string | undefined;
-            
+
             // 根据规格类型获取对应的字段
             if (specName === SpecName.组合 && 'combo' in sku) {
               specValue = sku.combo;
@@ -1087,14 +1087,14 @@ function SpecManage({ specName, title }: SpecManageProps) {
             } else if (specName === SpecName.颜色 && 'color' in sku) {
               specValue = sku.color;
             }
-            
+
             if (specValue) {
               counts.set(specValue, (counts.get(specValue) || 0) + 1);
             }
           }
         }
       }
-      
+
       return counts;
     } catch (error) {
       console.error('加载使用次数失败:', error);
@@ -1114,7 +1114,7 @@ function SpecManage({ specName, title }: SpecManageProps) {
       typeSpecs.sort((a, b) => b.sortWeight - a.sortWeight);
       setSpecs(typeSpecs);
       setFilteredSpecs(typeSpecs);
-      
+
       // 加载使用次数
       const counts = await loadUsageCounts();
       setUsageCounts(counts);
@@ -1719,8 +1719,7 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; s
   const [loading, setLoading] = useState(false);
   const [labelInput, setLabelInput] = useState('');
   const [activeTab, setActiveTab] = useState('basic');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [spuList, setSpuList] = useState<any[]>([]);
+  const [spuList, setSpuList] = useState<Array<{ id: number; name: string; skuIDs?: Array<{ combo?: string; spec?: string; color?: string }> }>>([]);
   const [spuLoading, setSpuLoading] = useState(false);
 
   const { token } = useTokenContext();
@@ -1736,7 +1735,7 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; s
       }
     };
     setInput({});
-    lessAwait(fn, { showSuccess: false })();
+    lessAwait(fn)();
   }, [zid, token]);
 
   // 加载使用该规格的SPU列表
@@ -1760,10 +1759,10 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; s
       // 筛选包含该规格值的SPU
       const filteredSpus = allSpus.filter((spu) => {
         if (!spu.skuIDs || !Array.isArray(spu.skuIDs)) return false;
-        
-        return spu.skuIDs.some((sku) => {
+
+        return spu.skuIDs.some((sku: { combo?: string; spec?: string; color?: string }) => {
           let specValue: string | undefined;
-          
+
           // 根据规格类型获取对应的字段
           if (specName === SpecName.组合 && 'combo' in sku) {
             specValue = sku.combo;
@@ -1772,7 +1771,7 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; s
           } else if (specName === SpecName.颜色 && 'color' in sku) {
             specValue = sku.color;
           }
-          
+
           return specValue === preData.value;
         });
       });
@@ -1936,8 +1935,8 @@ function SpecEdit(props: { zid: string; title: string; onSuccess?: () => void; s
               <div style={{ marginBottom: 16, color: '#666', fontSize: 14 }}>
                 共有 <Text strong style={{ color: '#1890ff' }}>{spuList.length}</Text> 个SPU使用了该{title}
               </div>
-              <div style={{ 
-                maxHeight: '500px', 
+              <div style={{
+                maxHeight: '500px',
                 overflowY: 'auto',
                 border: '1px solid #f0f0f0',
                 borderRadius: 8,
@@ -2131,7 +2130,7 @@ export default function () {
 function ClientPage() {
   // 注册页面标签页
   usePageTab('基础数据管理');
-  
+
   const items: TabsProps['items'] = [
     {
       label: (
@@ -2185,10 +2184,10 @@ function ClientPage() {
         <Head>
           <title>基础数据管理</title>
         </Head>
-        <Tabs 
-          defaultActiveKey="brand" 
+        <Tabs
+          defaultActiveKey="brand"
           items={items}
-          style={{ 
+          style={{
             backgroundColor: '#fff',
             padding: '0 16px',
           }}

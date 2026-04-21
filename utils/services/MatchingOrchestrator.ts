@@ -103,21 +103,15 @@ export class MatchingOrchestrator {
    * @param spuList SPU列表
    */
   async initialize(brandList: BrandData[], spuList: SPUData[]): Promise<void> {
-    console.log('🚀 初始化 MatchingOrchestrator...');
-
     try {
       // 初始化信息提取器
       this.infoExtractor.setBrandList(brandList);
 
       // 加载SKU数据并构建索引
-      console.log('📦 加载SKU数据...');
       await this.loadSkuData();
       this.buildSkuIndex();
-      console.log(`✅ SKU索引构建完成: ${this.skuIndex.all.length} 个SKU, ${this.skuIndex.byBrand.size} 个品牌`);
 
       this.isInitialized = true;
-
-      console.log('✅ MatchingOrchestrator 初始化完成');
     } catch (error) {
       console.error('❌ MatchingOrchestrator 初始化失败:', error);
       throw error;
@@ -163,8 +157,6 @@ export class MatchingOrchestrator {
       }
     }
 
-    console.log(`  已加载 ${this.spuMap.size} 个SPU用于品牌映射`);
-
     // 批量加载SKU
     while (hasMore) {
       const skuList = await getSKUList(
@@ -200,14 +192,10 @@ export class MatchingOrchestrator {
         offset += batchSize;
       }
 
-      if (allSkuList.length % 10000 === 0 || skuList.length < batchSize) {
-        console.log(`  已加载 ${allSkuList.length} 个有效SKU...`);
-      }
     }
 
     // 过滤有品牌的SKU
     this.skuList = allSkuList.filter(s => s.brand);
-    console.log(`  SKU数据加载完成: ${this.skuList.length} 个有效SKU (从 ${totalLoaded} 个总SKU)`);
   }
 
   /**
@@ -490,8 +478,6 @@ export class MatchingOrchestrator {
     const startTime = Date.now();
 
     try {
-      console.log(`\n[匹配流程] 开始SKU直接匹配: "${input}"`);
-
       // 1. 使用SKU直接匹配
       const skuMatchResult = this.matchSkuDirect(input);
 
@@ -507,9 +493,6 @@ export class MatchingOrchestrator {
         matchedSku = skuMatchResult.match.name;
         matchedSpu = skuMatchResult.match.spuName;
         extractedBrand = skuMatchResult.match.brand;
-        console.log(`[SKU直接匹配] 结果: ${matchedSku}, SPU: ${matchedSpu}, 分数: ${(similarity * 100).toFixed(1)}%`);
-      } else {
-        console.log(`[SKU直接匹配] 未找到匹配`);
       }
 
       // 2. 提取信息（用于显示）
@@ -551,7 +534,6 @@ export class MatchingOrchestrator {
       };
 
       const duration = Date.now() - startTime;
-      console.log(`[匹配完成] 状态: ${result.status}, 耗时: ${duration}ms\n`);
 
       return result;
     } catch (error) {
@@ -579,8 +561,6 @@ export class MatchingOrchestrator {
 
     const startTime = Date.now();
 
-    console.log(`\n[批量匹配] 开始处理 ${inputs.length} 条记录（并发数: ${concurrency}）...`);
-
     const results: (MatchResult | null)[] = new Array(inputs.length);
     let matched = 0;
     let spuMatched = 0;
@@ -600,7 +580,6 @@ export class MatchingOrchestrator {
           const result = await this.match(input);
           return { index: globalIndex, result, error: null };
         } catch (error) {
-          console.error(`[错误] 处理第 ${globalIndex + 1} 条记录失败:`, error);
           return { index: globalIndex, result: null, error };
         }
       });
@@ -631,20 +610,10 @@ export class MatchingOrchestrator {
           onProgress(processedCount, inputs.length, inputs[index], result);
         }
       }
-
-      console.log(`[进度] 已处理 ${processedCount}/${inputs.length} 条记录`);
     }
 
     const duration = Date.now() - startTime;
     const matchRate = inputs.length > 0 ? (matched / inputs.length) * 100 : 0;
-
-    console.log(`\n[批量匹配完成]`);
-    console.log(`  总数: ${inputs.length}`);
-    console.log(`  完全匹配: ${matched}`);
-    console.log(`  SPU匹配: ${spuMatched}`);
-    console.log(`  未匹配: ${unmatched}`);
-    console.log(`  匹配率: ${matchRate.toFixed(2)}%`);
-    console.log(`  耗时: ${duration}ms`);
 
     return {
       results,

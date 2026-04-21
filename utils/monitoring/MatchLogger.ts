@@ -298,10 +298,8 @@ export class MatchLogger {
         console.debug(message, log);
         break;
       case 'INFO':
-        console.info(message);
         break;
       case 'WARN':
-        console.warn(message);
         break;
       case 'ERROR':
         console.error(message, log.error);

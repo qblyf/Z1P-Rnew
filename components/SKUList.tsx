@@ -1,12 +1,13 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { SkuID, SKUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
-import { Alert, Col, Row, Table, Tag, Input, Button, Spin } from 'antd';
+import { Alert, Col, Row, Table, Tag, Input, Button, Spin, Empty } from 'antd';
 import { BarcodeOutlined } from '@ant-design/icons';
 import { getSKUList, getSKUsInfo } from '@zsqk/z1-sdk/es/z1p/product';
 import { useBrandListContext } from '../datahooks/brand';
 import { useSpuIDContext, useSpuListContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
 import { lessAwait } from '../error';
+import { Z1P_ENDPOINT } from '../constants';
 import { notification } from 'antd';
 
 /**
@@ -25,14 +26,13 @@ export default function SKUList(props: {
   const { token } = useTokenContext();
   const { brandList } = useBrandListContext();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [skuList, setSkuList] = useState<any[]>([]);
+  const [skuList, setSkuList] = useState<{ skuID: number; name: string; state: number; spuID: number; brand: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedSkuID, setSelectedSkuID] = useState<SkuID | undefined>();
   const [skuDetails, setSkuDetails] = useState<Map<number, { gtins: string[], listPrice: number }>>(new Map());
   const [loadingSkuIDs, setLoadingSkuIDs] = useState<Set<number>>(new Set());
-  
+
   const el = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(100);
 
@@ -71,35 +71,38 @@ export default function SKUList(props: {
         }
 
         // 构建查询参数
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const queryParams: any = {
+        const queryParams = {
           limit: limit,
           offset: 0,
-          orderBy: [{ key: 'id', sort: 'DESC' }],
+          orderBy: [{ key: 'id' as const, sort: 'DESC' as const }],
           states: [SKUState.在用],
           spuIDs: spuIDs,
         };
 
         // 使用 getSKUList API 获取 SKU 数据
         const skus = await getSKUList(
-          queryParams,
+          queryParams as any,
           ['id', 'name', 'state', 'spuID']
         );
 
         // 转换数据格式
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const formattedSkus = skus.map((sku: any) => ({
+        const formattedSkus = skus.map((sku) => ({
           skuID: sku.id,
           name: sku.name,
-          state: sku.state,
+          state: sku.state as unknown as number,
           spuID: sku.spuID,
           brand: '',
         }));
 
         setSkuList(formattedSkus);
         setSelectedSkuID(undefined);
+
+        // 不再自动加载所有SKU详情，改为按需加载
       } catch (err) {
-        console.error('获取 SKU 列表失败:', err);
+        console.error('✗ 获取 SKU 列表失败');
+        console.error('错误详情:', {
+          message: err instanceof Error ? err.message : String(err),
+        });
       } finally {
         setLoading(false);
       }
@@ -131,7 +134,7 @@ export default function SKUList(props: {
         });
       }
     } catch (err) {
-      console.error('加载 SKU 详情失败:', skuID, err);
+      console.error('✗ 加载 SKU 详情失败:', skuID, err);
     } finally {
       // 移除加载标记
       setLoadingSkuIDs(prev => {
@@ -152,6 +155,7 @@ export default function SKUList(props: {
         : gtins.join(', ');
       notification.success({ message: `69码已复制到剪贴板: ${gtinDisplay}` });
     } catch (err) {
+      console.error('复制失败:', err);
       notification.error({ message: '复制失败，请手动复制' });
     }
   };
@@ -214,6 +218,7 @@ export default function SKUList(props: {
         dataSource={skuListFiltered}
         loading={loading}
         showHeader={false}
+        locale={{ emptyText: <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
         onRow={(record) => {
           return {
             onClick: () => {
@@ -247,7 +252,7 @@ export default function SKUList(props: {
             render: (_v, v) => {
               const detail = skuDetails.get(v.skuID);
               const isLoading = loadingSkuIDs.has(v.skuID);
-              
+
               // 显示加载中
               if (isLoading) {
                 return (
@@ -256,17 +261,17 @@ export default function SKUList(props: {
                   </div>
                 );
               }
-              
+
               // 已加载且有数据
               if (detail && detail.gtins.length > 0) {
                 const gtinsText = detail.gtins.join('\n');
-                
+
                 return (
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <Tag
                       icon={<BarcodeOutlined />}
                       color="blue"
-                      style={{ 
+                      style={{
                         margin: 0,
                         cursor: 'pointer',
                         fontSize: '14px',
@@ -287,19 +292,19 @@ export default function SKUList(props: {
                   </div>
                 );
               }
-              
+
               // 未加载，显示图标，鼠标悬停时加载
               return (
-                <div 
+                <div
                   style={{ display: 'flex', justifyContent: 'flex-end' }}
                   onMouseEnter={() => loadSingleSkuDetail(v.skuID)}
                 >
-                  <BarcodeOutlined 
-                    style={{ 
+                  <BarcodeOutlined
+                    style={{
                       color: '#d9d9d9',
                       fontSize: '16px',
                       cursor: 'pointer',
-                    }} 
+                    }}
                   />
                 </div>
               );
@@ -312,7 +317,7 @@ export default function SKUList(props: {
             render: (_v, v) => {
               const detail = skuDetails.get(v.skuID);
               const isLoading = loadingSkuIDs.has(v.skuID);
-              
+
               if (isLoading) {
                 return <Spin size="small" />;
               }

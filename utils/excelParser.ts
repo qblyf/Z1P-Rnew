@@ -7,7 +7,7 @@
  * - 提取品牌、型号、容量、颜色等信息
  */
 
-import { read, utils, WorkBook } from 'xlsx';
+import * as XLSX from 'xlsx';
 
 /**
  * Excel 行数据接口（通用）
@@ -56,12 +56,12 @@ export async function parseExcelGeneric(
   options: ExcelParseOptions
 ): Promise<ExcelRowData[]> {
   const arrayBuffer = await file.arrayBuffer();
-  const workbook = read(arrayBuffer, { type: 'array' });
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
 
-  const jsonData = utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+  const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
 
   if (jsonData.length < 2) {
     throw new Error('Excel 文件数据少于2行，请检查文件格式');
@@ -87,7 +87,6 @@ export async function parseExcelGeneric(
     });
   }
 
-  console.log(`[Excel解析] 成功解析 ${results.length} 行数据`);
   return results;
 }
 
@@ -98,12 +97,12 @@ export async function parseExcelGeneric(
  */
 export async function previewExcel(file: File): Promise<{ headers: string[]; firstRow: string[] }> {
   const arrayBuffer = await file.arrayBuffer();
-  const workbook = read(arrayBuffer, { type: 'array' });
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
 
-  const jsonData = utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+  const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
 
   if (jsonData.length < 2) {
     throw new Error('Excel 文件数据少于2行，请检查文件格式');
@@ -166,13 +165,13 @@ const BRAND_PATTERNS: { pattern: RegExp; brand: string }[] = [
  * @returns 解析后的行数据数组
  */
 export async function parseExcelFile(file: File | ArrayBuffer): Promise<LegacyExcelRowData[]> {
-  let workbook: WorkBook;
+  let workbook: XLSX.WorkBook;
 
   if (file instanceof File) {
     const arrayBuffer = await file.arrayBuffer();
-    workbook = read(arrayBuffer, { type: 'array' });
+    workbook = XLSX.read(arrayBuffer, { type: 'array' });
   } else {
-    workbook = read(file, { type: 'array' });
+    workbook = XLSX.read(file, { type: 'array' });
   }
 
   const sheetName = workbook.SheetNames[0];
@@ -180,7 +179,7 @@ export async function parseExcelFile(file: File | ArrayBuffer): Promise<LegacyEx
 
   // 转换为 JSON 格式
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const jsonData = utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+  const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
 
   if (jsonData.length < 2) {
     throw new Error('Excel 文件数据少于2行，请检查文件格式');
@@ -221,7 +220,6 @@ export async function parseExcelFile(file: File | ArrayBuffer): Promise<LegacyEx
     });
   }
 
-  console.log(`[Excel解析] 成功解析 ${results.length} 行数据`);
   return results;
 }
 
@@ -340,7 +338,6 @@ export function convertToSystemFormat(skuName: string): string {
     result = remaining;
   }
 
-  console.log(`[Excel转换] "${skuName}" -> "${result}"`);
   return result;
 }
 

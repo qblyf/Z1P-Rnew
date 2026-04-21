@@ -67,9 +67,9 @@ function SystemMaintenanceTime(): JSX.Element {
     }
     const res = await getSysSettings({
       auth: token,
+      // @ts-ignore - SDK 类型定义可能不完整，但运行时需要 endpoint
       endpoint: Z1P_ENDPOINT
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    });
     const data = res.map((v, i) => {
       return {
         key: i + 1,

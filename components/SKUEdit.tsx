@@ -7,7 +7,7 @@ import {
 } from '@zsqk/z1-sdk/es/z1p/product';
 import { Button, Col, Form, Input, Row, Space, Tabs } from 'antd';
 import { useEffect, useState } from 'react';
-import { last } from 'lodash';
+import _ from 'lodash';
 import update from 'immutability-helper';
 import pinyin from 'tiny-pinyin';
 import { UploadFile } from 'antd/lib/upload/interface';
@@ -23,7 +23,7 @@ import { validateGTIN } from './SKUManager';
  * [组件] 修改 SKU
  * @author Lian Zheren <lzr@go0356.com>
  */
-export function SKUEdit(props: { 
+export function SKUEdit(props: {
   selectedSkuID: SkuID;
   onNameChange?: (name: string) => void;
 }) {
@@ -55,7 +55,7 @@ export function SKUEdit(props: {
     }
     setImage({
       uid: String(Math.random()).slice(2),
-      name: last(preData.thumbnail.split('/')) || '',
+      name: _.last(preData.thumbnail.split('/')) || '',
       status: 'done',
       url: preData.thumbnail,
     });
@@ -320,10 +320,10 @@ export function SKUEdit(props: {
                         patch.thumbnail = image.url;
                       }
                       await editSKUInfo(selectedSkuID, patch, { auth: token });
-                      
+
                       // 重新获取 SKU 数据以获取最新的名称
                       const updatedSku = await getSKUInfo(selectedSkuID);
-                      
+
                       // 更新前端状态
                       if (updatedSku) {
                         setPreData(updatedSku);
@@ -332,7 +332,7 @@ export function SKUEdit(props: {
                           onNameChange(updatedSku.name);
                         }
                       }
-                      
+
                       // 清空输入状态
                       setInput({});
                     })}

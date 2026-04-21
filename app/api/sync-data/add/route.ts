@@ -34,7 +34,10 @@ export async function POST(request: Request) {
     const data = await res.json();
 
     if (data.errMsg) {
-      throw new Error(`backend code ${data.code}: ${data.errMsg}`);
+      return NextResponse.json(
+        { success: false, error: `backend code ${data.code}: ${data.errMsg}` },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({

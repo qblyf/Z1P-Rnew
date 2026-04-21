@@ -6,21 +6,26 @@ export const dynamic = 'force-dynamic';
 // 直接定义 endpoint，确保在 Vercel 上也能正常工作
 const API_ENDPOINT = process.env.NEXT_PUBLIC_Z1P_ENDPOINT || 'https://p-api.z1.pub';
 
+// 将 SDK 返回的数据转换为统一格式
+function extractTenantID(clientName: string): string {
+  return clientName;
+}
+
 /**
  * GET /api/tenants
  * 从 SDK getSysSettings API 获取所有账套配置信息
- * 
- * 必须提供有效的 token 参数
- * 
+ *
+ * 必须提供有效的 Bearer token
+ *
  * 查询参数：
- * - token: 认证令牌（必需）
  * - debug: 是否输出调试信息（可选，值为 "true" 时启用）
  * - raw: 是否返回原始 SDK 数据（可选，值为 "true" 时返回未处理的数据）
  */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const token = searchParams.get('token');
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.replace(/^Bearer /i, '');
     const debug = searchParams.get('debug') === 'true';
     const raw = searchParams.get('raw') === 'true';
     const test = searchParams.get('test') === 'true';
@@ -56,6 +61,7 @@ export async function GET(request: Request) {
     const endpoint = API_ENDPOINT;
 
     if (!endpoint) {
+      console.error('❌ endpoint 为空');
       return NextResponse.json(
         {
           success: false,
@@ -65,15 +71,11 @@ export async function GET(request: Request) {
         { status: 500 }
       );
     }
-
-    if (debug) {
-      console.log('  - token 前10位:', token.substring(0, 10) + '...');
-    }
-
+    
     // 在 API 路由中也需要初始化 SDK
     const { init } = await import('@zsqk/z1-sdk/es/z1p/util');
     init({ endpoint: endpoint });
-
+    
     const { getSysSettings } = await import('@zsqk/z1-sdk/es/z1p/sys-setting');
 
     const sysSettings = await getSysSettings({
@@ -89,22 +91,11 @@ export async function GET(request: Request) {
         note: '这是未处理的原始 SDK 数据，用于调试'
       });
     }
-
-    if (debug) {
-      console.log('📋 账套详情:', JSON.stringify(sysSettings, null, 2));
-    }
-    
-    // 直接使用 clientName 作为 tenantID
-    const extractTenantID = (clientName: string): string => clientName;
     
     // 将 SDK 返回的数据转换为统一格式
     const tenants = sysSettings.map((setting) => {
       const tenantID = extractTenantID(setting.clientName);
-      
-      if (debug) {
-        console.log(`  - ${setting.clientName} -> ${tenantID} (remarks: ${setting.remarks})`);
-      }
-      
+
       return {
         id: tenantID,
         name: setting.clientName,

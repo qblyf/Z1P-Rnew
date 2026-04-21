@@ -2,12 +2,13 @@
 
 import { SKU } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { getSKUInfo, getSPUInfo, getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
-import { Button, Card, Col, Form, Input, Row, Select, Table, Tag, Space, Divider } from 'antd';
+import { Button, Card, Col, Form, Input, Row, Select, Table, Tag, Space, Divider, notification } from 'antd';
 import Head from 'next/head';
 import { Suspense, useState } from 'react';
 import { Search } from 'lucide-react';
 
 import { SelectBrands } from '../../components/SelectBrands';
+import { PageSkeleton } from '../../components/Skeleton';
 import { formColProps, formItemCol } from '../../constant/formProps';
 import { BrandListProvider } from '../../datahooks/brand';
 import { getAwait } from '../../error';
@@ -86,7 +87,7 @@ function QueryForm(props: {
   };
 
   return (
-    <Card 
+    <Card
       style={{ marginBottom: 16 }}
       styles={{ body: { paddingBottom: 0 } }}
     >
@@ -254,8 +255,7 @@ export default function () {
  * @author Lian Zheren <lzr@go0356.com>
  */
 function ClientPage() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [list, setList] = useState<any[]>();
+  const [list, setList] = useState<Array<{ id: number; name: string; gtins?: string[]; state?: string; brand?: string }>>();
   const [loading, setLoading] = useState(false);
 
   return (
@@ -263,20 +263,20 @@ function ClientPage() {
       <Head>
         <title>SKU 列表</title>
       </Head>
-      
+
       <div style={{ padding: '24px' }}>
         {/* 页面标题 */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ 
-            fontSize: '24px', 
-            fontWeight: 600, 
+          <h1 style={{
+            fontSize: '24px',
+            fontWeight: 600,
             margin: 0,
             marginBottom: '8px'
           }}>
             SKU 列表
           </h1>
-          <p style={{ 
-            color: '#666', 
+          <p style={{
+            color: '#666',
             margin: 0,
             fontSize: '14px'
           }}>
@@ -296,8 +296,7 @@ function ClientPage() {
                 const { skuId, brands, gtinKeyword, nameKeyword, skuState, specKeyword, colorKeyword, comboKeyword } = v;
 
                 // 构建查询参数，确保所有参数都是有效的
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const queryParams: any = {
+                const queryParams: Record<string, unknown> = {
                   limit: 1000,
                   offset: 0,
                   orderBy: [{ key: 'p.id', sort: 'DESC' }],
@@ -311,8 +310,7 @@ function ClientPage() {
                 if (skuState) queryParams.states = [skuState];
 
                 // 从服务器获取数据 - 只请求 API 支持的字段
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                let res: any[];
+                let res: Array<{ id: number; name: string; gtins?: string[]; state?: string; brand?: string }>;
                 if (skuId) {
                   // 精确查找单个 SKU，使用 getSKUInfo
                   const skuInfo = await getSKUInfo(skuId);
@@ -330,54 +328,36 @@ function ClientPage() {
                     { sku: ['id', 'name', 'gtins', 'state'], spu: ['brand'] }
                   );
                 }
-                
+
                 // 前端过滤：根据 spec、color、combo 关键词过滤
                 // 注意：这些字段需要从 SKU 名称中提取或者不支持筛选
                 let filteredRes = res;
-                
+
                 if (specKeyword) {
                   const specLower = specKeyword.toLowerCase();
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  filteredRes = filteredRes.filter((item: any) =>
+                  filteredRes = filteredRes.filter((item) =>
                     item.name && item.name.toLowerCase().includes(specLower)
                   );
                 }
 
                 if (colorKeyword) {
                   const colorLower = colorKeyword.toLowerCase();
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  filteredRes = filteredRes.filter((item: any) =>
+                  filteredRes = filteredRes.filter((item) =>
                     item.name && item.name.toLowerCase().includes(colorLower)
                   );
                 }
 
                 if (comboKeyword) {
                   const comboLower = comboKeyword.toLowerCase();
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  filteredRes = filteredRes.filter((item: any) =>
+                  filteredRes = filteredRes.filter((item) =>
                     item.name && item.name.toLowerCase().includes(comboLower)
                   );
                 }
-                
+
                 // 使用 setList 设置 state 数据
                 setList(filteredRes);
               } catch (err) {
-                console.error('✗ 获取 SKU 列表失败');
-                console.error('错误对象:', err);
-                console.error('错误详情:', {
-                  message: err instanceof Error ? err.message : String(err),
-                  stack: err instanceof Error ? err.stack : undefined,
-                });
-                
-                // 尝试解析错误信息
-                if (err && typeof err === 'object') {
-                  console.error('错误对象的所有属性:', Object.keys(err));
-                  try {
-                    console.error('错误对象完整内容:', JSON.stringify(err, null, 2));
-                  } catch (e) {
-                    console.error('无法序列化错误对象');
-                  }
-                }
+                notification.error({ message: '查询失败，请稍后重试' });
               } finally {
                 setLoading(false);
               }
@@ -388,40 +368,44 @@ function ClientPage() {
 
         {/* 结果表格 */}
         <Card>
-          {list && (
-            <div style={{ marginBottom: 16 }}>
-              <Space>
-                <Tag color="blue">总计: {list.length}</Tag>
-                <Tag color="green">
-                  有效: {list.filter(item => item.state === 'valid').length}
-                </Tag>
-                <Tag color="red">
-                  无效: {list.filter(item => item.state === 'invalid').length}
-                </Tag>
-              </Space>
-            </div>
-          )}
+          {loading ? (
+            <PageSkeleton rows={8} />
+          ) : (
+            <>
+              {list && (
+                <div style={{ marginBottom: 16 }}>
+                  <Space>
+                    <Tag color="blue">总计: {list.length}</Tag>
+                    <Tag color="green">
+                      有效: {list.filter(item => item.state === 'valid').length}
+                    </Tag>
+                    <Tag color="red">
+                      无效: {list.filter(item => item.state === 'invalid').length}
+                    </Tag>
+                  </Space>
+                </div>
+              )}
 
-          <Table
+              <Table
             size="middle"
             rowKey="id"
             dataSource={list}
             loading={loading}
             columns={[
-              { 
-                dataIndex: 'id', 
+              {
+                dataIndex: 'id',
                 title: 'SKU ID',
                 width: 100,
                 fixed: 'left',
               },
-              { 
-                dataIndex: 'name', 
+              {
+                dataIndex: 'name',
                 title: 'SKU 名称',
                 width: 400,
                 ellipsis: true,
               },
-              { 
-                dataIndex: 'brand', 
+              {
+                dataIndex: 'brand',
                 title: '品牌',
                 width: 120,
               },
@@ -468,7 +452,10 @@ function ClientPage() {
               showTotal: (total) => `共 ${total} 条记录`,
             }}
             scroll={{ x: 1200 }}
-          />
+              locale={{ emptyText: '暂无数据' }}
+            />
+            </>
+          )}
         </Card>
       </div>
     </PageWrap>

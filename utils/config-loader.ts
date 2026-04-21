@@ -244,10 +244,8 @@ export class ConfigLoader {
         throw new Error(`Failed to load config: ${name}, status: ${response.status}`);
       }
       const config = await response.json();
-      console.log(`✓ Config loaded: ${name}`, config);
       return config;
     } catch (error) {
-      console.warn(`⚠️ Failed to load config: ${name}, using defaults`, error);
       return this.getDefaults<T>(name);
     }
   }
@@ -451,6 +449,5 @@ export class ConfigLoader {
     ];
     
     await Promise.all(configNames.map(name => this.load(name)));
-    console.log('✓ All configs preloaded');
   }
 }

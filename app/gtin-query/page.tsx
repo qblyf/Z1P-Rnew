@@ -19,7 +19,7 @@ import {
 import { PageSkeleton } from '../../components/Skeleton';
 import { SearchOutlined, ClearOutlined, CopyOutlined, DownloadOutlined } from '@ant-design/icons';
 import { getSKUListJoinSPU } from '@zsqk/z1-sdk/es/z1p/product';
-import { utils, writeFile } from 'xlsx';
+import * as XLSX from 'xlsx';
 import PageWrap from '../../components/PageWrap';
 import { getAwait } from '../../error';
 
@@ -110,8 +110,7 @@ export default function GTINQueryPage() {
               result.state = exactMatch.state;
               result.gtins = exactMatch.gtins;
               if ('spuID' in exactMatch) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                result.spuId = (exactMatch as any).spuID;
+                result.spuId = (exactMatch as unknown as { spuID?: number }).spuID;
               }
               if ('spu' in exactMatch && exactMatch.spu) {
                 const spu = exactMatch.spu as { spuName?: string; brand?: string };
@@ -169,10 +168,10 @@ export default function GTINQueryPage() {
       'SKU状态': r.state || '',
     }));
 
-    const ws = utils.json_to_sheet(exportData);
-    const wb = utils.book_new();
-    utils.book_append_sheet(wb, ws, '69码查询结果');
-    writeFile(wb, `69码查询结果_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '69码查询结果');
+    XLSX.writeFile(wb, `69码查询结果_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
     notification.success({ message: '下载成功' });
   };
 

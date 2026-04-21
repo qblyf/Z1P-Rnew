@@ -24,11 +24,10 @@ export default function SelectSPUCate(props: {
 }) {
   const { onSelect, defaultSPUCateID, selectedSPUCateID } = props;
   const { spuCateList: data } = useSPUCateListContext();
-  type SPUCateItem = { id: number; name?: string; number?: string };
 
   let warn = <></>;
   if (selectedSPUCateID) {
-    if (!data.some((v: { id: number }) => v.id === selectedSPUCateID)) {
+    if (!data.some(v => v.id === selectedSPUCateID)) {
       warn = (
         <Alert message="当前选中了无效的 SPU 分类, 请注意" type="warning" />
       );
@@ -51,12 +50,12 @@ export default function SelectSPUCate(props: {
         <Option key={0} value={0} keywords="top">
           顶级
         </Option>
-        {data.map((v: SPUCateItem) => {
+        {data.map(v => {
           return (
             <Option
               key={v.id}
               value={v.id}
-              keywords={`${v.number || ''}${v.name || ''}`.toLowerCase()}
+              keywords={`${v.number + v.name}`.toLowerCase()}
             >
               {v.name} <span className="number">({v.id})</span>
             </Option>

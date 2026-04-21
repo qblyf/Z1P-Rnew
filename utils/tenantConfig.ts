@@ -72,7 +72,6 @@ export const DEFAULT_TENANT_IDS = [
  * 返回默认配置仅用于向后兼容
  */
 export async function getTenantConfigs(): Promise<TenantConfig[]> {
-  console.warn('getTenantConfigs 已废弃，建议使用 getSysSettings SDK');
   return getDefaultTenantConfigs();
 }
 

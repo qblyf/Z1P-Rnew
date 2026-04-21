@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { Spin, Card } from 'antd';
 import { RefreshCw, Smartphone } from 'lucide-react';
@@ -13,6 +13,9 @@ import {
 } from '../../datahooks/auth';
 import { HOST_URL } from '../../constants';
 import { airLoginCheck } from '@zsqk/z1-sdk/es/z1p/auth';
+
+// 创建自定义事件来通知token更新
+const TOKEN_UPDATE_EVENT = 'tokenUpdated';
 
 /**
  * 储存本页面全局 timeout ID, 避免同时存在多个 timeout
@@ -43,6 +46,7 @@ export default function () {
 function QrLoginDeskPage() {
   const { token } = useTokenContext();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // 前端生成的数据储存地址 key
   const [storage, setStorage] = useState<string>();
@@ -56,21 +60,12 @@ function QrLoginDeskPage() {
   // 是否显示非钉钉扫码提示
   const [showDingtalkWarning, setShowDingtalkWarning] = useState(false);
 
-  // 组件挂载状态引用，用于防止卸载后更新状态
-  const isMounted = useRef(true);
-
   // 前端生成的扫码地址
   const url = useMemo(() => {
     const baseUrl = HOST_URL.endsWith('/') ? HOST_URL.slice(0, -1) : HOST_URL;
-    return `${baseUrl}/qr-login-mobile?storage=${storage}`;
+    const url = `${baseUrl}/qr-login-mobile?storage=${storage}`;
+    return url;
   }, [storage]);
-
-  useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (typeof token !== 'string') {
@@ -79,6 +74,7 @@ function QrLoginDeskPage() {
     const [_, err] = getPayload(token);
     if (err === null) {
       // 登录成功，立即跳转到首页
+      // 使用 push 而不是 replace，确保跳转能够执行
       router.push('/');
     }
   }, [router, token]);
@@ -99,13 +95,9 @@ function QrLoginDeskPage() {
     let scannedTime: number | null = null;
 
     l = window.setInterval(async () => {
-      if (!isMounted.current) return;
-
       try {
         // 检查 storage 数据
         const res = await airLoginCheck(uuid);
-
-        if (!isMounted.current) return;
 
         if (res && res.state === 'confirmed') {
           // 如果找到 storage 的值, 则写入到 local 中
@@ -113,6 +105,8 @@ function QrLoginDeskPage() {
             setCacheToken(res.payload.token);
             // 刷新页面以重新初始化 token context
             window.location.reload();
+          } else {
+            console.error('No token in confirmed response:', res.payload);
           }
           window.clearInterval(l);
           setShowDingtalkWarning(false);
@@ -130,13 +124,12 @@ function QrLoginDeskPage() {
           }
         }
       } catch (err) {
-        // 忽略错误，避免日志过多
+        console.error('Error checking login status:', err);
       }
     }, 1000);
 
     // 二维码 60 秒后过期
     t = window.setTimeout(() => {
-      if (!isMounted.current) return;
       window.clearInterval(l);
       setIsTimeout(true);
       setShowDingtalkWarning(false);
@@ -145,12 +138,6 @@ function QrLoginDeskPage() {
 
   useEffect(() => {
     updateQR();
-
-    // 组件卸载时清理定时器
-    return () => {
-      clearTimeout(t);
-      clearInterval(l);
-    };
   }, []);
 
   useEffect(() => {
@@ -263,7 +250,7 @@ function QrLoginDeskPage() {
                     ✓ 扫码成功
                   </p>
                   <p className="text-slate-600 text-xs">
-                    请在手机上点击「确认登录」按钮
+                    请在手机上点击&quot;确认登录&quot;按钮
                   </p>
                 </div>
                 <p className="text-emerald-600 text-xs">

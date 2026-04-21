@@ -63,7 +63,6 @@ export function TabsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isFirstMount = useRef(true);
-  const isTabAdding = useRef(false);
 
   // 持久化 tabs 变化
   useEffect(() => {
@@ -82,9 +81,6 @@ export function TabsProvider({ children }: { children: ReactNode }) {
 
   // 自动添加 tab（ pathname 变化时触发）
   useEffect(() => {
-    if (isTabAdding.current) return;
-    isTabAdding.current = true;
-
     const label = findMenuLabel(pathname) || pathname.replace('/', '') || '页面';
     const key = pathname;
 
@@ -109,11 +105,6 @@ export function TabsProvider({ children }: { children: ReactNode }) {
     });
 
     setActiveKey(key);
-
-    // 重置标记
-    requestAnimationFrame(() => {
-      isTabAdding.current = false;
-    });
   }, [pathname]);
 
   // 添加标签页（仅做兜顶，正常已由 useEffect 自动处理）

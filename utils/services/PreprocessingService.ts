@@ -68,7 +68,6 @@ export class PreprocessingService {
     try {
       this.textMappings = await ConfigLoader.load<TextMappingsConfig>('text-mappings');
       this.initialized = true;
-      console.log('✓ PreprocessingService initialized');
     } catch (error) {
       console.error('Failed to initialize PreprocessingService:', error);
       // Use default configuration
@@ -474,7 +473,6 @@ export class PreprocessingService {
     
     // Ensure service is initialized
     if (!this.initialized) {
-      console.warn('PreprocessingService not initialized, using input as-is');
       return input;
     }
     

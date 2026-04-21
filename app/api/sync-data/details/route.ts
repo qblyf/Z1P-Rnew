@@ -13,7 +13,8 @@ const API_ENDPOINT = process.env.NEXT_PUBLIC_Z1P_ENDPOINT || 'https://p-api.z1.p
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const token = searchParams.get('token');
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.replace(/^Bearer /i, '');
     const syncDataIDs = searchParams.get('syncDataIDs');
 
     if (!token) {
@@ -41,7 +42,10 @@ export async function GET(request: Request) {
     const data = await res.json();
 
     if (data.errMsg) {
-      throw new Error(`backend code ${data.code}: ${data.errMsg}`);
+      return NextResponse.json(
+        { success: false, error: `backend code ${data.code}: ${data.errMsg}` },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({

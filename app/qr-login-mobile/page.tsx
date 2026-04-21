@@ -276,8 +276,7 @@ function QrLoginMobilePage() {
 
                     // 自动重试机制：最多重试 3 次
                     const maxRetries = 3;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    let lastError: any = null;
+                    let lastError: Error | null = null;
 
                     for (let attempt = 1; attempt <= maxRetries; attempt++) {
                       try {
@@ -286,19 +285,20 @@ function QrLoginMobilePage() {
                         setStatus('登录已完成');
                         setShowDingtalkWarning(false);
                         return; // 成功后直接返回
-                      } catch (err) {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        lastError = err as any;
-
+                      } catch (err: unknown) {
+                        lastError = err instanceof Error ? err : new Error(String(err));
+                        console.error(`Login attempt ${attempt} failed:`, err);
+                        
                         // 如果是 session 错误且还有重试次数，等待后重试
+                        const errMessage = err instanceof Error ? err.message : String(err);
                         if (attempt < maxRetries &&
-                            (err?.message?.includes('session') ||
-                             err?.message?.includes('5001') ||
-                             err?.message?.includes('ConnectionError'))) {
+                            (errMessage.includes('session') ||
+                             errMessage.includes('5001') ||
+                             errMessage.includes('ConnectionError'))) {
                           await new Promise(resolve => setTimeout(resolve, attempt * 1000));
                           continue;
                         }
-
+                        
                         // 其他错误或已达最大重试次数，直接失败
                         break;
                       }
@@ -307,6 +307,7 @@ function QrLoginMobilePage() {
                     // 所有重试都失败
                     setStatus('登录失败');
                     setIsLoading(false);
+                    console.error('All login attempts failed:', lastError);
                   }}
                   loading={isLoading}
                   disabled={!token}

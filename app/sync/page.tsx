@@ -44,11 +44,10 @@ function ClientPage() {
   const [disabled, setDisabled] = useState(false);
 
   // 将技术错误转为人类可读文字
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const translateError = (error: any): string => {
+  const translateError = (error: unknown): string => {
     if (!error) return '未知错误';
 
-    const message = error.message || String(error);
+    const message = error instanceof Error ? error.message : String(error);
 
     // 502/503/504 网关错误
     if (message.includes('502') || message.includes('Bad Gateway')) {
@@ -81,29 +80,52 @@ function ClientPage() {
     return message;
   };
 
-  // 账套列表 - 硬编码的账套ID列表（与CLI一致）
-  const clientKeys = [
-    'newgy', 'gx', 'zsqk', 'gy', 'gx0775',
-    'haombo', 'zsqkp', 'jcxiaomi', 'llxiaomi',
-    'baicheng', 'jiyuandixintong', 'changfasm',
-    'pingnuo', 'kaisheng', 'linji', 'sulian',
-    'znyxt', 'hwyxt', 'xmyxt', 'pgyxt', 'yysyxt'
-  ];
+  // 失败账套详情
+  const [failedTenants, setFailedTenants] = useState<Array<{ tenantID: string; error: string }>>([]);
 
+  // 账套列表 - 从 API 获取
   const [tenantList, setTenantList] = useState<Array<{
     id: string;
     tenantID: string;
     clientName: string;
-  }>>(
-    clientKeys.map(id => ({ id, tenantID: id, clientName: id }))
-  );
-
-  // 失败账套详情
-  const [failedTenants, setFailedTenants] = useState<Array<{ tenantID: string; error: string }>>([]);
+  }>>([]);
+  const [tenantLoading, setTenantLoading] = useState(true);
 
   // 选中的账套列表
-  const [selectedTenants, setSelectedTenants] = useState<string[]>(clientKeys);
-  const [selectAll, setSelectAll] = useState(true);
+  const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
+
+  // 从 API 获取账套列表
+  useEffect(() => {
+    if (!token) {
+      setTenantLoading(false);
+      return;
+    }
+
+    const loadTenants = async () => {
+      setTenantLoading(true);
+      try {
+        const response = await fetch('/api/tenants', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          setTenantList(result.data);
+          setSelectedTenants(result.data.map((t: { tenantID: string }) => t.tenantID));
+          setSelectAll(true);
+        }
+      } catch (error) {
+        console.error('加载账套列表失败:', error);
+      } finally {
+        setTenantLoading(false);
+      }
+    };
+
+    loadTenants();
+  }, [token]);
 
   // 处理全选/取消全选
   const handleSelectAll = (checked: boolean) => {
@@ -129,16 +151,12 @@ function ClientPage() {
   };
 
   // SDK 同步函数
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { pullAllData, addSyncData, syncProductSingle } = require('@zsqk/z1-sdk/es/z1p/sync-data');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { addSyncLogWithData } = require('@zsqk/z1-sdk/es/z1p/sync-log');
 
   // 遍历账套进行同步
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const syncAllTenants = async (syncDataID: number, data: any, selectedTenantIDs: string[]) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const results: any[] = [];
+  const syncAllTenants = async (syncDataID: number, data: unknown, selectedTenantIDs: string[]) => {
+    const results: { tenantID: string; success: boolean; result?: unknown; error?: unknown }[] = [];
     for (const tenantID of selectedTenantIDs) {
       try {
         const result = await syncProductSingle({
@@ -154,7 +172,6 @@ function ClientPage() {
     return results;
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fn = useMemo(() => {
     return async () => {
       if (!token) {
@@ -229,9 +246,7 @@ function ClientPage() {
       } finally {
         setDisabled(false);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, selectedTenants]);
 
   // 同步步骤配置
@@ -281,11 +296,11 @@ function ClientPage() {
                   <Tag color="orange">SKU</Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label="账套数量">
-                  <strong>{tenantList.length}</strong> 个账套
+                  <strong>{tenantLoading ? '-' : tenantList.length}</strong> 个账套
                 </Descriptions.Item>
                 <Descriptions.Item label="已选账套">
                   <strong style={{ color: selectedTenants.length === 0 ? '#ff4d4f' : '#1890ff' }}>
-                    {selectedTenants.length}
+                    {tenantLoading ? '-' : selectedTenants.length}
                   </strong> 个账套
                 </Descriptions.Item>
                 <Descriptions.Item label="注意事项">
@@ -368,16 +383,17 @@ function ClientPage() {
 
           {/* 右侧：账套选择与同步状态 */}
           <Col xs={24} lg={14}>
-            <Card 
+            <Card
               title={
                 <Space>
                   <span>账套选择与同步状态</span>
                   <span style={{ fontSize: '12px', color: '#666' }}>
-                    ({tenantList.length} 个账套)
+                    ({tenantLoading ? '加载中...' : `${tenantList.length} 个账套`})
                   </span>
                 </Space>
               }
               size="small"
+              loading={tenantLoading}
             >
               <div style={{ marginBottom: 12 }}>
                 <Checkbox

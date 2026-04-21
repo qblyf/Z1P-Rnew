@@ -32,17 +32,24 @@ import PageWrap from '../../components/PageWrap';
 import { lessAwait } from '../../error';
 import { useTokenContext } from '../../datahooks/auth';
 
+interface SpuCateItem {
+  id: number;
+  [key: string]: unknown;
+}
+
+interface SpuCateChange {
+  id: number;
+  [key: string]: unknown;
+}
+
 function updateSPUCateList(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  spuCateList: any[],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  changes: Array<{ id: any } & any>
-) {
+  spuCateList: SpuCateItem[] | ReturnType<typeof useSPUCateListContext>['spuCateList'],
+  changes: SpuCateChange[]
+): SpuCateItem[] {
   if (changes.length === 0) {
     return spuCateList;
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const obj: any = {};
+  const obj: Record<number, Record<string, { $set: unknown }>> = {};
   for (const { id, ...rest } of changes) {
     const i = spuCateList.findIndex(v => v.id === id);
     if (i === -1) {
@@ -52,13 +59,13 @@ function updateSPUCateList(
       Object.entries(rest).map(([k, v]) => [k, { $set: v }])
     );
   }
-  return update(spuCateList, obj);
+  return update(spuCateList, obj) as SpuCateItem[];
 }
 
 export default function ProductManagerWithHeader() {
   // 注册页面标签页
   usePageTab('商品管理');
-  
+
   return (
     <PageWrap ppKey="product-manage">
       <SPUCateListProvider>
@@ -164,14 +171,14 @@ export function ProductManager() {
             const changes = await orderSPUCate(spuCateID, 'up', {
               auth: token,
             });
-            setSPUCateList(updateSPUCateList(spuCateList, changes));
+            setSPUCateList(updateSPUCateList(spuCateList, changes) as Parameters<typeof setSPUCateList>[0]);
           })}
           onMoveDown={lessAwait(async () => {
             if (!token || !spuCateID) return;
             const changes = await orderSPUCate(spuCateID, 'down', {
               auth: token,
             });
-            setSPUCateList(updateSPUCateList(spuCateList, changes));
+            setSPUCateList(updateSPUCateList(spuCateList, changes) as Parameters<typeof setSPUCateList>[0]);
           })}
         />
       </>
@@ -204,7 +211,7 @@ export function ProductManager() {
         </BrandListProvider>
       </>
     );
-  }, [setMode, setSpuID, setSpuEditDefaultTab]);
+  }, [spuCateID, setMode, setSpuID, setSpuEditDefaultTab]);
 
   // SKU 内容
   const skuContent = useMemo(() => {
@@ -260,7 +267,7 @@ export function ProductManager() {
     }
     if (mode === 'sku') {
       return selectedSkuID ? (
-        <SKUEdit 
+        <SKUEdit
           selectedSkuID={selectedSkuID}
           onNameChange={(name) => {
             setEditingSkuName(name);

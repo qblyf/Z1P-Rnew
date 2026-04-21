@@ -1,7 +1,7 @@
 'use client';
 
-import dayjs from 'dayjs';
-import 'dayjs/locale/zh-cn';
+import moment from 'moment';
+import 'moment/locale/zh-cn';
 
 import { Modal, Tag, Button, Drawer, Pagination, Tooltip, Popconfirm } from 'antd';
 import { notification } from 'antd';
@@ -20,7 +20,7 @@ import { useTokenContext } from '../../datahooks/auth';
 import './log.css';
 
 function formatDateVerbose(v: number) {
-  return dayjs(v * 1000).format('MM月DD日');
+  return moment(v * 1000).format('MM月DD日');
 }
 
 /**
@@ -42,7 +42,7 @@ function Log(): JSX.Element {
       const res = await getUpdateLogList({});
       setTotal(res.length);
       setLogListAll(res);
-    }, { showSuccess: false })();
+    })();
   }, []);
 
   useEffect(() => {
@@ -122,7 +122,7 @@ function Log(): JSX.Element {
                 </span>
               </div>
               <div className="log-date-year">
-                {v.date ? dayjs(Number(v.date || 0) * 1000).format('YYYY') : ''}
+                {v.date ? moment(Number(v.date || 0) * 1000).format('YYYY') : ''}
               </div>
             </div>
 

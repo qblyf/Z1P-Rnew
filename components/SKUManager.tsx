@@ -61,8 +61,7 @@ const { Option } = Select;
  * 从 SKU 列表中提取实际使用的颜色、配置、版本
  * 仅保留已被使用的值
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractUsedValues(skuIDs: any[]) {
+function extractUsedValues(skuIDs: { color?: string; spec?: string; combo?: string }[]) {
   const colors = new Set<string>();
   const specs = new Set<string>();
   const combos = new Set<string>();
@@ -90,7 +89,7 @@ function extractUsedValues(skuIDs: any[]) {
  * [组件] 管理 SKU
  * @author Lian Zheren <lzr@go0356.com>
  */
-export default function SKUManager(props: { 
+export default function SKUManager(props: {
   offsetTop?: number;
   onWantEditSKU?: (skuID: SkuID) => void;
 }) {
@@ -117,7 +116,7 @@ export default function SKUManager(props: {
   const [filterSpec, setFilterSpec] = useState<string | null>(null);
   const [filterColor, setFilterColor] = useState<string | null>(null);
   const [filterSkuID, setFilterSkuID] = useState<number | null>(null);
-  
+
   const [isAddingCombo, setIsAddingCombo] = useState(false);
   const [newComboValue, setNewComboValue] = useState('');
   const [isAddingSpec, setIsAddingSpec] = useState(false);
@@ -127,7 +126,7 @@ export default function SKUManager(props: {
 
   // 以下数据目的是不允许用户直接删除之前的规格,
   //   但允许用户删除自己刚创建的非正式规格.
-  // 
+  //
   // Note: 当前实现的局限性：
   // 如果 SKU 新增后，preCombos 等数据未更新，且用户没有触发 spuID 变化，
   // 那么新增的正式规格仍可能被删除（因为不在 preCombos 中）。
@@ -229,12 +228,12 @@ export default function SKUManager(props: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Fixed SPU ID Header - Does not scroll */}
-      <div style={{ 
-        padding: '12px 16px', 
-        fontSize: '13px', 
-        color: '#333', 
-        flexShrink: 0, 
-        borderBottom: '1px solid #f0f0f0', 
+      <div style={{
+        padding: '12px 16px',
+        fontSize: '13px',
+        color: '#333',
+        flexShrink: 0,
+        borderBottom: '1px solid #f0f0f0',
         backgroundColor: '#fafafa',
         position: 'sticky',
         top: 0,
@@ -251,7 +250,7 @@ export default function SKUManager(props: {
           .sku-main-content {
             padding-bottom: 2rem;
           }
-          
+
           /* Filters section - fixed height with internal scroll */
           .sku-filters-section {
             flex-shrink: 0;
@@ -274,7 +273,7 @@ export default function SKUManager(props: {
           .sku-filters-section::-webkit-scrollbar-thumb:hover {
             background: #666;
           }
-          
+
           /* Actions section - fixed height */
           .sku-actions-section {
             flex-shrink: 0;
@@ -285,7 +284,7 @@ export default function SKUManager(props: {
             gap: 12px;
             justify-content: flex-start;
           }
-          
+
           /* Table section - takes remaining space */
           .sku-table-section {
             flex: 1;
@@ -294,7 +293,7 @@ export default function SKUManager(props: {
             flex-direction: column;
             overflow: hidden;
           }
-          
+
           /* Table wrapper - scrollable */
           .sku-table-wrapper {
             flex: 1;
@@ -326,7 +325,6 @@ export default function SKUManager(props: {
                 <Form.Item label="版本" tooltip="可能有的多种版本" style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                 {combos.map(v => {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const count = spu.skuIDs.filter(sku => (sku as any).combo === v.name).length;
                   const isUsed = count > 0;
                   return (
@@ -459,7 +457,6 @@ export default function SKUManager(props: {
             <Form.Item label="配置" tooltip="可能有的多种配置" style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                 {specs.map(v => {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const count = spu.skuIDs.filter(sku => (sku as any).spec === v.name).length;
                   const isUsed = count > 0;
                   return (
@@ -592,7 +589,6 @@ export default function SKUManager(props: {
             <Form.Item label="颜色" tooltip="可能有的多种颜色" style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                 {colors.map(v => {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const count = spu.skuIDs.filter(sku => (sku as any).color === v.name).length;
                   const isUsed = count > 0;
                   return (
@@ -824,8 +820,8 @@ export default function SKUManager(props: {
                 update(spu, {
                   // 这里受到 update 和 TS 的影响, 无法判断出有效类型
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  skuIDs: { $push: [{ skuID, ...selected }] as any },
-                })
+                  skuIDs: { $push: [{ skuID, ...selected } as any] },
+                }) as any
               );
               setSelected(undefined);
               // 新增后自动打开编辑抽屉
@@ -939,8 +935,7 @@ function EditRelationshipSPUwithSKUs(props: {
           ...(canSetCombo || selectedCombos.length > 0 ? [{
             title: '版本',
             dataIndex: 'combo',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            render: (combo: any, item: any) => {
+            render: (combo: string | undefined, item: { skuID: number }) => {
               return (
                 <Select
                   value={combo || undefined}
@@ -971,8 +966,7 @@ function EditRelationshipSPUwithSKUs(props: {
           ...(canSetSpec || selectedSpecs.length > 0 ? [{
             title: '配置',
             dataIndex: 'spec',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            render: (spec: any, item: any) => {
+            render: (spec: string | undefined, item: { skuID: number }) => {
               return (
                 <Select
                   value={spec || undefined}
@@ -1003,8 +997,7 @@ function EditRelationshipSPUwithSKUs(props: {
           ...(canSetColor || selectedColors.length > 0 ? [{
             title: '颜色',
             dataIndex: 'color',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            render: (color: any, item: any) => {
+            render: (color: string | undefined, item: { skuID: number }) => {
               return (
                 <Select
                   value={color || undefined}
@@ -1035,8 +1028,7 @@ function EditRelationshipSPUwithSKUs(props: {
           {
             title: '69码',
             dataIndex: 'skuID',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            render: (skuID: any, item: any) => {
+            render: (skuID: number, item: { skuID: number }) => {
               if (item.skuID === -1) {
                 return <>-</>;
               }
@@ -1052,8 +1044,7 @@ function EditRelationshipSPUwithSKUs(props: {
           },
           {
             title: '操作',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            render: (_: any, item: any) => {
+            render: (_: unknown, item: { skuID: number }) => {
               if (item.skuID === -1) {
                 return (
                   <div style={{ display: 'flex', gap: '8px' }}>
@@ -1099,11 +1090,11 @@ function EditRelationshipSPUwithSKUs(props: {
         title={() => `SKU 列表`}
         footer={undefined}
       />
-      
+
       {/* Action Buttons - Below Table */}
-      <div style={{ 
-        marginTop: '2px', 
-        borderTop: '1px solid #f0f0f0', 
+      <div style={{
+        marginTop: '2px',
+        borderTop: '1px solid #f0f0f0',
         paddingTop: '2px',
         display: 'flex',
         gap: '12px',
@@ -1137,13 +1128,13 @@ function EditRelationshipSPUwithSKUs(props: {
   }
 /**
  * 获取指定分类的所有父级分类 ID
- * 
+ *
  * 递归向上查找，返回从根分类到当前分类的完整路径
- * 
+ *
  * @param list SPU 分类列表
  * @param id 当前分类 ID
  * @returns 分类 ID 数组，从根分类到当前分类
- * 
+ *
  * @author Lian Zheren <lzr@go0356.com>
  */
 export function getAllPids(list: Pick<SPUCate, 'id' | 'pid'>[], id: number) {

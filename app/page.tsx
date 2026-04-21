@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState, useCallback } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -24,8 +24,8 @@ import {
   Tag,
 } from 'lucide-react';
 import { getUpdateLogList } from '@zsqk/z1-sdk/es/z1p/update-log';
-import dayjs from 'dayjs';
-import 'dayjs/locale/zh-cn';
+import moment from 'moment';
+import 'moment/locale/zh-cn';
 import { useTokenContext } from '../datahooks/auth';
 import { detectDeviceType } from '../utils/deviceDetect';
 import './home.css';
@@ -187,7 +187,7 @@ function HomeContent(): JSX.Element {
             </div>
             <p className="home-greeting-date">
               <Calendar size={14} />
-              {dayjs().format('YYYY年MM月DD日 dddd')}
+              {moment().format('YYYY年MM月DD日 dddd')}
             </p>
           </div>
           <div className="home-hero-right">
@@ -248,7 +248,7 @@ function HomeContent(): JSX.Element {
                     {update.version}
                   </Tag>
                   <span className="home-update-date">
-                    {dayjs(update.date * 1000).format('MM-DD')}
+                    {moment(update.date * 1000).format('MM-DD')}
                   </span>
                 </div>
                 <p className="home-update-content">{update.content}</p>

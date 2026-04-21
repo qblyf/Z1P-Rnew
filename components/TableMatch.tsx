@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { Card, Button, Table, Tag, Select, Empty, Progress } from 'antd';
 import { Upload, Play, Download } from 'lucide-react';
 import { getBrandBaseList } from '@zsqk/z1-sdk/es/z1p/brand';
-import { read, utils, writeFile } from 'xlsx';
-import { MatchingOrchestrator } from '../../utils/services/MatchingOrchestrator';
-import type { BrandData } from '../../utils/types';
+import * as XLSX from 'xlsx';
+import { MatchingOrchestrator } from '../utils/services/MatchingOrchestrator';
+import type { BrandData } from '../utils/types';
 import { notification } from 'antd';
 
 /**
@@ -73,6 +73,7 @@ export function TableMatchComponent() {
         const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
         notification.success({ message: `匹配器初始化完成（耗时${totalTime}秒）` });
       } catch (error) {
+        console.error('Failed to initialize orchestrator:', error);
         notification.error({ message: '匹配器初始化失败' });
         setMatcherInitialized(true);
       }
@@ -95,14 +96,14 @@ export function TableMatchComponent() {
       reader.onload = (e) => {
         try {
           const data = e.target?.result;
-          const workbook = read(data, { type: 'binary' });
+          const workbook = XLSX.read(data, { type: 'binary' });
           
           // 读取第一个工作表
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
           
           // 转换为 JSON 数组
-          const jsonData = utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
           
           if (jsonData.length === 0) {
             notification.error({ message: '文件为空' });
@@ -118,6 +119,7 @@ export function TableMatchComponent() {
           notification.success({ message: `文件上传成功，共 ${rows.length} 行数据` });
         } catch (error) {
           notification.error({ message: 'Excel 文件解析失败' });
+          console.error(error);
         }
       };
       reader.readAsBinaryString(file);
@@ -148,6 +150,7 @@ export function TableMatchComponent() {
         notification.success({ message: `文件上传成功，共 ${rows.length} 行数据` });
       } catch (error) {
         notification.error({ message: '文件解析失败' });
+        console.error(error);
       }
     };
 
@@ -235,6 +238,7 @@ export function TableMatchComponent() {
       notification.success({ message: `匹配完成！共 ${results.length} 条记录，成功匹配 ${batchResult.summary.matched} 条` });
     } catch (error) {
       notification.error({ message: '匹配失败' });
+      console.error(error);
     } finally {
       setMatching(false);
     }
@@ -294,7 +298,7 @@ export function TableMatchComponent() {
       dataIndex: `col_${index}`,
       key: `col_${index}`,
       width: 120,
-      render: (_: unknown, record: { originalRow: string[] }) => record.originalRow[index] || '-',
+      render: (_: unknown, record: MatchResult) => record.originalRow[index] || '-',
     })) || []),
     // 匹配结果列
     {

@@ -99,7 +99,6 @@ export class PerformanceMetrics {
 
     const startTime = this.activeTimers.get(name);
     if (startTime === undefined) {
-      console.warn(`Timer "${name}" was not started`);
       return 0;
     }
 

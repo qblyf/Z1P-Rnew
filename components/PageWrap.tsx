@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useMemo, useEffect, useState, useCallback } from 'react';
+import { ReactNode, useMemo, useEffect, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { PermissionContext, usePermission } from '../datahooks/permission';
 import { PermissionPackages } from '@zsqk/z1-sdk/es/z1p/permission-types';
@@ -42,12 +42,12 @@ export default function PageWrap(props: {
   }, []);
 
   // 获取对应的登录页面
-  const getLoginPage = useCallback(() => {
+  const getLoginPage = () => {
     if (deviceType === 'mobile') {
       return '/qr-login-mobile';
     }
     return '/qr-login-desk';
-  }, [deviceType]);
+  };
 
   // 使用 useEffect 处理路由跳转，避免在渲染时调用 router.push
   useEffect(() => {
@@ -66,7 +66,7 @@ export default function PageWrap(props: {
       });
       router.push(`${loginPage}?${p}`);
     }
-  }, [token, redirect, router, deviceType, getLoginPage]);
+  }, [token, redirect, router, deviceType]);
 
   // 处理权限过期的路由跳转
   useEffect(() => {
@@ -78,7 +78,7 @@ export default function PageWrap(props: {
       const p = new URLSearchParams(redirect ? { redirect } : undefined);
       router.push(`${loginPage}?${p}`);
     }
-  }, [permission, permissionErrMsg, redirect, router, deviceType, getLoginPage]);
+  }, [permission, permissionErrMsg, redirect, router, deviceType]);
 
   if (!token) {
     return <>正在跳转到登录页面, 请稍等</>;

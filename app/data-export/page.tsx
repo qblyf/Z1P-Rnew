@@ -148,7 +148,7 @@ function SKUDataExport() {
       const allData: Pick<SKU, 'name' | 'gtins' | 'id'>[] = [];
 
       // 先取总数
-      await getSKUList(
+      const firstBatch = await getSKUList(
         {
           states: [SKUState.在用],
           limit: 1,

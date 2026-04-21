@@ -1,9 +1,9 @@
 'use client';
 import { SPU, SPUCateID, SPUState } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { getSPUListNew, getSPUCateBaseList, getSPUInfo, editSPUInfo } from '@zsqk/z1-sdk/es/z1p/product';
-import { Button, Card, Col, Form, Input, Row, Select, Table, Cascader, Tag, Space, Divider, Modal, Drawer } from 'antd';
+import { Button, Card, Col, Form, Input, Row, Select, Table, Cascader, Tag, Space, Divider, Modal, Drawer, Empty } from 'antd';
 import { notification } from 'antd';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Head from 'next/head';
 import { Search, Edit } from 'lucide-react';
 import type { TableRowSelection } from 'antd/es/table/interface';
@@ -109,8 +109,7 @@ function BatchEditModal(props: {
             let failCount = 0;
 
             // 准备更新参数
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const updateParams: any = {};
+            const updateParams: Record<string, unknown> = {};
             if (values.brand) updateParams.brand = values.brand;
             if (values.cateID) updateParams.cateID = values.cateID[values.cateID.length - 1];
             if (values.description) updateParams.description = values.description;
@@ -519,7 +518,7 @@ export default function () {
   }, []);
 
   // 加载数据
-  const loadData = async (page: number, size: number, params?: typeof queryParams) => {
+  const loadData = useCallback(async (page: number, size: number, params?: typeof queryParams) => {
     setLoading(true);
     try {
       const actualParams = params || defaultLoadParams;
@@ -567,13 +566,12 @@ export default function () {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageSize]);
 
   // 初始化时加载数据
   useEffect(() => {
     loadData(1, pageSize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadData, pageSize]);
 
   // 权限检查 - 必须在所有hook调用之后
   if (permission === undefined) {
@@ -718,6 +716,7 @@ export default function () {
                     dataSource={list}
                     loading={loading}
                     rowSelection={rowSelection}
+                    locale={{ emptyText: <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
                     columns={[
                       {
                         dataIndex: 'id',

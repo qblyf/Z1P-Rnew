@@ -84,20 +84,12 @@ export class ExactMatcher {
     const inputModel = extractedInfo.model.value;
     const inputVersion = extractedInfo.version.value;
     const originalInput = extractedInfo.originalInput;
-    
-    // 调试信息
-    console.log(`[精确匹配] 输入型号（已标准化）: "${inputModel}"`);
-    
-    // 日志：开始精确匹配
-    if (this.logger) {
-      console.log(`[精确匹配] 开始匹配 - 输入: "${originalInput}", 品牌: "${inputBrand}", 型号: "${inputModel}", 候选SPU: ${candidates.length}个`);
-    }
-    
+
     let checkedCount = 0;
     let filteredCount = 0;
     let brandMismatchCount = 0;
     let modelMismatchCount = 0;
-    
+
     for (const spu of candidates) {
       checkedCount++;
       
@@ -112,44 +104,25 @@ export class ExactMatcher {
       const spuBrand = spu.extractedBrand; // 直接使用预提取的品牌
       const spuModelNorm = spu.normalizedModel; // 直接使用预提取的标准化型号
       const spuVersion = options?.extractVersion ? options.extractVersion(spuSPUPart) : null;
-      
-      // 调试日志：输出前5个SPU的提取结果
-      if (checkedCount <= 5) {
-        console.log(`[精确匹配-调试] SPU #${checkedCount}: "${spu.name}"`);
-        console.log(`[精确匹配-调试]   SPU部分: "${spuSPUPart}"`);
-        console.log(`[精确匹配-调试]   预提取品牌: "${spuBrand}"`);
-        console.log(`[精确匹配-调试]   预提取型号: "${spu.extractedModel}"`);
-        console.log(`[精确匹配-调试]   标准化型号: "${spuModelNorm}"`);
-      }
-      
+
       // 品牌匹配检查
-      const brandMatch = options?.isBrandMatch 
+      const brandMatch = options?.isBrandMatch
         ? options.isBrandMatch(inputBrand, spuBrand)
         : inputBrand === spuBrand;
-      
+
       if (!brandMatch) {
         brandMismatchCount++;
-        if (checkedCount <= 5) {
-          console.log(`[精确匹配-调试]   ✗ 品牌不匹配: "${inputBrand}" !== "${spuBrand}"`);
-        }
         continue;
       }
-      
+
       // 型号匹配检查（直接使用预提取的标准化型号，无需再次标准化）
       // inputModel 已经在 InfoExtractor.extractModel() 中标准化过
       // spuModelNorm 已经在 DataPreparationService.preprocessSPUs() 中标准化过
       const modelMatch = inputModel && spuModelNorm && inputModel === spuModelNorm;
-      
-      if (checkedCount <= 5) {
-        console.log(`[精确匹配-调试]   型号比较: "${inputModel}" ${modelMatch ? '===' : '!=='} "${spuModelNorm}"`);
-      }
-      
+
       if (!modelMatch) {
         if (spuModelNorm) {
           modelMismatchCount++;
-        }
-        if (checkedCount <= 5) {
-          console.log(`[精确匹配-调试]   ✗ 型号不匹配`);
         }
         continue;
       }
@@ -193,9 +166,6 @@ export class ExactMatcher {
         )
       };
       
-      console.log(`[精确匹配] ✓ 找到匹配: "${spu.name}", 版本匹配: ${versionMatchResult.matchType}, 基础分: ${baseScore.toFixed(2)}, 关键词加分: ${keywordBonus.toFixed(2)}, 型号详细度加分: ${modelDetailBonus.toFixed(2)}, 版本后缀加分: ${versionSuffixBonus.toFixed(2)}, 最终分数: ${finalScore.toFixed(2)}`);
-      console.log(`[精确匹配]   版本说明: ${versionMatchResult.explanation}`);
-      
       matches.push({
         spu,
         score: finalScore,
@@ -203,17 +173,7 @@ export class ExactMatcher {
         priority
       });
     }
-    
-    const duration = Date.now() - startTime;
-    
-    console.log(`[精确匹配] 统计: 检查${checkedCount}个, 过滤${filteredCount}个, 品牌不匹配${brandMismatchCount}个, 型号不匹配${modelMismatchCount}个`);
-    
-    // 日志：精确匹配结果
-    if (this.logger) {
-      console.log(`[精确匹配] 完成 - 找到${matches.length}个匹配, 耗时${duration}ms`);
-      console.log(`[精确匹配] 详细统计: 检查${checkedCount}个, 过滤${filteredCount}个, 品牌不匹配${brandMismatchCount}个, 型号不匹配${modelMismatchCount}个`);
-    }
-    
+
     // 多级排序：分数 > 版本类型优先级 > 精简度
     // 需求: 2.5.1, 2.5.2, 2.5.3
     return matches.sort((a, b) => {

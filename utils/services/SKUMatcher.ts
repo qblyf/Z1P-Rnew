@@ -88,13 +88,11 @@ export class SKUMatcher {
     for (const config of configs) {
       this.productTypeConfigs.set(config.id, config);
     }
-    
-    console.log(`✓ 加载产品类型配置: ${this.productTypeConfigs.size} 个类型`);
   }
-  
+
   /**
    * 查找最佳匹配的 SKU
-   * 
+   *
    * @param spu 匹配的 SPU
    * @param extractedInfo 提取的信息
    * @param productType 产品类型
@@ -111,29 +109,15 @@ export class SKUMatcher {
     if (this.metrics) {
       this.metrics.startTimer('sku-match');
     }
-    
+
     const startTime = Date.now();
-    
-    console.log(`[SKU匹配] 开始匹配 SPU: "${spu.name}" (ID: ${spu.id})`);
-    console.log(`[SKU匹配] 产品类型: ${productType}`);
-    
-    // 日志：开始 SKU 匹配
-    if (this.logger) {
-      console.log(`[SKU匹配] ========== 开始SKU匹配 ==========`);
-      console.log(`[SKU匹配] SPU: "${spu.name}" (ID: ${spu.id})`);
-      console.log(`[SKU匹配] 产品类型: ${productType}`);
-      console.log(`[SKU匹配] 提取信息: 颜色="${extractedInfo.color.value}", 容量="${extractedInfo.capacity.value}", 版本="${extractedInfo.version.value?.name || 'N/A'}"`);
-    }
-    
+
     // 获取规格权重
     const weights = this.getSpecWeights(productType);
-    console.log(`[SKU匹配] 规格权重:`, weights);
-    
+
     // 如果没有提供 SKU 列表，需要从 API 加载
     // 这里假设 skuList 已经提供，实际使用时需要调用 API
     if (!skuList || skuList.length === 0) {
-      console.warn(`[SKU匹配] ⚠️  没有 SKU 列表，无法匹配`);
-      
       // 结束性能监控
       if (this.metrics) {
         this.metrics.endTimer('sku-match', {
@@ -142,16 +126,14 @@ export class SKUMatcher {
           spuId: spu.id
         });
       }
-      
+
       return {
         sku: null,
         score: 0,
         specMatches: {}
       };
     }
-    
-    console.log(`[SKU匹配] SKU 候选数量: ${skuList.length}`);
-    
+
     // 对每个 SKU 计算匹配分数
     let bestSKU: SKUData | null = null;
     let bestScore = -1; // 使用 -1 作为初始值，这样即使所有 SKU 分数都是 0，也会选择第一个
@@ -160,15 +142,13 @@ export class SKUMatcher {
     for (const sku of skuList) {
       // 提取 SKU 规格
       const skuSpecs = this.extractSKUSpecs(sku, spu);
-      
+
       // 计算各维度匹配分数
       const specScores = this.calculateSpecScores(extractedInfo, skuSpecs, productType);
-      
+
       // 计算加权总分
       const totalScore = this.calculateWeightedScore(specScores, weights);
-      
-      console.log(`[SKU匹配]   SKU "${sku.name}": 总分=${totalScore.toFixed(3)}, 颜色=${specScores.color?.toFixed(3) || 'N/A'}, 容量=${specScores.capacity?.toFixed(3) || 'N/A'}, 版本=${specScores.version?.toFixed(3) || 'N/A'}`);
-      
+
       if (totalScore > bestScore) {
         bestScore = totalScore;
         bestSKU = sku;
@@ -189,27 +169,11 @@ export class SKUMatcher {
     }
     
     if (bestSKU) {
-      console.log(`[SKU匹配] ✓ 最佳匹配: "${bestSKU.name}", 分数: ${bestScore.toFixed(3)}`);
-      
-      // 日志：匹配成功
-      if (this.logger) {
-        console.log(`[SKU匹配] ========== 匹配成功 ==========`);
-        console.log(`[SKU匹配] 匹配SKU: "${bestSKU.name}" (ID: ${bestSKU.id})`);
-        console.log(`[SKU匹配] 匹配分数: ${bestScore.toFixed(3)}`);
-        console.log(`[SKU匹配] 规格匹配详情:`, bestSpecMatches);
-        console.log(`[SKU匹配] 耗时: ${duration}ms`);
-      }
+      // Logging removed
     } else {
-      console.log(`[SKU匹配] ❌ 未找到匹配的 SKU`);
-      
-      // 日志：匹配失败
-      if (this.logger) {
-        console.log(`[SKU匹配] ========== 匹配失败 ==========`);
-        console.log(`[SKU匹配] 原因: 未找到符合条件的SKU`);
-        console.log(`[SKU匹配] 耗时: ${duration}ms`);
-      }
+      // No match found
     }
-    
+
     return {
       sku: bestSKU,
       score: bestScore >= 0 ? bestScore : 0,
@@ -228,7 +192,6 @@ export class SKUMatcher {
     }
     
     // 返回默认权重
-    console.warn(`[SKU匹配] ⚠️  产品类型 "${productType}" 没有配置权重，使用默认权重`);
     return this.defaultWeights;
   }
   

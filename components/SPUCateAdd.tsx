@@ -15,6 +15,7 @@ import { SPUCateID } from '@zsqk/z1-sdk/es/z1p/alltypes';
 import { useTokenContext } from '../datahooks/auth';
 import Upload from './Upload';
 import { UploadFile } from 'antd/lib/upload/interface';
+import _ from 'lodash';
 const { TextArea } = Input;
 
 /**

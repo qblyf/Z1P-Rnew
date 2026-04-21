@@ -49,7 +49,7 @@ export function StatsCards() {
 
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/60">
-          <Spin indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} tip={status === 'initializing' ? '初始化中...' : '匹配中...'} />
+          <Spin indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} />
         </div>
       )}
     </Card>

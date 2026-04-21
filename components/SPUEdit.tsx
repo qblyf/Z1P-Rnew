@@ -25,7 +25,7 @@ import { useCallback, useEffect, useState } from 'react';
 import TextArea from 'antd/lib/input/TextArea';
 import update from 'immutability-helper';
 import pinyin from 'tiny-pinyin';
-import { last } from 'lodash';
+import _ from 'lodash';
 import { UploadFile } from 'antd/lib/upload/interface';
 import dayjs from 'dayjs';
 
@@ -95,7 +95,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
         thumbnail: spu.images.thumbnail
           ? {
               uid: String(Math.random()).slice(10),
-              name: last(spu.images.thumbnail.split('/')) || '',
+              name: _.last(spu.images.thumbnail.split('/')) || '',
               status: 'done',
               url: spu.images.thumbnail,
             }
@@ -103,7 +103,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
         mainImages: (spu.images.mainImages || []).map(img => {
           return {
             uid: String(Math.random()).slice(10),
-            name: last(img.split('/')) || '',
+            name: _.last(img.split('/')) || '',
             status: 'done',
             url: img,
           };
@@ -111,7 +111,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
         detailsImages: (spu.images.detailsImages || []).map(img => {
           return {
             uid: String(Math.random()).slice(10),
-            name: last(img.split('/')) || '',
+            name: _.last(img.split('/')) || '',
             status: 'done',
             url: img,
           };
@@ -430,8 +430,9 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                           order: newData.order,
                         };
                         setSpuList(
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          update(spuList, { [i]: { $set: updatedSpu as any } }) as any
+                          update(spuList, {
+                            [i]: { $set: updatedSpu as any },
+                          }) as any
                         );
                       })}
                     >
@@ -584,8 +585,9 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                         order: newData.order,
                       };
                       setSpuList(
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        update(spuList, { [i]: { $set: updatedSpu as any } }) as any
+                        update(spuList, {
+                          [i]: { $set: updatedSpu as any },
+                        }) as any
                       );
                     })}
                   >
@@ -616,10 +618,11 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                       setSelectedSkuName(skuInfo[0].name);
                     }
                   } catch (error) {
+                    console.error('获取 SKU 名称失败:', error);
                     // 如果获取失败，尝试从 preData 中获取
                     if (preData?.skuIDs) {
                       const sku = preData.skuIDs.find(
-                        (s) => s.skuID === skuID
+                        (s: any) => s.skuID === skuID
                       );
                       if (sku && 'name' in sku) {
                         setSelectedSkuName(sku.name as string);
@@ -683,7 +686,7 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                     setSelectedSkuName(skuInfo[0].name);
                   }
                 } catch (error) {
-                  // 忽略错误
+                  console.error('刷新 SKU 名称失败:', error);
                 }
               };
               refreshSkuName();

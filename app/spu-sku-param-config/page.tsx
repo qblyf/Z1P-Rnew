@@ -79,8 +79,7 @@ function Page() {
   const [pValueListEditing, setPValueListEditing] = useState<
     Value[] | NewValue[]
   >([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [skuList, setSkuList] = useState<any[]>([]);
+  const [skuList, setSkuList] = useState<{ id: number; spuID: number; name: string; gtins?: string; state?: number }[]>([]);
   const [skuParamValuesMap, setSkuParamValuesMap] = useState<
     Record<number, Value[]>
   >({});
@@ -160,9 +159,8 @@ function Page() {
           }
         );
         // 过滤出属于当前SPU的SKU
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const filteredRes = res.filter((item: any) => item.spuID === spuID);
-        setSkuList(filteredRes);
+        const filteredRes = (res as (typeof res[0] & { spuID: number })[]).filter((item) => item.spuID === spuID);
+        setSkuList(filteredRes as any);
 
         // 为每个SKU获取其参数值
         const paramValuesMap: Record<number, Value[]> = {};
@@ -315,7 +313,7 @@ function Page() {
                       marginTop: '8px',
                     }}
                   >
-                    💡 点击参数值可过滤下方 SKU 列表。如需修改参数值，请使用下方「修改 SPU 与 SKUs 的关系」功能。
+                    💡 点击参数值可过滤下方 SKU 列表。如需修改参数值，请使用下方"修改 SPU 与 SKUs 的关系"功能。
                   </div>
                   {definitionExtList
                     .filter(

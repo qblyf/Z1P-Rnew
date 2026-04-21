@@ -16,7 +16,7 @@ import { useTokenContext } from '../datahooks/auth';
 import { ChangeTable } from './ChangeTable';
 import Upload from './Upload';
 import { UploadFile } from 'antd/lib/upload/interface';
-import { last } from 'lodash';
+import _ from 'lodash';
 const { TextArea } = Input;
 
 /**
@@ -37,7 +37,7 @@ export default function SPUCateEdit() {
     }
     setIcon({
       uid: String(Math.random()).slice(2),
-      name: last(preData.icon.split('/')) || '',
+      name: _.last(preData.icon.split('/')) || '',
       status: 'done',
       url: preData.icon,
     });
