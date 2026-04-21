@@ -70,10 +70,6 @@ export const upload = async (
     .put(path, file)
     .catch(error => console.error('图片上传出错', error));
 
-  console.log(
-    '图片上传有了结果',
-    `https://${ossVisitDomain}/${path}?x-oss-process=style/normal`
-  );
   return {
     url: `https://${ossVisitDomain}/${path}`,
     name: file.name,

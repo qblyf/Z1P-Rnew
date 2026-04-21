@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { Spin, Card } from 'antd';
 import { RefreshCw, Smartphone } from 'lucide-react';
@@ -13,9 +13,6 @@ import {
 } from '../../datahooks/auth';
 import { HOST_URL } from '../../constants';
 import { airLoginCheck } from '@zsqk/z1-sdk/es/z1p/auth';
-
-// 创建自定义事件来通知token更新
-const TOKEN_UPDATE_EVENT = 'tokenUpdated';
 
 /**
  * 储存本页面全局 timeout ID, 避免同时存在多个 timeout
@@ -46,7 +43,6 @@ export default function () {
 function QrLoginDeskPage() {
   const { token } = useTokenContext();
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   // 前端生成的数据储存地址 key
   const [storage, setStorage] = useState<string>();
@@ -60,13 +56,21 @@ function QrLoginDeskPage() {
   // 是否显示非钉钉扫码提示
   const [showDingtalkWarning, setShowDingtalkWarning] = useState(false);
 
+  // 组件挂载状态引用，用于防止卸载后更新状态
+  const isMounted = useRef(true);
+
   // 前端生成的扫码地址
   const url = useMemo(() => {
     const baseUrl = HOST_URL.endsWith('/') ? HOST_URL.slice(0, -1) : HOST_URL;
-    const url = `${baseUrl}/qr-login-mobile?storage=${storage}`;
-    console.log('移动端登录 url', url);
-    return url;
+    return `${baseUrl}/qr-login-mobile?storage=${storage}`;
   }, [storage]);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof token !== 'string') {
@@ -75,8 +79,6 @@ function QrLoginDeskPage() {
     const [_, err] = getPayload(token);
     if (err === null) {
       // 登录成功，立即跳转到首页
-      console.log('Desktop login successful, redirecting to home');
-      // 使用 push 而不是 replace，确保跳转能够执行
       router.push('/');
     }
   }, [router, token]);
@@ -92,53 +94,50 @@ function QrLoginDeskPage() {
     // 生成新的 uuid 及超时
     const uuid = crypto.randomUUID();
     setStorage(uuid);
-    console.log('Generated QR UUID:', uuid);
-    
+
     // 记录扫码时间，用于判断是否超时未登录
     let scannedTime: number | null = null;
-    
+
     l = window.setInterval(async () => {
+      if (!isMounted.current) return;
+
       try {
         // 检查 storage 数据
         const res = await airLoginCheck(uuid);
-        console.log('airLoginCheck result:', res);
-        
+
+        if (!isMounted.current) return;
+
         if (res && res.state === 'confirmed') {
-          console.log('Login confirmed, token received:', res.payload?.token ? 'yes' : 'no');
           // 如果找到 storage 的值, 则写入到 local 中
           if (res.payload && res.payload.token) {
             setCacheToken(res.payload.token);
-            console.log('Token saved to localStorage');
             // 刷新页面以重新初始化 token context
             window.location.reload();
-          } else {
-            console.error('No token in confirmed response:', res.payload);
           }
           window.clearInterval(l);
           setShowDingtalkWarning(false);
         } else if (res && res.state === 'scanned') {
-          console.log('QR scanned by:', res.payload?.scanner);
           setScanner(res.payload?.scanner);
-          
+
           // 记录扫码时间
           if (scannedTime === null) {
             scannedTime = Date.now();
           }
-          
+
           // 如果扫码后5秒还没有登录成功，显示钉钉提示
           if (Date.now() - scannedTime > 5000) {
             setShowDingtalkWarning(true);
           }
         }
       } catch (err) {
-        console.error('Error checking login status:', err);
+        // 忽略错误，避免日志过多
       }
     }, 1000);
-    
+
     // 二维码 60 秒后过期
     t = window.setTimeout(() => {
+      if (!isMounted.current) return;
       window.clearInterval(l);
-      console.log('QR code expired');
       setIsTimeout(true);
       setShowDingtalkWarning(false);
     }, 60000);
@@ -146,6 +145,12 @@ function QrLoginDeskPage() {
 
   useEffect(() => {
     updateQR();
+
+    // 组件卸载时清理定时器
+    return () => {
+      clearTimeout(t);
+      clearInterval(l);
+    };
   }, []);
 
   useEffect(() => {
@@ -194,7 +199,7 @@ function QrLoginDeskPage() {
       <div className="w-full max-w-md">
         {/* 头部 */}
         <div className="text-center mb-8">
-          <div 
+          <div
             className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4"
             style={{
               background: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)'

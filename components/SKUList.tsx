@@ -7,7 +7,6 @@ import { useBrandListContext } from '../datahooks/brand';
 import { useSpuIDContext, useSpuListContext } from '../datahooks/product';
 import { useTokenContext } from '../datahooks/auth';
 import { lessAwait } from '../error';
-import { Z1P_ENDPOINT } from '../constants';
 import { notification } from 'antd';
 
 /**
@@ -47,14 +46,7 @@ export default function SKUList(props: {
 
   // 加载 SKU 列表
   useEffect(() => {
-    console.log('=== SKUList useEffect 触发 ===');
-    console.log('token:', token ? '存在' : '不存在');
-    console.log('spuID:', spuID);
-    console.log('spuList length:', spuList.length);
-    console.log('================================');
-    
     if (!token) {
-      console.warn('没有 token，无法加载 SKU 列表');
       return;
     }
 
@@ -63,19 +55,16 @@ export default function SKUList(props: {
       try {
         let spuIDs: number[] = [];
         const limit = 100; // 统一最多获取100条SKU
-        
+
         if (spuID) {
           // 选中了 SPU，获取该 SPU 的 SKU（最多100条）
           spuIDs = [spuID];
-          console.log('开始加载选中 SPU 的 SKU...', spuID, '，最多', limit, '条');
         } else {
           // 未选中 SPU，获取当前 SPU 列表中所有 SPU 的 SKU（最多100条）
           spuIDs = spuList.map(spu => spu.id);
-          console.log('开始加载 SPU 列表中的 SKU...', spuIDs.length, '个 SPU，最多', limit, '条 SKU');
         }
-        
+
         if (spuIDs.length === 0) {
-          console.warn('没有可用的 SPU ID');
           setSkuList([]);
           setLoading(false);
           return;
@@ -91,25 +80,12 @@ export default function SKUList(props: {
           spuIDs: spuIDs,
         };
 
-        // 打印完整的请求参数用于调试
-        console.log('=== SKU 列表请求参数 ===');
-        console.log('queryParams:', JSON.stringify(queryParams, null, 2));
-        console.log('fields:', JSON.stringify(['id', 'name', 'state', 'spuID'], null, 2));
-        console.log('========================');
-
         // 使用 getSKUList API 获取 SKU 数据
         const skus = await getSKUList(
           queryParams,
           ['id', 'name', 'state', 'spuID']
         );
-        
-        console.log('✓ 成功获取 SKU 列表，数量:', skus.length);
-        
-        // 打印前几条数据的结构用于调试
-        if (skus.length > 0) {
-          console.log('第一条 SKU 数据示例:', JSON.stringify(skus[0], null, 2));
-        }
-        
+
         // 转换数据格式
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const formattedSkus = skus.map((sku: any) => ({
@@ -119,31 +95,11 @@ export default function SKUList(props: {
           spuID: sku.spuID,
           brand: '',
         }));
-        
+
         setSkuList(formattedSkus);
         setSelectedSkuID(undefined);
-        
-        if (spuID && formattedSkus.length === 0) {
-          console.warn('⚠️ 该 SPU 没有关联的"在用"状态的 SKU');
-        }
-        
-        // 不再自动加载所有SKU详情，改为按需加载
       } catch (err) {
-        console.error('✗ 获取 SKU 列表失败');
-        console.error('错误对象:', err);
-        console.error('错误详情:', {
-          message: err instanceof Error ? err.message : String(err),
-          stack: err instanceof Error ? err.stack : undefined,
-          endpoint: Z1P_ENDPOINT,
-          hasToken: !!token,
-          tokenLength: token?.length,
-        });
-        
-        // 尝试解析错误信息
-        if (err && typeof err === 'object') {
-          console.error('错误对象的所有属性:', Object.keys(err));
-          console.error('错误对象完整内容:', JSON.stringify(err, null, 2));
-        }
+        console.error('获取 SKU 列表失败:', err);
       } finally {
         setLoading(false);
       }
@@ -156,14 +112,13 @@ export default function SKUList(props: {
     if (skuDetails.has(skuID) || loadingSkuIDs.has(skuID)) {
       return;
     }
-    
+
     // 标记为正在加载
     setLoadingSkuIDs(prev => new Set(prev).add(skuID));
-    
+
     try {
-      console.log('开始加载 SKU 详情...', skuID);
       const details = await getSKUsInfo([skuID]);
-      
+
       if (details.length > 0 && !('errInfo' in details[0])) {
         const detail = details[0];
         setSkuDetails(prev => {
@@ -174,10 +129,9 @@ export default function SKUList(props: {
           });
           return newMap;
         });
-        console.log('✓ SKU 详情加载完成', skuID);
       }
     } catch (err) {
-      console.error('✗ 加载 SKU 详情失败:', skuID, err);
+      console.error('加载 SKU 详情失败:', skuID, err);
     } finally {
       // 移除加载标记
       setLoadingSkuIDs(prev => {
@@ -193,12 +147,11 @@ export default function SKUList(props: {
     try {
       const text = gtins.join('\n');
       await navigator.clipboard.writeText(text);
-      const gtinDisplay = gtins.length > 3 
-        ? `${gtins.slice(0, 3).join(', ')}... (共${gtins.length}个)` 
+      const gtinDisplay = gtins.length > 3
+        ? `${gtins.slice(0, 3).join(', ')}... (共${gtins.length}个)`
         : gtins.join(', ');
       notification.success({ message: `69码已复制到剪贴板: ${gtinDisplay}` });
     } catch (err) {
-      console.error('复制失败:', err);
       notification.error({ message: '复制失败，请手动复制' });
     }
   };

@@ -60,23 +60,19 @@ export function TableMatchComponent() {
   useEffect(() => {
     const initOrchestrator = async () => {
       try {
-        console.log('=== 开始加载品牌数据 ===');
         const startTime = Date.now();
 
         // 加载品牌列表
         const brands = await getBrandBaseList();
         setBrandList(brands);
-        console.log(`已加载品牌数据: ${brands.length} 个品牌`);
 
         // 初始化 orchestrator（SKU数据由MatchingOrchestrator内部加载）
         await orchestrator.initialize(brands, []);
         setMatcherInitialized(true);
 
         const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-        console.log('✓ TableMatch Orchestrator initialized');
         notification.success({ message: `匹配器初始化完成（耗时${totalTime}秒）` });
       } catch (error) {
-        console.error('Failed to initialize orchestrator:', error);
         notification.error({ message: '匹配器初始化失败' });
         setMatcherInitialized(true);
       }
@@ -122,7 +118,6 @@ export function TableMatchComponent() {
           notification.success({ message: `文件上传成功，共 ${rows.length} 行数据` });
         } catch (error) {
           notification.error({ message: 'Excel 文件解析失败' });
-          console.error(error);
         }
       };
       reader.readAsBinaryString(file);
@@ -153,7 +148,6 @@ export function TableMatchComponent() {
         notification.success({ message: `文件上传成功，共 ${rows.length} 行数据` });
       } catch (error) {
         notification.error({ message: '文件解析失败' });
-        console.error(error);
       }
     };
 
@@ -241,7 +235,6 @@ export function TableMatchComponent() {
       notification.success({ message: `匹配完成！共 ${results.length} 条记录，成功匹配 ${batchResult.summary.matched} 条` });
     } catch (error) {
       notification.error({ message: '匹配失败' });
-      console.error(error);
     } finally {
       setMatching(false);
     }

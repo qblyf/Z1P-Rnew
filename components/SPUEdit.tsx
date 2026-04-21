@@ -324,7 +324,6 @@ export default function SPUEdit(props: { defaultTab?: string }) {
                       keywords={input.keywords ?? preData.keywords}
                       spuName={input.name ?? preData.name}
                       onChange={keywords => {
-                        console.log('Keywords changed:', keywords);
                         setInput(
                           update(input, { keywords: { $set: keywords } })
                         );
@@ -607,29 +606,22 @@ export default function SPUEdit(props: { defaultTab?: string }) {
 
                   // 异步获取 SKU 名称 - 使用 API 直接获取，不使用缓存
                   try {
-                    console.log('正在获取 SKU 名称, SKU ID:', skuID);
                     const skuInfo = await getSKUsInfoAPI([skuID]);
-                    console.log('SKU 信息返回:', skuInfo);
 
                     if (
                       skuInfo &&
                       skuInfo.length > 0 &&
                       !('errInfo' in skuInfo[0])
                     ) {
-                      console.log('设置 SKU 名称:', skuInfo[0].name);
                       setSelectedSkuName(skuInfo[0].name);
-                    } else {
-                      console.log('SKU 信息无效或包含错误');
                     }
                   } catch (error) {
-                    console.error('获取 SKU 名称失败:', error);
                     // 如果获取失败，尝试从 preData 中获取
                     if (preData?.skuIDs) {
                       const sku = preData.skuIDs.find(
                         (s) => s.skuID === skuID
                       );
                       if (sku && 'name' in sku) {
-                        console.log('从 preData 获取 SKU 名称:', sku.name);
                         setSelectedSkuName(sku.name as string);
                       }
                     }
@@ -682,19 +674,16 @@ export default function SPUEdit(props: { defaultTab?: string }) {
             if (open && selectedSkuID) {
               const refreshSkuName = async () => {
                 try {
-                  console.log('刷新 SKU 名称, SKU ID:', selectedSkuID);
                   const skuInfo = await getSKUsInfoAPI([selectedSkuID]);
-                  console.log('刷新后的 SKU 信息:', skuInfo);
                   if (
                     skuInfo &&
                     skuInfo.length > 0 &&
                     !('errInfo' in skuInfo[0])
                   ) {
-                    console.log('更新 SKU 名称为:', skuInfo[0].name);
                     setSelectedSkuName(skuInfo[0].name);
                   }
                 } catch (error) {
-                  console.error('刷新 SKU 名称失败:', error);
+                  // 忽略错误
                 }
               };
               refreshSkuName();
