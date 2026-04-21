@@ -64,7 +64,6 @@ export default function TenantManagePage() {
       
       if (result.success && result.data) {
         setTenants(result.data);
-        console.log(`成功加载 ${result.total} 个账套`);
       } else {
         throw new Error(result.message || '加载失败');
       }

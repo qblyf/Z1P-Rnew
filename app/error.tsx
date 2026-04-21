@@ -20,7 +20,6 @@ export default function Error({
       error.message.includes('Loading chunk') ||
       error.message.includes('Failed to fetch dynamically imported module')
     ) {
-      console.log('检测到资源加载错误，3秒后自动刷新页面...');
       const timer = setTimeout(() => {
         window.location.reload();
       }, 3000);

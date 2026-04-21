@@ -310,21 +310,11 @@ function ClientPage() {
                 if (brands && brands.length > 0) queryParams.brands = brands;
                 if (skuState) queryParams.states = [skuState];
 
-                // 打印请求参数用于调试
-                console.log('=== SKU 列表页面请求参数 ===');
-                console.log('queryParams:', JSON.stringify(queryParams, null, 2));
-                console.log('fields:', JSON.stringify({
-                  sku: ['id', 'name', 'gtins', 'state'],
-                  spu: ['brand']
-                }, null, 2));
-                console.log('=============================');
-
                 // 从服务器获取数据 - 只请求 API 支持的字段
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 let res: any[];
                 if (skuId) {
                   // 精确查找单个 SKU，使用 getSKUInfo
-                  console.log('使用 SKU ID 精确查找:', skuId);
                   const skuInfo = await getSKUInfo(skuId);
                   if (skuInfo) {
                     // 获取关联的 SPU 信息以获取 brand
@@ -333,14 +323,12 @@ function ClientPage() {
                   } else {
                     res = [];
                   }
-                  console.log('✓ 成功获取 SKU 信息:', res.length);
                 } else {
                   // 使用 getSKUListJoinSPU 进行列表查询
                   res = await getSKUListJoinSPU(
                     queryParams,
                     { sku: ['id', 'name', 'gtins', 'state'], spu: ['brand'] }
                   );
-                  console.log('✓ 成功获取 SKU 列表，数量:', res.length);
                 }
                 
                 // 前端过滤：根据 spec、color、combo 关键词过滤
@@ -353,7 +341,6 @@ function ClientPage() {
                   filteredRes = filteredRes.filter((item: any) =>
                     item.name && item.name.toLowerCase().includes(specLower)
                   );
-                  console.log('按配置/内存筛选后数量:', filteredRes.length);
                 }
 
                 if (colorKeyword) {
@@ -362,7 +349,6 @@ function ClientPage() {
                   filteredRes = filteredRes.filter((item: any) =>
                     item.name && item.name.toLowerCase().includes(colorLower)
                   );
-                  console.log('按颜色筛选后数量:', filteredRes.length);
                 }
 
                 if (comboKeyword) {
@@ -371,7 +357,6 @@ function ClientPage() {
                   filteredRes = filteredRes.filter((item: any) =>
                     item.name && item.name.toLowerCase().includes(comboLower)
                   );
-                  console.log('按版本筛选后数量:', filteredRes.length);
                 }
                 
                 // 使用 setList 设置 state 数据

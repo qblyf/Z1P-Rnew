@@ -281,7 +281,6 @@ function QrLoginMobilePage() {
 
                     for (let attempt = 1; attempt <= maxRetries; attempt++) {
                       try {
-                        console.log(`Login attempt ${attempt}/${maxRetries}`);
                         // 登录已完成, 将 token 写入 storage
                         await airLoginConfirm(storage, { token });
                         setStatus('登录已完成');
@@ -290,18 +289,16 @@ function QrLoginMobilePage() {
                       } catch (err) {
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         lastError = err as any;
-                        console.error(`Login attempt ${attempt} failed:`, err);
-                        
+
                         // 如果是 session 错误且还有重试次数，等待后重试
-                        if (attempt < maxRetries && 
-                            (err?.message?.includes('session') || 
+                        if (attempt < maxRetries &&
+                            (err?.message?.includes('session') ||
                              err?.message?.includes('5001') ||
                              err?.message?.includes('ConnectionError'))) {
-                          console.log(`Retrying in ${attempt} second(s)...`);
                           await new Promise(resolve => setTimeout(resolve, attempt * 1000));
                           continue;
                         }
-                        
+
                         // 其他错误或已达最大重试次数，直接失败
                         break;
                       }
@@ -310,7 +307,6 @@ function QrLoginMobilePage() {
                     // 所有重试都失败
                     setStatus('登录失败');
                     setIsLoading(false);
-                    console.error('All login attempts failed:', lastError);
                   }}
                   loading={isLoading}
                   disabled={!token}

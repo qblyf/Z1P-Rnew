@@ -156,7 +156,6 @@ function ClientPage() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const fn = useMemo(() => {
-    console.log('SyncButton init');
     return async () => {
       if (!token) {
         setMsg('请先登录系统');
@@ -213,8 +212,6 @@ function ClientPage() {
           .map(r => ({ tenantID: r.tenantID, error: translateError(r.error) }));
 
         setFailedTenants(failedDetails);
-
-        console.log('✅ 同步完成:', results);
 
         setProgress(100);
         setCurrentStepIndex(4);

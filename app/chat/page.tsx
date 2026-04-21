@@ -25,11 +25,6 @@ export default function () {
     const div = chatBoxRef.current;
     if (div) {
       div.scrollTo({ top: div.scrollHeight - div.clientHeight });
-      console.log({
-        scrollTop: div.scrollTop,
-        scrollHeight: div.scrollHeight,
-        clientHeight: div.clientHeight,
-      });
     }
   }, [chatContext]);
 
@@ -106,7 +101,6 @@ export default function () {
                     return;
                   }
                   const str = ele.resizableTextArea.textArea.value;
-                  console.log('str', str);
                   setLoading(true);
                   fetch(`https://chat.zsqk.com.cn/?zsqk=${str}`, {
                     method: 'POST',
@@ -137,7 +131,6 @@ export default function () {
                           ],
                         })
                       );
-                      console.log(v);
                     })
                     .catch(err => {
                       notification.error({ message: `暂无法回答 ${err}` });

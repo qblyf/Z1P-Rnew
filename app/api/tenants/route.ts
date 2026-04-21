@@ -54,16 +54,8 @@ export async function GET(request: Request) {
     
     // 从 SDK 获取所有账套信息
     const endpoint = API_ENDPOINT;
-    
-    console.log('🔍 API 路由调试信息:');
-    console.log('  - process.env.NEXT_PUBLIC_Z1P_ENDPOINT:', process.env.NEXT_PUBLIC_Z1P_ENDPOINT);
-    console.log('  - API_ENDPOINT 值:', API_ENDPOINT);
-    console.log('  - endpoint 最终值:', endpoint);
-    console.log('  - endpoint 类型:', typeof endpoint);
-    console.log('  - endpoint 长度:', endpoint?.length);
-    
+
     if (!endpoint) {
-      console.error('❌ endpoint 为空');
       return NextResponse.json(
         {
           success: false,
@@ -73,28 +65,23 @@ export async function GET(request: Request) {
         { status: 500 }
       );
     }
-    
+
     if (debug) {
       console.log('  - token 前10位:', token.substring(0, 10) + '...');
     }
-    
+
     // 在 API 路由中也需要初始化 SDK
     const { init } = await import('@zsqk/z1-sdk/es/z1p/util');
     init({ endpoint: endpoint });
-    
+
     const { getSysSettings } = await import('@zsqk/z1-sdk/es/z1p/sys-setting');
-    
-    console.log('📡 准备调用 getSysSettings...');
-    console.log('  - SDK endpoint 已初始化为:', endpoint);
-    const sysSettings = await getSysSettings({ 
+
+    const sysSettings = await getSysSettings({
       auth: token
     });
-    
-    console.log('✅ SDK 调用成功，返回数据数量:', sysSettings.length);
-    
+
     // 如果请求原始数据，直接返回
     if (raw) {
-      console.log('📋 返回原始 SDK 数据');
       return NextResponse.json({
         success: true,
         data: sysSettings,
@@ -102,9 +89,7 @@ export async function GET(request: Request) {
         note: '这是未处理的原始 SDK 数据，用于调试'
       });
     }
-    
-    console.log(`✅ 成功从 SDK 获取 ${sysSettings.length} 个账套`);
-    
+
     if (debug) {
       console.log('📋 账套详情:', JSON.stringify(sysSettings, null, 2));
     }
